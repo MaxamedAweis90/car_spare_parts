@@ -1,7 +1,7 @@
 "use client";
 
 import Box from "@mui/material/Box";
-import Grid from "@mui/material/Grid";
+import Grid2 from "@mui/material/Grid2";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -36,9 +36,9 @@ function formatCurrency(value: number) {
 export default function EarningsPage() {
   return (
     <Box sx={{ display: "grid", gap: 2.5 }}>
-      <Grid container spacing={2}>
+      <Grid2 container spacing={2}>
         {SUMMARY.map((item) => (
-          <Grid key={item.label} item xs={12} md={4}>
+          <Grid2 key={item.label} item xs={12} md={4}>
             <Paper elevation={0} sx={{ border: "1px solid #ece8de", borderRadius: 3, p: 2.5, bgcolor: "#fff" }}>
               <Stack direction="row" spacing={1.5} alignItems="center">
                 <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: `${item.color}14`, color: item.color, display: "grid", placeItems: "center" }}>
@@ -55,9 +55,9 @@ export default function EarningsPage() {
                 </div>
               </Stack>
             </Paper>
-          </Grid>
+          </Grid2>
         ))}
-      </Grid>
+      </Grid2>
 
       <Paper elevation={0} sx={{ border: "1px solid #ece8de", borderRadius: 3, bgcolor: "#fff", overflow: "hidden" }}>
         <Box sx={{ px: 2.75, py: 2.25, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 2, borderBottom: "1px solid #f0eae1", bgcolor: "#f9f7f2" }}>

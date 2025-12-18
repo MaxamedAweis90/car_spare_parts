@@ -1,7 +1,7 @@
 "use client";
 
 import Box from "@mui/material/Box";
-import Grid from "@mui/material/Grid";
+import Grid2 from "@mui/material/Grid2";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -111,9 +111,9 @@ export default function SellerDashboardPage() {
         </Stack>
       </Paper>
 
-      <Grid container spacing={2}>
+      <Grid2 container spacing={2}>
         {SNAPSHOT.map((item) => (
-          <Grid key={item.label} item xs={12} sm={6} lg={3}>
+          <Grid2 key={item.label} item xs={12} sm={6} lg={3}>
             <Paper elevation={0} sx={{ borderRadius: 2.5, border: "1px solid #ece8de", bgcolor: "#fff", p: 2, display: "flex", gap: 1.25 }}>
               <Avatar sx={{ width: 44, height: 44, bgcolor: `${item.color}20`, color: item.color }}>{item.icon}</Avatar>
               <Box sx={{ flex: 1 }}>
@@ -139,12 +139,12 @@ export default function SellerDashboardPage() {
                 </Box>
               </Box>
             </Paper>
-          </Grid>
+          </Grid2>
         ))}
-      </Grid>
+      </Grid2>
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={8}>
+      <Grid2 container spacing={2}>
+        <Grid2 item xs={12} md={8}>
           <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.75 } }}>
             <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5} sx={{ mb: 2 }}>
               <div>
@@ -183,9 +183,9 @@ export default function SellerDashboardPage() {
               </Box>
             </Box>
           </Paper>
-        </Grid>
+        </Grid2>
 
-        <Grid item xs={12} md={4}>
+        <Grid2 item xs={12} md={4}>
           <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.5 }, mb: 2 }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
               <Typography variant="subtitle1" fontWeight={900}>
@@ -225,11 +225,11 @@ export default function SellerDashboardPage() {
               ))}
             </Stack>
           </Paper>
-        </Grid>
-      </Grid>
+        </Grid2>
+      </Grid2>
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} lg={8}>
+      <Grid2 container spacing={2}>
+        <Grid2 item xs={12} lg={8}>
           <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.5 } }}>
             <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.5 }}>
               <Typography variant="subtitle1" fontWeight={900}>
@@ -278,9 +278,9 @@ export default function SellerDashboardPage() {
               </TableBody>
             </Table>
           </Paper>
-        </Grid>
+        </Grid2>
 
-        <Grid item xs={12} lg={4}>
+        <Grid2 item xs={12} lg={4}>
           <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.5 } }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
               <Typography variant="subtitle1" fontWeight={900}>
@@ -318,8 +318,8 @@ export default function SellerDashboardPage() {
               })}
             </Stack>
           </Paper>
-        </Grid>
-      </Grid>
+        </Grid2>
+      </Grid2>
     </Box>
   );
 }
