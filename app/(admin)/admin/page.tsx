@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import CreateUserForm from "@/components/CreateUserForm";
 import { useSession } from "@/lib/useSession";
@@ -55,6 +56,23 @@ export default function AdminPage() {
         <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
         <p className="text-gray-700">Manage admins and approve sellers.</p>
       </div>
+
+      <section className="border rounded p-4 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Seller role settings</h2>
+            <p className="text-sm text-gray-600">
+              Toggle seller activation when you need to restrict access.
+            </p>
+          </div>
+          <Link
+            href="/admin/seller-settings"
+            className="rounded bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
+          >
+            Manage sellers
+          </Link>
+        </div>
+      </section>
 
       <section className="border rounded p-4 bg-white shadow-sm">
         <h2 className="text-lg font-semibold mb-2">Create admin or seller</h2>

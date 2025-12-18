@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/useSession";
+import { performLogout } from "@/lib/logout";
 import Button from "./Button";
 import NavLinks from "./NavLinks";
 import { CartDrawer } from "./CartDrawer";
@@ -57,6 +58,13 @@ export default function Navbar() {
 
   const userName = authenticated ? profile?.name || "Account" : "Guest";
   const isSellerPending = profile?.role === "seller" && profile?.sellerApproved === false;
+
+  const handleSignOut = async () => {
+    setMenuOpen(false);
+    await performLogout();
+    router.replace("/");
+    router.refresh();
+  };
 
   return (
     <>
@@ -200,9 +208,13 @@ export default function Navbar() {
                               Seller Pending
                             </Link>
                           )}
-                          <Link href="/auth/login" className="block px-4 py-2 hover:bg-slate-50" onClick={() => setMenuOpen(false)}>
+                          <button
+                            type="button"
+                            onClick={handleSignOut}
+                            className="block w-full px-4 py-2 text-left hover:bg-slate-50"
+                          >
                             Sign Out
-                          </Link>
+                          </button>
                         </>
                       ) : (
                         <>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Avatar, Badge, Divider, IconButton, Menu, MenuItem, Tooltip } from "@mui/material";
+import CircularProgress from "@mui/material/CircularProgress";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
 import AddBoxOutlinedIcon from "@mui/icons-material/AddBoxOutlined";
@@ -13,10 +14,11 @@ import MonetizationOnOutlinedIcon from "@mui/icons-material/MonetizationOnOutlin
 import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
 import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
 import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
-import LogoutOutlinedIcon from "@mui/icons-material/LogoutOutlined";
 import MenuOpenIcon from "@mui/icons-material/MenuOpen";
 import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { useSession } from "@/lib/useSession";
+import { performLogout } from "@/lib/logout";
 
 const allowedRoles = new Set(["seller"]);
 
@@ -50,6 +52,7 @@ export default function SellerLayout({
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
 
   const isAllowed =
     authenticated &&
@@ -58,30 +61,77 @@ export default function SellerLayout({
 
   useEffect(() => {
     if (loading) return;
+    let target: string | null = null;
+
     if (!authenticated) {
-      router.replace("/auth/login");
+      target = "/auth/seller/login";
+    } else if (profile?.role === "seller" && profile?.sellerApproved === false) {
+      target = "/auth/seller/pending";
+    } else if (!isAllowed) {
+      if (profile?.role === "admin" || profile?.role === "main_admin") {
+        target = "/auth/admin/login";
+      } else if (profile?.role === "customer") {
+        target = "/";
+      } else {
+        target = "/auth/seller/login";
+      }
+    }
+
+    if (target) {
+      setRedirectTarget(target);
+      if (pathname !== target) {
+        router.replace(target);
+      }
       return;
     }
 
-    if (profile?.role === "seller" && profile?.sellerApproved === false) {
-      router.replace("/auth/seller/pending");
-      return;
-    }
-
-    if (!isAllowed) {
-      router.replace("/auth/login");
-    }
-  }, [authenticated, isAllowed, loading, profile?.role, profile?.sellerApproved, router]);
+    setRedirectTarget(null);
+  }, [authenticated, isAllowed, loading, pathname, profile?.role, profile?.sellerApproved, router]);
 
   const pageTitle = usePageTitle(pathname);
   const initials = profile?.name?.split(" ").map((n: string) => n[0]).join("")?.slice(0, 2) || "SE";
 
+  const handleLogout = async () => {
+    setMenuAnchor(null);
+    await performLogout();
+    router.replace("/auth/seller/login");
+    router.refresh();
+  };
+
   if (loading) {
-    return <div className="p-6 text-sm text-slate-600">Checking access...</div>;
+    return (
+      <AccessGate
+        title="Validating access"
+        description="Please wait while we confirm your seller permissions."
+        loading
+        accentColor="#f59e0b"
+      />
+    );
+  }
+
+  if (redirectTarget) {
+    return (
+      <AccessGate
+        title="Redirecting"
+        description={`Taking you to ${describeSellerDestination(redirectTarget)}...`}
+        loading
+        actionLabel="Open now"
+        onAction={() => router.replace(redirectTarget)}
+        accentColor="#f59e0b"
+      />
+    );
   }
 
   if (!isAllowed) {
-    return <div className="p-6 text-sm text-slate-600">Access denied.</div>;
+    return (
+      <AccessGate
+        title="Access denied"
+        description="You do not have permission to view the seller console."
+        actionLabel="Go to homepage"
+        onAction={() => router.replace("/")}
+        accentColor="#f59e0b"
+      />
+    );
   }
 
   return (
@@ -181,7 +231,7 @@ export default function SellerLayout({
                 <MenuItem onClick={() => router.push("/seller/profile")}>Profile</MenuItem>
                 <MenuItem onClick={() => router.push("/seller/settings")}>Store settings</MenuItem>
                 <Divider />
-                <MenuItem onClick={() => router.push("/auth/login")}>Logout</MenuItem>
+                <MenuItem onClick={handleLogout}>Logout</MenuItem>
               </Menu>
             </div>
           </div>
@@ -190,6 +240,64 @@ export default function SellerLayout({
         <main className="flex-1 px-4 py-4 md:px-8 md:py-6">
           <div className="mx-auto w-full max-w-6xl">{children}</div>
         </main>
+      </div>
+    </div>
+  );
+}
+
+function describeSellerDestination(path: string) {
+  if (path === "/auth/seller/pending") {
+    return "your seller approval status";
+  }
+  if (path.startsWith("/auth/seller/login")) {
+    return "the seller login page";
+  }
+  if (path.startsWith("/auth/admin/login")) {
+    return "the admin login";
+  }
+  if (path === "/") {
+    return "the storefront";
+  }
+  return "the previous page";
+}
+
+type AccessGateProps = {
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  loading?: boolean;
+  accentColor?: string;
+};
+
+function AccessGate({ title, description, actionLabel, onAction, loading, accentColor = "#2563eb" }: AccessGateProps) {
+  const accent = accentColor;
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#f4f1e9] px-4">
+      <div className="w-full max-w-md rounded-3xl border border-[#ece8de] bg-white p-8 text-center shadow-[0_20px_60px_rgba(17,24,39,0.12)]">
+        <div
+          className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full"
+          style={{ backgroundColor: `${accent}1A`, color: accent }}
+        >
+          <LockOutlinedIcon />
+        </div>
+        <h2 className="text-xl font-semibold text-slate-900">{title}</h2>
+        <p className="mt-2 text-sm text-slate-600">{description}</p>
+        {loading && (
+          <div className="mt-4 flex justify-center">
+            <CircularProgress size={24} sx={{ color: accent }} />
+          </div>
+        )}
+        {actionLabel && onAction && (
+          <button
+            type="button"
+            onClick={onAction}
+            className="mt-6 w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
+          >
+            {actionLabel}
+          </button>
+        )}
       </div>
     </div>
   );
