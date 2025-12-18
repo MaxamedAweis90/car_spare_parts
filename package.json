@@ -14,15 +14,21 @@
     "@mui/icons-material": "^7.3.6",
     "@mui/material": "^7.3.6",
     "@mui/material-nextjs": "^7.3.6",
+    "appwrite": "^21.5.0",
+    "bcryptjs": "^2.4.3",
     "next": "16.0.10",
+    "node-appwrite": "^21.0.0",
     "react": "19.2.1",
-    "react-dom": "19.2.1"
+    "react-dom": "19.2.1",
+    "set-cookie-parser": "^2.6.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/set-cookie-parser": "^2.4.10",
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
     "tailwindcss": "^4",
