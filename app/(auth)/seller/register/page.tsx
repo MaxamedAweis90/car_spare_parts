@@ -1,19 +1,37 @@
 "use client";
 
-import { FormEvent, useState, useEffect } from "react";
+import { FormEvent, Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "@/lib/useSession";
 
 export default function SellerRegisterPage() {
+  return (
+    <Suspense fallback={null}>
+      <SellerRegisterContent />
+    </Suspense>
+  );
+}
+
+function SellerRegisterContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { authenticated, profile, loading: sessionLoading } = useSession();
-  const [name, setName] = useState(searchParams.get("name") || "");
-  const [email, setEmail] = useState(searchParams.get("email") || "");
+  const nameParam = searchParams.get("name") || "";
+  const emailParam = searchParams.get("email") || "";
+  const [name, setName] = useState(nameParam);
+  const [email, setEmail] = useState(emailParam);
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const shouldHide = sessionLoading || authenticated;
+
+  useEffect(() => {
+    setName(nameParam);
+  }, [nameParam]);
+
+  useEffect(() => {
+    setEmail(emailParam);
+  }, [emailParam]);
 
   useEffect(() => {
     if (sessionLoading) return;

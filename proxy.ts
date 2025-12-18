@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 // Redirect authenticated users away from auth pages before any HTML is rendered.
-export async function middleware(req: NextRequest) {
-  const { pathname, origin } = req.nextUrl;
+export async function proxy(request: NextRequest) {
+  const { pathname, origin } = request.nextUrl;
 
   // Only run on /auth routes.
   if (!pathname.startsWith("/auth")) {
@@ -10,7 +10,7 @@ export async function middleware(req: NextRequest) {
   }
 
   // Call existing session endpoint using incoming cookies to resolve role.
-  const cookieHeader = req.headers.get("cookie") || "";
+  const cookieHeader = request.headers.get("cookie") || "";
   let profile: any | null = null;
   let authenticated = false;
 
@@ -45,7 +45,7 @@ export async function middleware(req: NextRequest) {
 
   // Avoid redirect loop if already at destination.
   if (destination && pathname !== destination) {
-    return NextResponse.redirect(new URL(destination, req.url));
+    return NextResponse.redirect(new URL(destination, request.url));
   }
 
   return NextResponse.next();

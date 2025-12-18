@@ -1,8 +1,17 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 export default function SellerPendingPage() {
+  return (
+    <Suspense fallback={null}>
+      <SellerPendingContent />
+    </Suspense>
+  );
+}
+
+function SellerPendingContent() {
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
 
