@@ -1,7 +1,6 @@
 "use client";
 
 import Box from "@mui/material/Box";
-import Grid2 from "@mui/material/Grid2";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -111,82 +110,94 @@ export default function SellerDashboardPage() {
         </Stack>
       </Paper>
 
-      <Grid2 container spacing={2}>
+      <Box
+        sx={{
+          display: "grid",
+          gap: 2,
+          gridTemplateColumns: {
+            xs: "1fr",
+            sm: "repeat(2, minmax(0, 1fr))",
+            lg: "repeat(4, minmax(0, 1fr))",
+          },
+        }}
+      >
         {SNAPSHOT.map((item) => (
-          <Grid2 key={item.label} item xs={12} sm={6} lg={3}>
-            <Paper elevation={0} sx={{ borderRadius: 2.5, border: "1px solid #ece8de", bgcolor: "#fff", p: 2, display: "flex", gap: 1.25 }}>
-              <Avatar sx={{ width: 44, height: 44, bgcolor: `${item.color}20`, color: item.color }}>{item.icon}</Avatar>
-              <Box sx={{ flex: 1 }}>
-                <Typography variant="body2" color="text.secondary" fontWeight={700}>
-                  {item.label}
+          <Paper key={item.label} elevation={0} sx={{ borderRadius: 2.5, border: "1px solid #ece8de", bgcolor: "#fff", p: 2, display: "flex", gap: 1.25 }}>
+            <Avatar sx={{ width: 44, height: 44, bgcolor: `${item.color}20`, color: item.color }}>{item.icon}</Avatar>
+            <Box sx={{ flex: 1 }}>
+              <Typography variant="body2" color="text.secondary" fontWeight={700}>
+                {item.label}
+              </Typography>
+              <Typography variant="h6" fontWeight={900}>
+                {item.label === "Revenue YTD" ? formatCurrency(item.value) : item.value}
+              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
+                <CircleIcon sx={{ fontSize: 8, color: item.label === "Stock alerts" ? "#d97706" : "#0f766e" }} />
+                <Typography variant="caption" color="text.secondary">
+                  {item.delta}
                 </Typography>
-                <Typography variant="h6" fontWeight={900}>
-                  {item.label === "Revenue YTD" ? formatCurrency(item.value) : item.value}
-                </Typography>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
-                  <CircleIcon sx={{ fontSize: 8, color: item.label === "Stock alerts" ? "#d97706" : "#0f766e" }} />
-                  <Typography variant="caption" color="text.secondary">
-                    {item.delta}
-                  </Typography>
-                </Stack>
-                <Box sx={{ mt: 1, display: "flex", alignItems: "flex-end", gap: 0.5, height: 36 }}>
-                  {item.spark.map((value, index) => {
-                    const max = Math.max(...item.spark);
-                    return (
-                      <Box key={`${item.label}-${index}`} sx={{ width: 7, borderRadius: 9999, bgcolor: `${item.color}55` }} style={{ height: `${Math.max(12, (value / max) * 34)}%` }} />
-                    );
-                  })}
-                </Box>
-              </Box>
-            </Paper>
-          </Grid2>
-        ))}
-      </Grid2>
-
-      <Grid2 container spacing={2}>
-        <Grid2 item xs={12} md={8}>
-          <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.75 } }}>
-            <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5} sx={{ mb: 2 }}>
-              <div>
-                <Typography variant="subtitle1" fontWeight={900}>
-                  Weekly sales trend
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Traffic and paid order volume across the last seven days.
-                </Typography>
-              </div>
-              <Chip label="Last 7 days" size="small" sx={{ bgcolor: "#f9f7f2", border: "1px solid #ece8de" }} />
-            </Stack>
-
-            <Box sx={{ position: "relative", height: 240, borderRadius: 12, border: "1px solid #f0eae1", bgcolor: "#fbf9f4", p: 2, display: "grid", alignItems: "end" }}>
-              <Divider sx={{ position: "absolute", bottom: 72, left: 24, right: 24, borderColor: "#e8e0d2" }} />
-              <Divider sx={{ position: "absolute", bottom: 144, left: 24, right: 24, borderColor: "#e8e0d2" }} />
-              <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 1.2, alignItems: "end", height: "100%" }}>
-                {WEEKLY_SALES.map((entry) => (
-                  <Stack key={entry.label} spacing={1} alignItems="center">
-                    <Box
-                      sx={{
-                        width: "70%",
-                        height: `${Math.max(12, entry.value)}%`,
-                        maxHeight: "100%",
-                        bgcolor: "#1f2937",
-                        borderRadius: "12px 12px 6px 6px",
-                        boxShadow: "0 10px 20px rgba(17, 24, 39, 0.12)",
-                        transition: "height 0.25s ease",
-                      }}
-                    />
-                    <Typography variant="caption" color="text.secondary">
-                      {entry.label}
-                    </Typography>
-                  </Stack>
-                ))}
+              </Stack>
+              <Box sx={{ mt: 1, display: "flex", alignItems: "flex-end", gap: 0.5, height: 36 }}>
+                {item.spark.map((value, index) => {
+                  const max = Math.max(...item.spark);
+                  return (
+                    <Box key={`${item.label}-${index}`} sx={{ width: 7, borderRadius: 9999, bgcolor: `${item.color}55` }} style={{ height: `${Math.max(12, (value / max) * 34)}%` }} />
+                  );
+                })}
               </Box>
             </Box>
           </Paper>
-        </Grid2>
+        ))}
+      </Box>
 
-        <Grid2 item xs={12} md={4}>
-          <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.5 }, mb: 2 }}>
+      <Box
+        sx={{
+          display: "grid",
+          gap: 2,
+          gridTemplateColumns: { xs: "1fr", md: "2fr 1fr" },
+          alignItems: "stretch",
+        }}
+      >
+        <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.75 } }}>
+          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5} sx={{ mb: 2 }}>
+            <div>
+              <Typography variant="subtitle1" fontWeight={900}>
+                Weekly sales trend
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Traffic and paid order volume across the last seven days.
+              </Typography>
+            </div>
+            <Chip label="Last 7 days" size="small" sx={{ bgcolor: "#f9f7f2", border: "1px solid #ece8de" }} />
+          </Stack>
+
+          <Box sx={{ position: "relative", height: 240, borderRadius: 12, border: "1px solid #f0eae1", bgcolor: "#fbf9f4", p: 2, display: "grid", alignItems: "end" }}>
+            <Divider sx={{ position: "absolute", bottom: 72, left: 24, right: 24, borderColor: "#e8e0d2" }} />
+            <Divider sx={{ position: "absolute", bottom: 144, left: 24, right: 24, borderColor: "#e8e0d2" }} />
+            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 1.2, alignItems: "end", height: "100%" }}>
+              {WEEKLY_SALES.map((entry) => (
+                <Stack key={entry.label} spacing={1} alignItems="center">
+                  <Box
+                    sx={{
+                      width: "70%",
+                      height: `${Math.max(12, entry.value)}%`,
+                      maxHeight: "100%",
+                      bgcolor: "#1f2937",
+                      borderRadius: "12px 12px 6px 6px",
+                      boxShadow: "0 10px 20px rgba(17, 24, 39, 0.12)",
+                      transition: "height 0.25s ease",
+                    }}
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    {entry.label}
+                  </Typography>
+                </Stack>
+              ))}
+            </Box>
+          </Box>
+        </Paper>
+        <Box sx={{ display: "grid", gap: 2 }}>
+          <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.5 } }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
               <Typography variant="subtitle1" fontWeight={900}>
                 Fulfillment mix
@@ -225,101 +236,103 @@ export default function SellerDashboardPage() {
               ))}
             </Stack>
           </Paper>
-        </Grid2>
-      </Grid2>
+        </Box>
+      </Box>
 
-      <Grid2 container spacing={2}>
-        <Grid2 item xs={12} lg={8}>
-          <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.5 } }}>
-            <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.5 }}>
-              <Typography variant="subtitle1" fontWeight={900}>
-                Recent orders
-              </Typography>
-              <Stack direction="row" spacing={1}>
-                <Button size="small" variant="outlined" startIcon={<LocalShippingOutlinedIcon />} color="inherit">
-                  Ship queue
-                </Button>
-                <Button size="small" variant="text" href="/seller/orders">
-                  View all
-                </Button>
-              </Stack>
+      <Box
+        sx={{
+          display: "grid",
+          gap: 2,
+          gridTemplateColumns: { xs: "1fr", lg: "2fr 1fr" },
+          alignItems: "stretch",
+        }}
+      >
+        <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.5 } }}>
+          <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.5 }}>
+            <Typography variant="subtitle1" fontWeight={900}>
+              Recent orders
+            </Typography>
+            <Stack direction="row" spacing={1}>
+              <Button size="small" variant="outlined" startIcon={<LocalShippingOutlinedIcon />} color="inherit">
+                Ship queue
+              </Button>
+              <Button size="small" variant="text" href="/seller/orders">
+                View all
+              </Button>
             </Stack>
-            <Divider sx={{ mb: 1 }} />
-            <Table size="small" sx={{ "& th": { bgcolor: "#fbf9f4", fontWeight: 800, color: "#3b3325", borderColor: "#f0eae1" }, "& td": { borderColor: "#f3ede4" } }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Order</TableCell>
-                  <TableCell>Product</TableCell>
-                  <TableCell>Buyer</TableCell>
-                  <TableCell align="right">Qty</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell align="right">Total</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {ORDERS.map((order) => (
-                  <TableRow key={order.id} hover>
-                    <TableCell>{order.id}</TableCell>
-                    <TableCell>{order.product}</TableCell>
-                    <TableCell>{order.buyer}</TableCell>
-                    <TableCell align="right">{order.qty}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={order.status}
-                        size="small"
-                        color={order.status === "Completed" ? "success" : order.status === "Shipped" ? "info" : order.status === "Processing" ? "warning" : "default"}
-                        variant={order.status === "New" ? "outlined" : "filled"}
-                        sx={{ fontWeight: 700, borderRadius: 1.5 }}
-                      />
-                    </TableCell>
-                    <TableCell align="right">{formatCurrency(order.total)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </Paper>
-        </Grid2>
-
-        <Grid2 item xs={12} lg={4}>
-          <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.5 } }}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
-              <Typography variant="subtitle1" fontWeight={900}>
-                Inventory watchlist
-              </Typography>
-              <Tooltip title="Manage products">
-                <IconButton size="small" href="/seller/products" component="a">
-                  <TableRowsOutlinedIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Stack>
-            <Stack spacing={1.2}>
-              {INVENTORY_WATCH.map((item) => {
-                const color = item.status === "Out" ? "error" : item.status === "Low" ? "warning" : "success";
-                return (
-                  <Paper key={item.sku} variant="outlined" sx={{ p: 1.5, borderColor: "#e5dece", borderRadius: 2 }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                      <div>
-                        <Typography variant="body2" fontWeight={800}>{item.name}</Typography>
-                        <Typography variant="caption" color="text.secondary">SKU {item.sku}</Typography>
-                      </div>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <Chip label={`${item.qty} in stock`} size="small" color={color as any} variant={item.status === "Healthy" ? "outlined" : "filled"} sx={{ borderRadius: 1.5 }} />
-                        <Chip label={item.status} size="small" color={color as any} variant="outlined" sx={{ borderRadius: 1.5 }} />
-                      </Stack>
-                    </Stack>
-                    <LinearProgress
-                      variant="determinate"
-                      value={item.status === "Out" ? 0 : Math.min(100, (item.qty / 12) * 100)}
-                      color={color as any}
-                      sx={{ mt: 1, borderRadius: 9999, height: 6 }}
+          </Stack>
+          <Divider sx={{ mb: 1 }} />
+          <Table size="small" sx={{ "& th": { bgcolor: "#fbf9f4", fontWeight: 800, color: "#3b3325", borderColor: "#f0eae1" }, "& td": { borderColor: "#f3ede4" } }}>
+            <TableHead>
+              <TableRow>
+                <TableCell>Order</TableCell>
+                <TableCell>Product</TableCell>
+                <TableCell>Buyer</TableCell>
+                <TableCell align="right">Qty</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell align="right">Total</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {ORDERS.map((order) => (
+                <TableRow key={order.id} hover>
+                  <TableCell>{order.id}</TableCell>
+                  <TableCell>{order.product}</TableCell>
+                  <TableCell>{order.buyer}</TableCell>
+                  <TableCell align="right">{order.qty}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={order.status}
+                      size="small"
+                      color={order.status === "Completed" ? "success" : order.status === "Shipped" ? "info" : order.status === "Processing" ? "warning" : "default"}
+                      variant={order.status === "New" ? "outlined" : "filled"}
+                      sx={{ fontWeight: 700, borderRadius: 1.5 }}
                     />
-                  </Paper>
-                );
-              })}
-            </Stack>
-          </Paper>
-        </Grid2>
-      </Grid2>
+                  </TableCell>
+                  <TableCell align="right">{formatCurrency(order.total)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Paper>
+        <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.5 } }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
+            <Typography variant="subtitle1" fontWeight={900}>
+              Inventory watchlist
+            </Typography>
+            <Tooltip title="Manage products">
+              <IconButton size="small" href="/seller/products" component="a">
+                <TableRowsOutlinedIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+          <Stack spacing={1.2}>
+            {INVENTORY_WATCH.map((item) => {
+              const color = item.status === "Out" ? "error" : item.status === "Low" ? "warning" : "success";
+              return (
+                <Paper key={item.sku} variant="outlined" sx={{ p: 1.5, borderColor: "#e5dece", borderRadius: 2 }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
+                    <div>
+                      <Typography variant="body2" fontWeight={800}>{item.name}</Typography>
+                      <Typography variant="caption" color="text.secondary">SKU {item.sku}</Typography>
+                    </div>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Chip label={`${item.qty} in stock`} size="small" color={color as any} variant={item.status === "Healthy" ? "outlined" : "filled"} sx={{ borderRadius: 1.5 }} />
+                      <Chip label={item.status} size="small" color={color as any} variant="outlined" sx={{ borderRadius: 1.5 }} />
+                    </Stack>
+                  </Stack>
+                  <LinearProgress
+                    variant="determinate"
+                    value={item.status === "Out" ? 0 : Math.min(100, (item.qty / 12) * 100)}
+                    color={color as any}
+                    sx={{ mt: 1, borderRadius: 9999, height: 6 }}
+                  />
+                </Paper>
+              );
+            })}
+          </Stack>
+        </Paper>
+      </Box>
     </Box>
   );
 }

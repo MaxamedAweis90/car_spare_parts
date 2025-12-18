@@ -1,7 +1,6 @@
 "use client";
 
 import Box from "@mui/material/Box";
-import Grid2 from "@mui/material/Grid2";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
@@ -36,28 +35,36 @@ function formatCurrency(value: number) {
 export default function EarningsPage() {
   return (
     <Box sx={{ display: "grid", gap: 2.5 }}>
-      <Grid2 container spacing={2}>
+      <Box
+        sx={{
+          display: "grid",
+          gap: 2,
+          gridTemplateColumns: {
+            xs: "1fr",
+            sm: "repeat(2, minmax(0, 1fr))",
+            md: "repeat(3, minmax(0, 1fr))",
+          },
+        }}
+      >
         {SUMMARY.map((item) => (
-          <Grid2 key={item.label} item xs={12} md={4}>
-            <Paper elevation={0} sx={{ border: "1px solid #ece8de", borderRadius: 3, p: 2.5, bgcolor: "#fff" }}>
-              <Stack direction="row" spacing={1.5} alignItems="center">
-                <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: `${item.color}14`, color: item.color, display: "grid", placeItems: "center" }}>
-                  {item.icon}
-                </Box>
-                <div>
-                  <Typography variant="body2" color="text.secondary" fontWeight={700}>
-                    {item.label}
-                  </Typography>
-                  <Typography variant="h6" fontWeight={900}>
-                    {formatCurrency(item.value)}
-                  </Typography>
-                  <LinearProgress variant="determinate" value={70} sx={{ mt: 1, height: 6, borderRadius: 9999, bgcolor: "#f2ede4" }} />
-                </div>
-              </Stack>
-            </Paper>
-          </Grid2>
+          <Paper key={item.label} elevation={0} sx={{ border: "1px solid #ece8de", borderRadius: 3, p: 2.5, bgcolor: "#fff" }}>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: `${item.color}14`, color: item.color, display: "grid", placeItems: "center" }}>
+                {item.icon}
+              </Box>
+              <div>
+                <Typography variant="body2" color="text.secondary" fontWeight={700}>
+                  {item.label}
+                </Typography>
+                <Typography variant="h6" fontWeight={900}>
+                  {formatCurrency(item.value)}
+                </Typography>
+                <LinearProgress variant="determinate" value={70} sx={{ mt: 1, height: 6, borderRadius: 9999, bgcolor: "#f2ede4" }} />
+              </div>
+            </Stack>
+          </Paper>
         ))}
-      </Grid2>
+      </Box>
 
       <Paper elevation={0} sx={{ border: "1px solid #ece8de", borderRadius: 3, bgcolor: "#fff", overflow: "hidden" }}>
         <Box sx={{ px: 2.75, py: 2.25, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 2, borderBottom: "1px solid #f0eae1", bgcolor: "#f9f7f2" }}>
