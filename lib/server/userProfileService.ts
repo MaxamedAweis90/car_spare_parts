@@ -86,9 +86,10 @@ export function buildUserAvatarUrl(fileId: string | null | undefined) {
     return null;
   }
   try {
-    const base = endpoint.replace(/\/?$/, "");
-    const url = new URL(`/storage/buckets/${bucketId}/files/${fileId}/view`, base);
+    const base = endpoint.endsWith("/") ? endpoint : `${endpoint}/`;
+    const url = new URL(`storage/buckets/${bucketId}/files/${fileId}/view`, base);
     url.searchParams.set("project", projectId);
+    url.searchParams.set("mode", "admin");
     return url.toString();
   } catch (error) {
     console.error("Failed to build user avatar URL", error);
