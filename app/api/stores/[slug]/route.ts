@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findStoreBySlug, serializeStoreDocument } from "@/lib/server/sellerStoreService";
 
-export async function GET(_req: NextRequest, { params }: { params: { slug: string } }) {
+type StoreSlugParams = { slug: string };
+
+export async function GET(_req: NextRequest, context: { params: Promise<StoreSlugParams> }) {
   try {
-    const slug = params.slug;
+    const { slug } = await context.params;
     if (!slug) {
       return NextResponse.json({ error: "Missing slug" }, { status: 400 });
     }
