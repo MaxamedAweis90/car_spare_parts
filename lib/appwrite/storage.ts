@@ -30,7 +30,7 @@ export async function uploadImage(
   return await storage.createFile(id, generateUniqueId(), file);
 }
 
-export function getImageUrl(bucketId: "avatars" | "products" | "storeAvatars" | "storeBanners", fileId: string) {
+export function getImageUrl(bucketId: "avatars" | "products" | "storeAvatars" | "storeBanners", fileId: string): string | null {
   const id =
     bucketId === "avatars"
       ? AVATAR_BUCKET_ID
@@ -40,7 +40,8 @@ export function getImageUrl(bucketId: "avatars" | "products" | "storeAvatars" | 
       ? STORE_AVATAR_BUCKET_ID
       : STORE_BANNER_BUCKET_ID;
   if (!id) {
-    throw new Error(`Missing bucket id for ${bucketId}`);
+    console.warn(`Missing Appwrite bucket id for ${bucketId}; returning null image URL.`);
+    return null;
   }
   return storage.getFileView(id, fileId).toString();
 }

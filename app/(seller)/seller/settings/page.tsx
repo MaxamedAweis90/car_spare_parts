@@ -445,7 +445,7 @@ export default function StoreSettingsPage() {
                   onChange={handleFieldChange("storeDescription")}
                   placeholder="Tell shoppers what you specialize in, shipping guarantees, or warranties."
                   rows={5}
-                  className="min-h-[140px] rounded-2xl border border-[#e4ddcf] bg-white px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1f2937] focus:outline-none focus:ring-2 focus:ring-[#1f2937]/10"
+                  className="min-h-35 rounded-2xl border border-[#e4ddcf] bg-white px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1f2937] focus:outline-none focus:ring-2 focus:ring-[#1f2937]/10"
                 />
               </label>
             </section>

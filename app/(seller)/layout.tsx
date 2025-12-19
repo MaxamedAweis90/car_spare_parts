@@ -21,6 +21,7 @@ import { useSession } from "@/lib/useSession";
 import { performLogout } from "@/lib/logout";
 import { getImageUrl } from "@/lib/appwrite/storage";
 import { SellerStoreProvider, useSellerStore } from "@/lib/SellerStoreProvider";
+import { SellerProfileProvider, useSellerProfile } from "@/lib/SellerProfileProvider";
 
 const allowedRoles = new Set(["seller"]);
 
@@ -51,7 +52,9 @@ export default function SellerLayout({
 }) {
   return (
     <SellerStoreProvider>
-      <SellerLayoutShell>{children}</SellerLayoutShell>
+      <SellerProfileProvider>
+        <SellerLayoutShell>{children}</SellerLayoutShell>
+      </SellerProfileProvider>
     </SellerStoreProvider>
   );
 }
@@ -64,6 +67,7 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
   const { store } = useSellerStore();
+  const { profile: sellerProfile } = useSellerProfile();
 
   const isAllowed =
     authenticated &&
@@ -102,6 +106,16 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
   const pageTitle = usePageTitle(pathname);
   const initials = profile?.name?.split(" ").map((n: string) => n[0]).join("")?.slice(0, 2) || "SE";
   const storeSlug = store?.storeSlug ?? null;
+  const storeDisplayName = store?.storeName || "Seller Hub";
+  const sellerAvatarUrl = useMemo(() => {
+    if (!sellerProfile?.avatarId) return sellerProfile?.avatarUrl ?? null;
+    try {
+      return getImageUrl("avatars", sellerProfile.avatarId);
+    } catch (error) {
+      console.error("Failed to resolve seller avatar", error);
+      return sellerProfile?.avatarUrl ?? null;
+    }
+  }, [sellerProfile?.avatarId, sellerProfile?.avatarUrl]);
   const storeAvatarUrl = useMemo(() => {
     if (!store?.storeAvatarId) return null;
     try {
@@ -162,12 +176,12 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
       >
         <div className="flex items-center justify-between px-4 py-5 border-b border-[#1f1f1f]">
           <div className="flex items-center gap-3">
-            <Avatar src={storeAvatarUrl || undefined} sx={{ width: 40, height: 40, bgcolor: "#f5f5f5", color: "#111" }}>
-              {initials}
+            <Avatar src={storeAvatarUrl || sellerAvatarUrl || undefined} sx={{ width: 40, height: 40, bgcolor: "#f5f5f5", color: "#111" }}>
+              {storeDisplayName.slice(0, 2).toUpperCase()}
             </Avatar>
             {sidebarOpen && (
               <div className="leading-tight">
-                <p className="text-sm font-semibold">Seller Hub</p>
+                <p className="text-sm font-semibold">{storeDisplayName}</p>
                 <p className="text-xs text-gray-400">Welcome back</p>
               </div>
             )}
@@ -240,7 +254,7 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
 
             <div>
               <IconButton onClick={(e) => setMenuAnchor(e.currentTarget)} size="small">
-                <Avatar src={storeAvatarUrl || undefined} sx={{ bgcolor: "#2563eb", width: 36, height: 36, fontSize: 14 }}>
+                <Avatar src={sellerAvatarUrl || undefined} sx={{ bgcolor: "#2563eb", width: 36, height: 36, fontSize: 14 }}>
                   {initials}
                 </Avatar>
               </IconButton>
