@@ -34,8 +34,8 @@ export default function TopBar() {
       className={`sticky top-0 z-40 bg-[#12141a] text-xs text-white transition-transform duration-200 ${hidden ? "-translate-y-full" : "translate-y-0"}`}
     >
       <div className="mx-auto flex w-full max-w-10/12 items-center justify-between px-4 py-2 sm:px-6">
-        <span className="font-semibold tracking-wide">Welcome to Spare Parts Store</span>
-        <div className="flex items-center gap-4 text-white/80">
+        <span className="min-w-0 truncate font-semibold tracking-wide">Welcome to Spare Parts Store</span>
+        <div className="hidden items-center gap-4 text-white/80 sm:flex">
           <a href="#" className="hover:text-white transition-colors"><i className="fa-brands fa-facebook-f" aria-hidden></i></a>
           <a href="#" className="hover:text-white transition-colors"><i className="fa-brands fa-x-twitter" aria-hidden></i></a>
           <a href="#" className="hover:text-white transition-colors"><i className="fa-brands fa-instagram" aria-hidden></i></a>

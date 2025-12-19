@@ -3,6 +3,7 @@ import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
 
 export type ProductDocument = Models.Document & {
   name: string;
+  description?: string | null;
   price?: number | null;
   stock?: number | null;
   category?: string | null;

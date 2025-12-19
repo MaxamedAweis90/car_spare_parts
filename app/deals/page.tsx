@@ -7,8 +7,9 @@ type Product = {
   $id: string;
   name: string;
   price: number;
-  category?: string;
-  imageUrl?: string | null;
+  stock?: number | null;
+  category?: string | null;
+  imageId?: string | null;
   active?: boolean;
   published?: boolean;
 };
@@ -43,7 +44,7 @@ export default function DealsPage() {
 
   return (
     <div className="bg-(--color-bg) min-h-screen py-10">
-      <div className="mx-auto w-full max-w-10/12 px-4 sm:px-6">
+      <div className="mx-auto w-full max-w-full sm:max-w-10/12 px-4 sm:px-6">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-[0.24em] text-(--color-muted)">Featured savings</p>
@@ -59,7 +60,14 @@ export default function DealsPage() {
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {dealItems.map((p) => (
-            <ProductCard key={`deal-${p.$id}`} id={p.$id} name={p.name} price={p.price} imageUrl={p.imageUrl || undefined} category={p.category} />
+            <ProductCard
+              key={`deal-${p.$id}`}
+              id={p.$id}
+              name={p.name}
+              price={p.price}
+              stock={p.stock ?? null}
+              imageId={p.imageId ?? null}
+            />
           ))}
         </div>
       </div>

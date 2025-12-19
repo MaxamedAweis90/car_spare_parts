@@ -1,11 +1,18 @@
 "use client";
 
 import ProductCard from "@/components/ProductCard";
-import type { CategoryTabsSectionProduct } from "./CategoryTabsSection";
+
+type HotOfferProduct = {
+  $id: string;
+  name: string;
+  price: number;
+  stock?: number | null;
+  imageId?: string | null;
+};
 
 interface LeftRailProps {
   categories: string[];
-  hotOffer?: CategoryTabsSectionProduct;
+  hotOffer?: HotOfferProduct;
 }
 
 const BRANDS = ["Subaru", "Hyundai", "Toyota", "Kia", "Dodge", "Jaguar"];
@@ -50,8 +57,8 @@ export function LeftRail({ categories, hotOffer }: LeftRailProps) {
               id={hotOffer.$id}
               name={hotOffer.name}
               price={hotOffer.price}
-              imageUrl={(hotOffer as any).imageUrl || undefined}
-              category={hotOffer.category}
+              stock={hotOffer.stock ?? null}
+              imageId={hotOffer.imageId ?? null}
             />
           </div>
         ) : (

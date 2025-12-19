@@ -1,52 +1,93 @@
 "use client";
 
 import Link from "next/link";
+import { useCart } from "@/lib/cart";
 
 export interface ProductCardProps {
   id: string;
   name: string;
-  price: number;
-  imageUrl?: string | null;
-  category?: string;
+  price?: number | null;
+  imageId?: string | null;
+  href?: string;
+  stock?: number | null;
 }
 
-export default function ProductCard({ id, name, price, imageUrl, category }: ProductCardProps) {
-  const priceLabel = price != null ? `£${price.toFixed(2)}` : "";
+function buildPublicProductImageUrl(fileId?: string | null) {
+  if (!fileId) return null;
+  const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
+  const project = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
+  const bucket = process.env.NEXT_PUBLIC_APPWRITE_PRODUCT_BUCKET_ID;
+  if (!endpoint || !project || !bucket) return null;
+  const url = new URL(`${endpoint}/storage/buckets/${bucket}/files/${fileId}/view`);
+  url.searchParams.set("project", project);
+  return url.toString();
+}
+
+export default function ProductCard({
+  id,
+  name,
+  price,
+  imageId,
+  href,
+  stock,
+}: ProductCardProps) {
+  const cart = useCart();
+  const priceDisplay = typeof price === "number" ? `£${price.toFixed(2)}` : "";
+  const linkHref = href ?? `/products/${id}`;
+  const imageUrl = buildPublicProductImageUrl(imageId ?? null);
+  const canAddToCart = typeof price === "number" && (typeof stock !== "number" || stock > 0);
+
+  const handleAddToCart: React.MouseEventHandler<HTMLButtonElement> = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!canAddToCart) return;
+    cart.addItem({ id, name, price: price as number, imageId: imageId ?? null });
+    cart.openCart();
+  };
+
   return (
     <Link
-      href={`/products/${id}`}
-      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-(--color-border-strong) bg-white shadow-[0_10px_28px_rgba(0,0,0,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_12px_34px_rgba(0,0,0,0.09)]"
+      href={linkHref}
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-(--color-border-strong) bg-(--color-surface) shadow-panel transition hover:-translate-y-0.5"
     >
-      <div className="relative aspect-square w-full bg-[#f5f7fb]">
+      <div className="relative aspect-4/3 w-full bg-(--color-bg)">
         {imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={imageUrl}
             alt={name}
-            className="absolute inset-0 h-full w-full object-contain p-4 transition duration-300 group-hover:scale-105"
+            className="absolute inset-0 h-full w-full object-contain p-3 sm:p-4 transition-transform duration-300 group-hover:scale-105"
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-sm text-(--color-muted)">
-            No image
-          </div>
+          <div className="flex h-full w-full items-center justify-center text-xs sm:text-sm text-(--color-muted)">No image</div>
         )}
       </div>
-      <div className="flex flex-1 flex-col gap-2 px-4 py-4">
-        <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-(--color-muted)">{category || "Brake parts"}</span>
-        <div className="line-clamp-2 text-base font-extrabold leading-tight text-(--color-text) group-hover:text-(--color-accent)">{name}</div>
-        <div className="flex items-center gap-1 text-[11px] text-(--color-muted)">
-          {[...Array(5)].map((_, idx) => (
-            <i key={idx} className="fa-solid fa-star text-[#f6b300]" aria-hidden></i>
-          ))}
-          <span className="ml-1 text-xs font-semibold text-(--color-muted)">2 reviews</span>
-        </div>
-        <div className="mt-auto flex items-center justify-between pt-1">
-          <div className="text-xl font-extrabold text-(--color-text)">{priceLabel}</div>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full border border-(--color-border) text-(--color-muted) transition group-hover:border-(--color-accent) group-hover:text-(--color-accent)">
-            <i className="fa-solid fa-cart-shopping text-base" aria-hidden></i>
-            <span className="sr-only">Add to cart</span>
-          </div>
+
+      <div className="flex flex-1 flex-col gap-2 px-3 py-3 sm:px-4 sm:py-4">
+        <h3 className="line-clamp-2 text-sm sm:text-base font-bold leading-snug text-(--color-text) group-hover:text-(--color-primary)">{name}</h3>
+        {priceDisplay && <div className="text-base sm:text-lg font-black text-(--color-text)">{priceDisplay}</div>}
+
+        <div className="mt-auto flex items-center justify-between gap-3 pt-1">
+          {typeof stock === "number" ? (
+            <div className="text-xs sm:text-[13px] font-semibold text-(--color-muted)">
+              Stock: <span className="font-bold">{stock} left</span>
+            </div>
+          ) : (
+            <div className="text-xs sm:text-[13px] font-semibold text-(--color-muted)">
+              Stock: <span className="font-bold">—</span>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleAddToCart}
+            disabled={!canAddToCart}
+            aria-label="Add to cart"
+            className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-(--color-border) text-(--color-muted) transition group-hover:border-(--color-primary) group-hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <i className="fa-solid fa-cart-shopping text-sm sm:text-base" aria-hidden></i>
+          </button>
         </div>
       </div>
     </Link>

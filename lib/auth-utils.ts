@@ -11,6 +11,7 @@ export interface UserProfile extends Models.Document {
   createdAt: string;
   isActive: boolean;
   avatarId?: string;
+  phone?: number | null;
   passwordHash?: string;
   appwriteUserId?: string;
   sellerApproved?: boolean;

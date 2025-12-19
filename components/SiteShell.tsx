@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { CartProvider } from "@/lib/cart";
 
 const HIDE_PREFIXES = ["/auth", "/admin", "/seller"];
 
@@ -20,10 +21,12 @@ export default function SiteShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <Navbar />
-      <main className="flex-1 bg-white">{children}</main>
-      <Footer />
-    </div>
+    <CartProvider>
+      <div className="flex min-h-screen flex-col">
+        <Navbar />
+        <main className="flex-1 bg-white pb-16 sm:pb-0">{children}</main>
+        <Footer />
+      </div>
+    </CartProvider>
   );
 }

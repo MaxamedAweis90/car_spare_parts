@@ -12,6 +12,7 @@ interface UserDocument extends Models.Document {
   sellerApproved?: boolean; // whether seller has been approved
   passwordHash?: string;
   appwriteUserId?: string;
+  phone?: number;
 }
 
 const allowedRoles = ["main_admin", "admin", "seller", "customer"] as const;
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
 // UPDATE USER (including avatarId)
 export async function PUT(req: NextRequest) {
   try {
-    const { userId, name, email, role, isActive, updaterId, avatarId, sellerApproved } =
+    const { userId, name, email, role, isActive, updaterId, avatarId, sellerApproved, phone } =
       await req.json();
 
     if (!userId) {
@@ -109,6 +110,7 @@ export async function PUT(req: NextRequest) {
     if (typeof isActive === "boolean") updatedData.isActive = isActive;
     if (avatarId) updatedData.avatarId = avatarId; // update avatar
     if (typeof sellerApproved === "boolean") updatedData.sellerApproved = sellerApproved;
+    if (typeof phone === "number" && Number.isFinite(phone)) updatedData.phone = Math.trunc(phone);
 
     const updatedUser = await databasesServer.updateDocument(
       appwriteConfig.databaseId,

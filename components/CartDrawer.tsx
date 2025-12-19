@@ -13,43 +13,52 @@ import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CloseIcon from "@mui/icons-material/Close";
 import { ClickAwaySurface } from "./ClickAwaySurface";
+import { useCart, type CartItem as StoreCartItem } from "@/lib/cart";
 
 export type CartItem = {
   id: string;
   name: string;
   price: number;
   quantity: number;
-  imageUrl?: string | null;
+  imageId?: string | null;
 };
 
 export interface CartDrawerProps {
-  open: boolean;
-  onClose: () => void;
+  open?: boolean;
+  onClose?: () => void;
   onViewCart?: () => void;
   items?: CartItem[];
 }
 
-const FALLBACK_ITEMS: CartItem[] = [
-  { id: "1", name: "Brake Rotor Kit", price: 300, quantity: 1, imageUrl: "/heroimages/brakes.png" },
-  { id: "2", name: "Performance Oil", price: 46, quantity: 2, imageUrl: "/heroimages/car.png" },
-  { id: "3", name: "Ceramic Brake Pads", price: 65, quantity: 1, imageUrl: "/heroimages/brakes.png" },
-];
+function buildPublicProductImageUrl(fileId?: string | null) {
+  if (!fileId) return null;
+  const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
+  const project = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
+  const bucket = process.env.NEXT_PUBLIC_APPWRITE_PRODUCT_BUCKET_ID;
+  if (!endpoint || !project || !bucket) return null;
+  const url = new URL(`${endpoint}/storage/buckets/${bucket}/files/${fileId}/view`);
+  url.searchParams.set("project", project);
+  return url.toString();
+}
 
 function formatPrice(value: number) {
   return `£${value.toFixed(2)}`;
 }
 
 export function CartDrawer({ open, onClose, onViewCart, items }: CartDrawerProps) {
-  const data = items && items.length ? items : FALLBACK_ITEMS;
+  const cart = useCart();
+  const data: (CartItem | StoreCartItem)[] = items ?? cart.items;
+  const drawerOpen = open ?? cart.isOpen;
+  const handleClose = onClose ?? cart.closeCart;
 
   const total = useMemo(() => data.reduce((sum, item) => sum + item.price * item.quantity, 0), [data]);
 
   return (
-    <Drawer anchor="right" open={open} onClose={onClose} PaperProps={{ sx: { width: { xs: 340, sm: 380 }, borderTopLeftRadius: 16, borderBottomLeftRadius: 16 } }}>
-      <ClickAwaySurface onClose={onClose} className="flex h-full flex-col" style={{ backgroundColor: "#f8fafc" }}>
+    <Drawer anchor="right" open={drawerOpen} onClose={handleClose} PaperProps={{ sx: { width: { xs: 340, sm: 380 }, borderTopLeftRadius: 16, borderBottomLeftRadius: 16 } }}>
+      <ClickAwaySurface onClose={handleClose} className="flex h-full flex-col" style={{ backgroundColor: "#f8fafc" }}>
         <Box sx={{ display: "flex", flexDirection: "column", height: "100%", bgcolor: "transparent" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, px: 2, py: 1.5 }}>
-          <IconButton onClick={onClose} aria-label="Close cart" size="small">
+          <IconButton onClick={handleClose} aria-label="Close cart" size="small">
             <CloseIcon fontSize="small" />
           </IconButton>
           <Typography variant="subtitle1" sx={{ fontWeight: 700, color: "#0f172a" }}>
@@ -62,6 +71,17 @@ export function CartDrawer({ open, onClose, onViewCart, items }: CartDrawerProps
         <Box sx={{ position: "relative", flex: 1, overflow: "hidden" }}>
           <Box sx={{ height: "100%", overflowY: "auto", pr: 1, pb: 4 }}>
             <Stack spacing={2} sx={{ px: 2, py: 2 }}>
+              {data.length === 0 && (
+                <Box sx={{ px: 0.5, py: 6, textAlign: "center" }}>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#0f172a" }}>
+                    Your cart is empty
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: "#64748b" }}>
+                    Add a product to see it here.
+                  </Typography>
+                </Box>
+              )}
+
               {data.map((item) => (
                 <Stack
                   key={item.id}
@@ -72,7 +92,7 @@ export function CartDrawer({ open, onClose, onViewCart, items }: CartDrawerProps
                 >
                   <Avatar
                     variant="rounded"
-                    src={item.imageUrl || undefined}
+                    src={buildPublicProductImageUrl((item as any).imageId ?? null) || undefined}
                     alt={item.name}
                     sx={{ width: 64, height: 64, borderRadius: 2, bgcolor: "#e2e8f0", boxShadow: "inset 0 1px 0 rgba(0,0,0,0.04)" }}
                   >
@@ -93,11 +113,32 @@ export function CartDrawer({ open, onClose, onViewCart, items }: CartDrawerProps
                       {formatPrice(item.price)}
                     </Typography>
                     <Stack direction="row" spacing={0.5} alignItems="center">
-                      <IconButton size="small" sx={{ color: "#0f172a" }} aria-label="Increase quantity">
+                      <IconButton
+                        size="small"
+                        sx={{ color: "#0f172a" }}
+                        aria-label="Increase quantity"
+                        onClick={() => (items ? undefined : cart.increment(item.id))}
+                        disabled={Boolean(items)}
+                      >
                         <KeyboardArrowUpIcon fontSize="small" />
                       </IconButton>
-                      <IconButton size="small" sx={{ color: "#0f172a" }} aria-label="Decrease quantity">
+                      <IconButton
+                        size="small"
+                        sx={{ color: "#0f172a" }}
+                        aria-label="Decrease quantity"
+                        onClick={() => (items ? undefined : cart.decrement(item.id))}
+                        disabled={Boolean(items)}
+                      >
                         <KeyboardArrowDownIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        sx={{ color: "#64748b" }}
+                        aria-label="Remove item"
+                        onClick={() => (items ? undefined : cart.remove(item.id))}
+                        disabled={Boolean(items)}
+                      >
+                        <CloseIcon fontSize="small" />
                       </IconButton>
                     </Stack>
                   </Stack>
@@ -122,7 +163,13 @@ export function CartDrawer({ open, onClose, onViewCart, items }: CartDrawerProps
         <Divider />
 
         <Box sx={{ p: 2, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1 }}>
-          <Button variant="contained" color="success" onClick={onViewCart} sx={{ textTransform: "none", fontWeight: 700 }}>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={onViewCart}
+            sx={{ textTransform: "none", fontWeight: 700 }}
+            disabled={!onViewCart}
+          >
             Go to cart
           </Button>
           <Stack spacing={0} alignItems="flex-end">

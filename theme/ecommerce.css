@@ -1,5 +1,7 @@
 :root {
   /* Chromium reference palette */
+  --color-white: #ffffff;
+  --color-black: #000000;
   --color-bg: #f6f7fb;
   --color-text: #12141a;
   --color-muted: #5a6475;

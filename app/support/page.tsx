@@ -1,7 +1,7 @@
 export default function SupportPage() {
   return (
     <div className="bg-(--color-bg) min-h-screen py-10">
-      <div className="mx-auto w-full max-w-10/12 px-4 sm:px-6">
+      <div className="mx-auto w-full max-w-full sm:max-w-10/12 px-4 sm:px-6">
         <h1 className="text-3xl font-bold text-(--color-text) mb-6">Customer Service</h1>
         
         <div className="grid gap-8 lg:grid-cols-2">

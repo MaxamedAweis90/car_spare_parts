@@ -1,9 +1,20 @@
 import type { NextRequest } from "next/server";
+import type { UserProfile } from "@/lib/auth-utils";
 import { findUserByEmail, sanitizeUser } from "@/lib/auth-utils";
+import { buildUserAvatarUrl } from "@/lib/server/userProfileService";
+
+type AppwriteAccount = {
+  $id: string;
+  email?: string;
+  name?: string;
+  [key: string]: unknown;
+};
+
+type SafeUserProfile = Omit<UserProfile, "passwordHash"> & { avatarUrl?: string | null };
 
 type SessionResult = {
-  account: any;
-  profile: any | null;
+  account: AppwriteAccount;
+  profile: SafeUserProfile | null;
 };
 
 const endpoint = process.env.APPWRITE_ENDPOINT!;
@@ -34,10 +45,13 @@ export async function getSessionFromRequest(req: NextRequest): Promise<SessionRe
       return null;
     }
 
-    const account = await accountRes.json();
+    const account = (await accountRes.json()) as AppwriteAccount;
     const profile = account?.email ? await findUserByEmail(account.email) : undefined;
 
-    return { account, profile: profile ? sanitizeUser(profile) : null };
+    const safeProfile = profile ? (sanitizeUser(profile) as SafeUserProfile) : null;
+    const avatarUrl = profile ? buildUserAvatarUrl(profile.avatarId) : null;
+
+    return { account, profile: safeProfile ? { ...safeProfile, avatarUrl } : null };
   } catch (error) {
     console.error("Session fetch error", error);
     return null;

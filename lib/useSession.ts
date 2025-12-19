@@ -34,8 +34,20 @@ export function useSession() {
     };
 
     fetchSession();
+
+    const onSessionChanged = () => {
+      fetchSession();
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("session-changed", onSessionChanged);
+    }
+
     return () => {
       isMounted = false;
+      if (typeof window !== "undefined") {
+        window.removeEventListener("session-changed", onSessionChanged);
+      }
     };
   }, []);
 

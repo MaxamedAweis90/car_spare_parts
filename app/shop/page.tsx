@@ -7,8 +7,9 @@ type Product = {
   $id: string;
   name: string;
   price: number;
-  category?: string;
-  imageUrl?: string | null;
+  stock?: number | null;
+  category?: string | null;
+  imageId?: string | null;
   active?: boolean;
   published?: boolean;
 };
@@ -40,7 +41,7 @@ export default function ShopPage() {
 
   return (
     <div className="bg-(--color-bg) min-h-screen py-10">
-      <div className="mx-auto w-full max-w-10/12 px-4 sm:px-6">
+      <div className="mx-auto w-full max-w-full sm:max-w-10/12 px-4 sm:px-6">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[12px] font-semibold uppercase tracking-[0.24em] text-(--color-muted)">Browse catalog</p>
@@ -54,9 +55,16 @@ export default function ShopPage() {
         {loading && !error && <p className="mb-4 text-sm text-(--color-muted)">Loading products...</p>}
         {!loading && !error && visibleProducts.length === 0 && <p className="text-sm text-(--color-muted)">No products available.</p>}
 
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-6 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
           {visibleProducts.map((p) => (
-            <ProductCard key={`shop-${p.$id}`} id={p.$id} name={p.name} price={p.price} imageUrl={p.imageUrl || undefined} category={p.category} />
+            <ProductCard
+              key={`shop-${p.$id}`}
+              id={p.$id}
+              name={p.name}
+              price={p.price}
+              stock={p.stock ?? null}
+              imageId={p.imageId ?? null}
+            />
           ))}
         </div>
       </div>
