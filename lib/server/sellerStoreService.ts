@@ -1,0 +1,211 @@
+import { AppwriteException, ID, Permission, Query, Role } from "node-appwrite";
+import { randomUUID } from "crypto";
+import { appwriteConfig, databasesServer, storageServer } from "@/lib/appwrite-server";
+import { slugify } from "@/lib/utils/slugify";
+import type { SellerStoreDocument, SellerStorePayload } from "@/lib/types/seller-store";
+import { serializeStore } from "@/lib/types/seller-store";
+
+const { databaseId, storeCollectionId, storeAvatarBucketId, storeBannerBucketId, endpoint, projectId, apiKey } = appwriteConfig;
+
+function ensureUploadBasics() {
+  if (!endpoint || !projectId || !apiKey) {
+    throw new Error("Missing Appwrite endpoint, project id, or API key for uploads");
+  }
+  return { endpoint, projectId, apiKey } as const;
+}
+
+function ensureStoreCollectionId() {
+  if (!storeCollectionId) {
+    throw new Error("Missing Appwrite store collection id");
+  }
+  return storeCollectionId;
+}
+
+export async function findStoreBySellerId(sellerId: string) {
+  const collectionId = ensureStoreCollectionId();
+  try {
+    const document = await databasesServer.getDocument<SellerStoreDocument>(databaseId, collectionId, sellerId);
+    return document as SellerStoreDocument;
+  } catch (error) {
+    if (error instanceof AppwriteException && error.code === 404) {
+      const list = await databasesServer.listDocuments<SellerStoreDocument>(databaseId, collectionId, [Query.equal("sellerId", sellerId)]);
+      return list.total > 0 ? (list.documents[0] as SellerStoreDocument) : null;
+    }
+    throw error;
+  }
+}
+
+export async function findStoreBySlug(storeSlug: string) {
+  const collectionId = ensureStoreCollectionId();
+  const list = await databasesServer.listDocuments<SellerStoreDocument>(databaseId, collectionId, [Query.equal("storeSlug", storeSlug)]);
+  return list.total > 0 ? (list.documents[0] as SellerStoreDocument) : null;
+}
+
+export async function createStoreForSeller({
+  sellerId,
+  sellerName,
+  sellerEmail,
+  accountId,
+}: {
+  sellerId: string;
+  sellerName: string;
+  sellerEmail?: string;
+  accountId: string;
+}) {
+  const baseName = sellerName || "My Store";
+  const baseSlug = slugify(baseName);
+  const slug = `${baseSlug}-${sellerId.slice(-6)}`;
+
+  const collectionId = ensureStoreCollectionId();
+
+  try {
+    const document = await databasesServer.createDocument<SellerStoreDocument>(
+      databaseId,
+      collectionId,
+      ID.custom(sellerId),
+      {
+        sellerId,
+        storeName: baseName,
+        storeSlug: slug,
+        storeDescription: "",
+        storeAvatarId: null,
+        storeBannerId: null,
+        contactPhone: null,
+        contactEmail: sellerEmail ?? null,
+        isActive: true,
+      },
+      [
+        Permission.read(Role.user(accountId)),
+        Permission.update(Role.user(accountId)),
+        Permission.delete(Role.user(accountId)),
+      ]
+    );
+
+    return serializeStore(document as SellerStoreDocument);
+  } catch (error) {
+    if (error instanceof AppwriteException && error.code === 409) {
+      const existing = await findStoreBySellerId(sellerId);
+      if (existing) {
+        return serializeStore(existing as SellerStoreDocument);
+      }
+    }
+    throw error;
+  }
+}
+
+export async function updateStoreDocument(documentId: string, payload: SellerStorePayload) {
+  const delta: Partial<SellerStoreDocument> = { ...payload } as Partial<SellerStoreDocument>;
+  const collectionId = ensureStoreCollectionId();
+  const updated = await databasesServer.updateDocument<SellerStoreDocument>(databaseId, collectionId, documentId, delta);
+  return serializeStore(updated as SellerStoreDocument);
+}
+
+export function ensureStoreAvatarBucketId() {
+  if (!storeAvatarBucketId) {
+    throw new Error("Missing Appwrite store avatar bucket id");
+  }
+  return storeAvatarBucketId;
+}
+
+export function ensureStoreBannerBucketId() {
+  if (!storeBannerBucketId) {
+    throw new Error("Missing Appwrite store banner bucket id");
+  }
+  return storeBannerBucketId;
+}
+
+export async function deleteStoreAvatar(fileId: string) {
+  if (!fileId) return;
+  const bucketId = ensureStoreAvatarBucketId();
+  try {
+    await storageServer.deleteFile(bucketId, fileId);
+  } catch (error) {
+    console.error("Failed to delete old store avatar", error);
+  }
+}
+
+export async function deleteStoreBanner(fileId: string) {
+  if (!fileId) return;
+  const bucketId = ensureStoreBannerBucketId();
+  try {
+    await storageServer.deleteFile(bucketId, fileId);
+  } catch (error) {
+    console.error("Failed to delete old store banner", error);
+  }
+}
+
+export async function uploadStoreAvatar(fileBuffer: Buffer, filename: string, accountId: string) {
+  const bucketId = ensureStoreAvatarBucketId();
+  const { endpoint: apiEndpoint, projectId: project, apiKey: key } = ensureUploadBasics();
+  const uploadUrl = `${apiEndpoint}/storage/buckets/${bucketId}/files`;
+  const form = new FormData();
+  const bytes = Uint8Array.from(fileBuffer);
+  const blob = new Blob([bytes], { type: "application/octet-stream" });
+  form.append("fileId", "unique()");
+  form.append("file", blob, filename || `store-avatar-${randomUUID()}`);
+  form.append("permissions[]", Permission.read(Role.any()));
+  form.append("permissions[]", Permission.update(Role.user(accountId)));
+  form.append("permissions[]", Permission.delete(Role.user(accountId)));
+
+  const response = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      "X-Appwrite-Project": project,
+      "X-Appwrite-Key": key,
+    },
+    body: form,
+  });
+
+  const payload = await response.json();
+  if (!response.ok) {
+    const message = payload?.message || "Failed to upload store avatar";
+    throw new Error(message);
+  }
+
+  const uploadedId: unknown = payload?.$id ?? payload?.fileId ?? payload?.id;
+  if (typeof uploadedId !== "string" || !uploadedId) {
+    throw new Error("Appwrite upload succeeded but returned an invalid file id");
+  }
+
+  return uploadedId;
+}
+
+export async function uploadStoreBanner(fileBuffer: Buffer, filename: string, accountId: string) {
+  const bucketId = ensureStoreBannerBucketId();
+  const { endpoint: apiEndpoint, projectId: project, apiKey: key } = ensureUploadBasics();
+  const uploadUrl = `${apiEndpoint}/storage/buckets/${bucketId}/files`;
+  const form = new FormData();
+  const bytes = Uint8Array.from(fileBuffer);
+  const blob = new Blob([bytes], { type: "application/octet-stream" });
+  form.append("fileId", "unique()");
+  form.append("file", blob, filename || `store-banner-${randomUUID()}`);
+  form.append("permissions[]", Permission.read(Role.any()));
+  form.append("permissions[]", Permission.update(Role.user(accountId)));
+  form.append("permissions[]", Permission.delete(Role.user(accountId)));
+
+  const response = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      "X-Appwrite-Project": project,
+      "X-Appwrite-Key": key,
+    },
+    body: form,
+  });
+
+  const payload = await response.json();
+  if (!response.ok) {
+    const message = payload?.message || "Failed to upload store banner";
+    throw new Error(message);
+  }
+
+  const uploadedId: unknown = payload?.$id ?? payload?.fileId ?? payload?.id;
+  if (typeof uploadedId !== "string" || !uploadedId) {
+    throw new Error("Appwrite upload succeeded but returned an invalid file id");
+  }
+
+  return uploadedId;
+}
+
+export function serializeStoreDocument(doc: SellerStoreDocument) {
+  return serializeStore(doc);
+}

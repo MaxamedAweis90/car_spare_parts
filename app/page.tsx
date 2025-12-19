@@ -5,6 +5,7 @@ import ProductCard from "@/components/ProductCard";
 import { HeroSection } from "./sections/HeroSection";
 import { CategoryTabsSection } from "./sections/CategoryTabsSection";
 import { LeftRail } from "./sections/LeftRail";
+import { TopDealsSection } from "./sections/TopDealsSection";
 
 type Product = {
   $id: string;
@@ -104,16 +105,36 @@ export default function Home() {
   }, [featured, products]);
 
   const hotOffer = featured[0] || products[0];
+  const topDeals = useMemo(
+    () =>
+      [...products]
+        .filter((p) => typeof p.price === "number")
+        .sort((a, b) => (b.price || 0) - (a.price || 0))
+        .slice(0, 6)
+        .map((p, index) => ({
+          id: p.$id,
+          name: p.name,
+          price: p.price || 0,
+          compareAtPrice: p.price ? Math.round(p.price * 1.15) : null,
+          imageUrl: (p as any).imageUrl || null,
+          moq: (index % 3) + 1,
+        })),
+    [products],
+  );
 
   return (
     <div className="bg-(--color-bg) pb-16">
       <div className="mx-auto w-full max-w-10/12 px-4 sm:px-6">
         <div className="space-y-8 pt-6 sm:pt-10">
           <HeroSection imageUrl={heroImage} promos={heroPromos} />
+              <TopDealsSection deals={topDeals} loading={loading && !products.length} viewMoreHref="/deals#top" />
+
 
           <div className="grid gap-6 lg:grid-cols-[280px,1fr]">
             <LeftRail categories={categoryList} hotOffer={hotOffer} />
-            <CategoryTabsSection products={products} loading={loading} error={error} />
+            <div className="space-y-6">
+              <CategoryTabsSection products={products} loading={loading} error={error} />
+            </div>
           </div>
 
           <section className="overflow-hidden rounded-2xl bg-(--color-accent) p-6 text-white shadow-panel">

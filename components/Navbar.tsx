@@ -8,6 +8,7 @@ import { performLogout } from "@/lib/logout";
 import Button from "./Button";
 import NavLinks from "./NavLinks";
 import { CartDrawer } from "./CartDrawer";
+import { ClickAwaySurface } from "./ClickAwaySurface";
 
 const LANG_KEY = "spareparts-lang";
 const LANG_OPTIONS = ["EN", "AR", "SO"] as const;
@@ -134,7 +135,10 @@ export default function Navbar() {
               </button>
 
               {langOpen && (
-                <div className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                <ClickAwaySurface
+                  onClose={() => setLangOpen(false)}
+                  className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg"
+                >
                   {LANG_OPTIONS.map((option) => (
                     <button
                       key={option}
@@ -155,7 +159,7 @@ export default function Navbar() {
                       <span className="font-semibold tracking-wide">{LANG_META[option].label}</span>
                     </button>
                   ))}
-                </div>
+                </ClickAwaySurface>
               )}
             </div>
 
@@ -190,7 +194,10 @@ export default function Navbar() {
                 </button>
 
                 {menuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 rounded-lg border border-slate-200 bg-white shadow-lg">
+                  <ClickAwaySurface
+                    onClose={() => setMenuOpen(false)}
+                    className="absolute right-0 mt-2 w-56 rounded-lg border border-slate-200 bg-white shadow-lg"
+                  >
                     <div className="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-800">
                       {loading ? "Loading..." : userName}
                     </div>
@@ -227,7 +234,7 @@ export default function Navbar() {
                         </>
                       )}
                     </div>
-                  </div>
+                  </ClickAwaySurface>
                 )}
               </div>
             </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
@@ -25,6 +26,8 @@ import AddBoxOutlinedIcon from "@mui/icons-material/AddBoxOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import TableRowsOutlinedIcon from "@mui/icons-material/TableRowsOutlined";
 import CircleIcon from "@mui/icons-material/Circle";
+import { getImageUrl } from "@/lib/appwrite/storage";
+import { useSellerStore } from "@/lib/SellerStoreProvider";
 
 const SNAPSHOT = [
   { label: "Active products", value: 128, delta: "+6 this week", icon: <Inventory2OutlinedIcon fontSize="small" />, color: "#3f5c45", spark: [34, 32, 36, 41, 44] },
@@ -76,8 +79,21 @@ function formatCurrency(value: number) {
 }
 
 export default function SellerDashboardPage() {
+  const { store } = useSellerStore();
+  const storeSlug = store?.storeSlug ?? null;
+
+  const storeAvatarUrl = useMemo(() => {
+    if (!store?.storeAvatarId) return null;
+    try {
+      return getImageUrl("storeAvatars", store.storeAvatarId);
+    } catch (error) {
+      console.error("Failed to resolve store avatar", error);
+      return null;
+    }
+  }, [store?.storeAvatarId]);
+
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3, bgcolor: "#f6f4ef", p: { xs: 1.5, md: 0 } }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 3, bgcolor: "transparent", p: { xs: 1.5, md: 0 } }}>
       <Paper
         elevation={0}
         sx={{
@@ -88,7 +104,20 @@ export default function SellerDashboardPage() {
         }}
       >
         <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "flex-start", md: "center" }} justifyContent="space-between" spacing={2}>
-          <div>
+          <div className="flex flex-col gap-3">
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Avatar src={storeAvatarUrl || undefined} sx={{ width: 64, height: 64, borderRadius: 2, bgcolor: "#111827" }}>
+                {(store?.storeName || "Store").slice(0, 2).toUpperCase()}
+              </Avatar>
+              <div>
+                <Typography variant="subtitle2" color="text.secondary" fontWeight={800}>
+                  {store?.storeSlug ? `Storefront / ${store.storeSlug}` : "Storefront"}
+                </Typography>
+                <Typography variant="h5" fontWeight={900}>
+                  {store?.storeName || "Seller control center"}
+                </Typography>
+              </div>
+            </Stack>
             <Typography variant="overline" color="text.secondary" fontWeight={800}>
               Seller control center
             </Typography>
@@ -100,7 +129,14 @@ export default function SellerDashboardPage() {
             </Typography>
           </div>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1} width={{ xs: "100%", sm: "auto" }}>
-            <Button variant="outlined" startIcon={<VisibilityOutlinedIcon />} color="inherit" fullWidth>
+            <Button
+              variant="outlined"
+              startIcon={<VisibilityOutlinedIcon />}
+              color="inherit"
+              fullWidth
+              href={storeSlug ? `/stores/${storeSlug}` : undefined}
+              disabled={!storeSlug}
+            >
               View storefront
             </Button>
             <Button variant="contained" startIcon={<AddBoxOutlinedIcon />} disableElevation href="/seller/products/new" fullWidth>

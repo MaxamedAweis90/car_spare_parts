@@ -12,6 +12,8 @@ Set these in `.env.local` for Next.js and in Appwrite project settings.
   - `APPWRITE_PRODUCTS_COLLECTION_ID`
   - `APPWRITE_ORDERS_COLLECTION_ID`
   - `APPWRITE_MAIN_ADMIN_USER_ID` (existing main admin user id)
+   - `APPWRITE_STORE_COLLECTION_ID`
+   - `APPWRITE_STORE_AVATAR_BUCKET_ID`
   - `APPWRITE_AVATAR_BUCKET_ID` / `APPWRITE_PRODUCT_BUCKET_ID` (for uploads)
 
 - Client (public; browser SDK):
@@ -22,6 +24,8 @@ Set these in `.env.local` for Next.js and in Appwrite project settings.
   - `NEXT_PUBLIC_APPWRITE_PRODUCTS_COLLECTION_ID`
   - `NEXT_PUBLIC_APPWRITE_ORDERS_COLLECTION_ID`
   - `NEXT_PUBLIC_APPWRITE_MAIN_ADMIN_USER_ID`
+   - `NEXT_PUBLIC_APPWRITE_STORE_COLLECTION_ID`
+   - `NEXT_PUBLIC_APPWRITE_STORE_AVATAR_BUCKET_ID`
 
 ## 2) Appwrite console setup
 1. **Email/Password auth**: Settings → Auth → Providers → enable Email/Password.

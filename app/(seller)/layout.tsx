@@ -19,6 +19,8 @@ import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNone
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import { useSession } from "@/lib/useSession";
 import { performLogout } from "@/lib/logout";
+import { getImageUrl } from "@/lib/appwrite/storage";
+import { SellerStoreProvider, useSellerStore } from "@/lib/SellerStoreProvider";
 
 const allowedRoles = new Set(["seller"]);
 
@@ -47,12 +49,21 @@ export default function SellerLayout({
 }: {
   children: React.ReactNode;
 }) {
+  return (
+    <SellerStoreProvider>
+      <SellerLayoutShell>{children}</SellerLayoutShell>
+    </SellerStoreProvider>
+  );
+}
+
+function SellerLayoutShell({ children }: { children: React.ReactNode }) {
   const { authenticated, profile, loading } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
+  const { store } = useSellerStore();
 
   const isAllowed =
     authenticated &&
@@ -90,6 +101,16 @@ export default function SellerLayout({
 
   const pageTitle = usePageTitle(pathname);
   const initials = profile?.name?.split(" ").map((n: string) => n[0]).join("")?.slice(0, 2) || "SE";
+  const storeSlug = store?.storeSlug ?? null;
+  const storeAvatarUrl = useMemo(() => {
+    if (!store?.storeAvatarId) return null;
+    try {
+      return getImageUrl("storeAvatars", store.storeAvatarId);
+    } catch (error) {
+      console.error("Failed to resolve store avatar", error);
+      return null;
+    }
+  }, [store?.storeAvatarId]);
 
   const handleLogout = async () => {
     setMenuAnchor(null);
@@ -137,11 +158,13 @@ export default function SellerLayout({
   return (
     <div className="min-h-screen bg-[#f4f1e9] text-slate-900 flex">
       <aside
-        className={`${sidebarOpen ? "w-68" : "w-18"} hidden lg:flex flex-col lg:sticky lg:top-0 lg:h-screen flex-shrink-0 bg-[#161616] text-white transition-all duration-200 shadow-xl`}
+        className={`${sidebarOpen ? "w-68" : "w-18"} hidden lg:flex flex-col lg:sticky lg:top-0 lg:h-screen shrink-0 bg-[#161616] text-white transition-all duration-200 shadow-xl`}
       >
         <div className="flex items-center justify-between px-4 py-5 border-b border-[#1f1f1f]">
           <div className="flex items-center gap-3">
-            <Avatar sx={{ width: 40, height: 40, bgcolor: "#f5f5f5", color: "#111" }}>{initials}</Avatar>
+            <Avatar src={storeAvatarUrl || undefined} sx={{ width: 40, height: 40, bgcolor: "#f5f5f5", color: "#111" }}>
+              {initials}
+            </Avatar>
             {sidebarOpen && (
               <div className="leading-tight">
                 <p className="text-sm font-semibold">Seller Hub</p>
@@ -217,7 +240,7 @@ export default function SellerLayout({
 
             <div>
               <IconButton onClick={(e) => setMenuAnchor(e.currentTarget)} size="small">
-                <Avatar sx={{ bgcolor: "#2563eb", width: 36, height: 36, fontSize: 14 }}>
+                <Avatar src={storeAvatarUrl || undefined} sx={{ bgcolor: "#2563eb", width: 36, height: 36, fontSize: 14 }}>
                   {initials}
                 </Avatar>
               </IconButton>
@@ -230,6 +253,7 @@ export default function SellerLayout({
               >
                 <MenuItem onClick={() => router.push("/seller/profile")}>Profile</MenuItem>
                 <MenuItem onClick={() => router.push("/seller/settings")}>Store settings</MenuItem>
+                {storeSlug && <MenuItem onClick={() => router.push(`/stores/${storeSlug}`)}>View storefront</MenuItem>}
                 <Divider />
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
               </Menu>

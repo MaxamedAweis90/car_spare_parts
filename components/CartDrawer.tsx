@@ -12,6 +12,7 @@ import Avatar from "@mui/material/Avatar";
 import KeyboardArrowUpIcon from "@mui/icons-material/KeyboardArrowUp";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 import CloseIcon from "@mui/icons-material/Close";
+import { ClickAwaySurface } from "./ClickAwaySurface";
 
 export type CartItem = {
   id: string;
@@ -45,7 +46,8 @@ export function CartDrawer({ open, onClose, onViewCart, items }: CartDrawerProps
 
   return (
     <Drawer anchor="right" open={open} onClose={onClose} PaperProps={{ sx: { width: { xs: 340, sm: 380 }, borderTopLeftRadius: 16, borderBottomLeftRadius: 16 } }}>
-      <Box sx={{ display: "flex", flexDirection: "column", height: "100%", bgcolor: "#f8fafc" }}>
+      <ClickAwaySurface onClose={onClose} className="flex h-full flex-col" style={{ backgroundColor: "#f8fafc" }}>
+        <Box sx={{ display: "flex", flexDirection: "column", height: "100%", bgcolor: "transparent" }}>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, px: 2, py: 1.5 }}>
           <IconButton onClick={onClose} aria-label="Close cart" size="small">
             <CloseIcon fontSize="small" />
@@ -132,7 +134,8 @@ export function CartDrawer({ open, onClose, onViewCart, items }: CartDrawerProps
             </Typography>
           </Stack>
         </Box>
-      </Box>
+        </Box>
+      </ClickAwaySurface>
     </Drawer>
   );
 }
