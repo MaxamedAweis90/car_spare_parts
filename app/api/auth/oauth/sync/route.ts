@@ -5,9 +5,16 @@ import {
   sanitizeUser,
 } from "@/lib/auth-utils";
 import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
+import {
+  buildUserAvatarUrl,
+  updateUserProfileDocument,
+  uploadUserAvatar,
+} from "@/lib/server/userProfileService";
 
 const endpoint = process.env.APPWRITE_ENDPOINT!;
 const projectId = process.env.APPWRITE_PROJECT_ID!;
+
+const isDev = process.env.NODE_ENV !== "production";
 
 export async function POST(req: NextRequest) {
   const cookieHeader = req.headers.get("cookie");
@@ -59,6 +66,123 @@ export async function POST(req: NextRequest) {
 
     const existing = await findUserByEmail(email);
 
+    const trySyncGoogleAvatar = async (profileDoc: any, appwriteAccountId: string) => {
+      try {
+        if (!profileDoc) return;
+        if (profileDoc.role !== "customer") return;
+        if (profileDoc.avatarSource === "user") return;
+        if (profileDoc.avatarId) return;
+
+        // Fetch OAuth identity details from Appwrite (more reliable than sessions for provider data).
+        const sessionHeaders: Record<string, string> = { "X-Appwrite-Project": projectId };
+        if (sessionJwt) {
+          sessionHeaders["X-Appwrite-JWT"] = sessionJwt;
+        } else if (cookieHeader) {
+          sessionHeaders.Cookie = cookieHeader;
+        }
+
+        const identitiesRes = await fetch(`${endpoint}/account/identities`, {
+          headers: sessionHeaders,
+          cache: "no-store",
+        });
+
+        if (!identitiesRes.ok) {
+          if (isDev) {
+            console.info("[oauth/sync] identities fetch failed", {
+              status: identitiesRes.status,
+            });
+          }
+          return;
+        }
+
+        const identitiesPayload = await identitiesRes.json().catch(() => null);
+        const identities: any[] =
+          Array.isArray(identitiesPayload?.identities)
+            ? identitiesPayload.identities
+            : Array.isArray(identitiesPayload)
+            ? identitiesPayload
+            : [];
+
+        const googleIdentity = identities.find(
+          (id) => String(id?.provider || "").toLowerCase() === "google"
+        );
+
+        if (!googleIdentity) {
+          if (isDev) console.info("[oauth/sync] no google identity present");
+          return;
+        }
+
+        const providerAvatarUrl: string | undefined =
+          typeof googleIdentity?.providerAvatar === "string" ? googleIdentity.providerAvatar : undefined;
+        const providerAccessToken: string | undefined =
+          typeof googleIdentity?.providerAccessToken === "string"
+            ? googleIdentity.providerAccessToken
+            : undefined;
+
+        let pictureUrl: string | undefined = providerAvatarUrl;
+
+        // If Appwrite doesn't provide providerAvatar, fall back to Google userinfo using access token.
+        if (!pictureUrl && providerAccessToken) {
+          const userInfoRes = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+            headers: { Authorization: `Bearer ${providerAccessToken}` },
+            cache: "no-store",
+          });
+
+          if (!userInfoRes.ok) {
+            if (isDev) {
+              console.info("[oauth/sync] google userinfo failed", {
+                status: userInfoRes.status,
+              });
+            }
+            return;
+          }
+
+          const userInfo = await userInfoRes.json().catch(() => null);
+          pictureUrl = typeof userInfo?.picture === "string" ? userInfo.picture : undefined;
+        }
+
+        if (!pictureUrl) {
+          if (isDev) console.info("[oauth/sync] google picture url missing");
+          return;
+        }
+
+        const pictureRes = await fetch(pictureUrl, { cache: "no-store" });
+        if (!pictureRes.ok) {
+          if (isDev) {
+            console.info("[oauth/sync] google picture fetch failed", {
+              status: pictureRes.status,
+            });
+          }
+          return;
+        }
+
+        const contentType = pictureRes.headers.get("content-type") || "";
+        const ext = contentType.includes("png")
+          ? "png"
+          : contentType.includes("webp")
+          ? "webp"
+          : contentType.includes("jpeg") || contentType.includes("jpg")
+          ? "jpg"
+          : "jpg";
+
+        const bytes = new Uint8Array(await pictureRes.arrayBuffer());
+        if (!bytes.length) return;
+
+        const newFileId = await uploadUserAvatar(bytes, `google-avatar-${appwriteAccountId}.${ext}`, appwriteAccountId);
+        await updateUserProfileDocument(profileDoc.$id, { avatarId: newFileId, avatarSource: "google" });
+
+        if (isDev) {
+          console.info("[oauth/sync] google avatar synced", {
+            userId: profileDoc.$id,
+            fileId: newFileId,
+          });
+        }
+      } catch (error) {
+        // Best-effort; never fail OAuth sync because avatar sync failed.
+        console.error("Google avatar sync failed", error);
+      }
+    };
+
     if (existing) {
       // Update missing linkage if needed.
       if (!existing.appwriteUserId && account?.$id) {
@@ -70,8 +194,17 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      // Best-effort: if this was a Google OAuth login, use the Google profile picture as avatar.
+      if (account?.$id) {
+        await trySyncGoogleAvatar(existing, account.$id);
+      }
+
+      const refreshed = await findUserByEmail(email);
+      const safeRefreshed = refreshed ? sanitizeUser(refreshed) : sanitizeUser(existing);
+      const avatarUrl = buildUserAvatarUrl((refreshed || existing)?.avatarId);
+
       const res = NextResponse.json({
-        user: sanitizeUser({ ...existing, appwriteUserId: existing.appwriteUserId || account.$id }),
+        user: { ...safeRefreshed, appwriteUserId: safeRefreshed.appwriteUserId || account.$id, avatarUrl },
       });
 
       if (sessionJwt) {
@@ -96,7 +229,15 @@ export async function POST(req: NextRequest) {
       appwriteUserId: account?.$id,
     });
 
-    const res = NextResponse.json({ user: sanitizeUser(profile) });
+    if (account?.$id) {
+      await trySyncGoogleAvatar(profile, account.$id);
+    }
+
+    const refreshed = await findUserByEmail(email);
+    const safeProfile = sanitizeUser(refreshed || profile);
+    const avatarUrl = buildUserAvatarUrl((refreshed || profile)?.avatarId);
+
+    const res = NextResponse.json({ user: { ...safeProfile, avatarUrl } });
 
     if (sessionJwt) {
       res.cookies.set({

@@ -1,7 +1,5 @@
-"use client";
+import SellerRegisterClient from "./SellerRegisterClient";
 
-import SellerRegisterPage from "../../../(auth)/seller/register/page";
-
-export default function SellerRegisterAlias() {
-  return <SellerRegisterPage />;
+export default function SellerRegisterPage() {
+  return <SellerRegisterClient />;
 }

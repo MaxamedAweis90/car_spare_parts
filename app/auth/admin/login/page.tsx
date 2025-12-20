@@ -1,7 +1,5 @@
-"use client";
+import AdminLoginClient from "./AdminLoginClient";
 
-import AdminLoginPage from "../../../(auth)/admin/login/page";
-
-export default function AdminLoginAlias() {
-  return <AdminLoginPage />;
+export default function AdminLoginPage() {
+  return <AdminLoginClient />;
 }

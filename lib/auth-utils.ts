@@ -3,6 +3,7 @@ import { ID, Models, Query } from "node-appwrite";
 import { appwriteConfig, databasesServer, usersServer } from "@/lib/appwrite-server";
 
 export type RoleType = "main_admin" | "admin" | "seller" | "customer";
+export type AvatarSource = "google" | "user";
 
 export interface UserProfile extends Models.Document {
   name: string;
@@ -11,6 +12,7 @@ export interface UserProfile extends Models.Document {
   createdAt: string;
   isActive: boolean;
   avatarId?: string;
+  avatarSource?: AvatarSource;
   phone?: number | null;
   passwordHash?: string;
   appwriteUserId?: string;

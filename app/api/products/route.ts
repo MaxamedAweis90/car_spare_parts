@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
         name: rawName,
         price: priceValue,
         stock: stockValue,
-        category: rawCategory,
+        mainCategoryId: rawCategory,
         sellerId: rawSellerId,
         imageId,
         description,

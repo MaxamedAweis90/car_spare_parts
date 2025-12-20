@@ -75,6 +75,23 @@ export default function AdminPage() {
       </section>
 
       <section className="border rounded p-4 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold">Catalog management</h2>
+            <p className="text-sm text-gray-600">
+              Manage products, categories, and compatibilities.
+            </p>
+          </div>
+          <Link
+            href="/admin/catalog"
+            className="rounded bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
+          >
+            Open catalog
+          </Link>
+        </div>
+      </section>
+
+      <section className="border rounded p-4 bg-white shadow-sm">
         <h2 className="text-lg font-semibold mb-2">Create admin or seller</h2>
         {profile?.$id ? (
           <CreateUserForm currentUserId={profile.$id} />

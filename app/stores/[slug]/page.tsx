@@ -50,7 +50,7 @@ export default async function StorePage({ params }: StorePageProps) {
     return {
       id: product.$id,
       name: product.name,
-      category: product.category || "Featured",
+      category: "Featured",
       price: typeof product.price === "number" ? product.price : null,
       image: buildProductImageUrl(typeof candidateImageId === "string" ? candidateImageId : null),
     };
@@ -67,10 +67,10 @@ export default async function StorePage({ params }: StorePageProps) {
   return (
     <div className="bg-white min-h-screen">
       <div className="mx-auto w-full max-w-10/12 px-4 sm:px-6 lg:px-8">
-        <section className="overflow-hidden rounded-b-[32px]">
+        <section className="overflow-hidden rounded-b-4xl">
           <div className="relative h-60 sm:h-72">
             <img src={bannerImage} alt={`${store.storeName} banner`} className="absolute inset-0 h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/35 to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-r from-black/60 via-black/35 to-transparent" />
             <div className="relative flex h-full items-end px-6 pb-6">
               <div className="flex items-center gap-4 text-white">
                 <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-2xl border border-white/40 bg-white/20 backdrop-blur">
@@ -148,7 +148,7 @@ export default async function StorePage({ params }: StorePageProps) {
             {featuredProducts.length > 0 ? (
               featuredProducts.map((product) => (
                 <article key={product.id} className="rounded-3xl border border-(--color-border) bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
-                  <div className="relative aspect-[4/5] overflow-hidden rounded-t-3xl bg-(--color-surface)">
+                  <div className="relative aspect-4/5 overflow-hidden rounded-t-3xl bg-(--color-surface)">
                     {product.image ? (
                       <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
                     ) : (

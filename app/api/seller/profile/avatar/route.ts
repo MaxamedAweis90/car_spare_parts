@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     const filename = typeof providedName === "string" && providedName ? providedName : (file as File).name || "user-avatar";
 
     const newFileId = await uploadUserAvatar(bytes, filename, account.$id);
-    await updateUserProfileDocument(profile.$id, { avatarId: newFileId });
+    await updateUserProfileDocument(profile.$id, { avatarId: newFileId, avatarSource: "user" });
 
     if (profile.avatarId && profile.avatarId !== newFileId) {
       await deleteUserAvatar(profile.avatarId);

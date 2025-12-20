@@ -1,7 +1,5 @@
-"use client";
-
-import LoginPage from "../../login/page";
+import { redirect } from "next/navigation";
 
 export default function CustomerLoginAlias() {
-  return <LoginPage />;
+  redirect("/auth/login");
 }

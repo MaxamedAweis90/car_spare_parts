@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/useSession";
@@ -23,6 +23,8 @@ export default function Navbar() {
   const router = useRouter();
   const { authenticated, profile, loading } = useSession();
   const { count: cartCount, total: cartTotal, openCart, closeCart, isOpen: cartOpen } = useCart();
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const menuPanelRef = useRef<HTMLDivElement | null>(null);
   const [query, setQuery] = useState("");
   const [language, setLanguage] = useState<(typeof LANG_OPTIONS)[number]>(() => {
     if (typeof window === "undefined") return "EN";
@@ -42,6 +44,44 @@ export default function Navbar() {
     }
   }, [language]);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    if (typeof document === "undefined") return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+
+    const onPointerDown = (e: PointerEvent) => {
+      const panelEl = menuPanelRef.current;
+      const buttonEl = menuButtonRef.current;
+      if (!panelEl && !buttonEl) return;
+
+      const path = (e as PointerEvent & { composedPath?: () => EventTarget[] }).composedPath?.();
+      if (path) {
+        if (panelEl && path.includes(panelEl)) return;
+        if (buttonEl && path.includes(buttonEl)) return;
+        setMenuOpen(false);
+        return;
+      }
+
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+      if (panelEl && panelEl.contains(target)) return;
+      if (buttonEl && buttonEl.contains(target)) return;
+      setMenuOpen(false);
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    // Capture phase = robust even if some child stops propagation.
+    document.addEventListener("pointerdown", onPointerDown, true);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, [menuOpen]);
+
   const handleSearch = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const trimmed = query.trim();
@@ -50,9 +90,13 @@ export default function Navbar() {
     router.push(trimmed ? `/search?q=${encodeURIComponent(trimmed)}` : "/search");
   };
 
-  const userName = authenticated ? profile?.name || "Account" : "Guest";
-  const isSellerPending = profile?.role === "seller" && profile?.sellerApproved === false;
-  const avatarUrl: string | null = profile?.avatarUrl || null;
+  // Public site rule:
+  // - Only customers should appear "logged in" on home/public pages.
+  // - Sellers/Admins may browse home, but should not show logged-in UI there.
+  const showAsAuthenticated = authenticated && profile?.role === "customer";
+  const userName = showAsAuthenticated ? profile?.name || "Account" : "Guest";
+  const isSellerPending = false;
+  const avatarUrl: string | null = showAsAuthenticated ? profile?.avatarUrl || null : null;
   const initials = (() => {
     const name: string = profile?.name || "";
     const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -71,6 +115,80 @@ export default function Navbar() {
     router.refresh();
   };
 
+  const renderMenuDropdown = (panelClassName: string) =>
+    menuOpen ? (
+      <div ref={menuPanelRef} className={panelClassName} role="menu">
+        <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3">
+          <div className="relative h-10 w-10 overflow-hidden rounded-full bg-white ring-1 ring-black/10">
+            {showAsAuthenticated && avatarUrl ? (
+              <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+            ) : showAsAuthenticated ? (
+              <div className="flex h-full w-full items-center justify-center text-xs font-extrabold text-slate-700">
+                {initials}
+              </div>
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-slate-700">
+                <i className="fa-regular fa-user" aria-hidden />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <div className="truncate text-sm font-extrabold text-slate-900">{loading ? "Loading..." : userName}</div>
+            {showAsAuthenticated && profile?.email && (
+              <div className="truncate text-xs font-semibold text-slate-600">{profile.email}</div>
+            )}
+          </div>
+          </div>
+
+        <div className="py-1 text-sm font-semibold text-slate-700">
+          {showAsAuthenticated ? (
+            <>
+              <Link href="/account" className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50">
+                <i className="fa-regular fa-id-card text-sm text-slate-600" aria-hidden />
+                <span>My Account</span>
+              </Link>
+
+              <Link href="/orders" className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50">
+                <i className="fa-solid fa-box text-sm text-slate-600" aria-hidden />
+                <span>Orders</span>
+              </Link>
+
+              {isSellerPending && (
+                <Link href="/auth/seller/pending" className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50">
+                  <i className="fa-solid fa-clock-rotate-left text-sm text-slate-600" aria-hidden />
+                  <span>Seller Pending</span>
+                </Link>
+              )}
+
+              <div className="my-1 border-t border-slate-100" />
+
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-red-700 hover:bg-red-50"
+              >
+                <i className="fa-solid fa-arrow-right-from-bracket text-sm" aria-hidden />
+                <span>Logout</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/auth/login" className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50">
+                <i className="fa-solid fa-right-to-bracket text-sm text-slate-600" aria-hidden />
+                <span>Login</span>
+              </Link>
+
+              <Link href="/auth/register" className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50">
+                <i className="fa-solid fa-user-plus text-sm text-slate-600" aria-hidden />
+                <span>Register</span>
+              </Link>
+            
+            </>
+          )}
+        </div>
+      </div>
+    ) : null;
+
   return (
     <>
     <header className="sticky top-0 z-30 shadow-sm">
@@ -86,7 +204,10 @@ export default function Navbar() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setMobileSearchOpen(true)}
+                onClick={() => {
+                  setMenuOpen(false);
+                  setMobileSearchOpen(true);
+                }}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-slate-900 ring-1 ring-black/10"
                 aria-label="Search"
               >
@@ -95,7 +216,10 @@ export default function Navbar() {
 
               <button
                 type="button"
-                onClick={openCart}
+                onClick={() => {
+                  setMenuOpen(false);
+                  openCart();
+                }}
                 className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-slate-900 ring-1 ring-black/10"
                 aria-label="Cart"
               >
@@ -104,6 +228,35 @@ export default function Navbar() {
                   {cartCount}
                 </span>
               </button>
+
+              <div className="relative">
+                <button
+                  type="button"
+                  ref={menuButtonRef}
+                  onClick={() => {
+                    setMobileSearchOpen(false);
+                    setMenuOpen((prev) => !prev);
+                  }}
+                  className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-white/90 text-slate-900 ring-1 ring-black/10"
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  aria-label={showAsAuthenticated ? "Account menu" : "Sign in"}
+                >
+                  {showAsAuthenticated ? (
+                    avatarUrl ? (
+                      <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+                    ) : (
+                      <span className="text-xs font-extrabold text-slate-700">{initials}</span>
+                    )
+                  ) : (
+                    <i className="fa-regular fa-user text-lg" aria-hidden />
+                  )}
+                </button>
+
+                {renderMenuDropdown(
+                  "absolute right-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg"
+                )}
+              </div>
             </div>
           </div>
 
@@ -208,13 +361,14 @@ export default function Navbar() {
               <div className="relative">
                 <button
                   type="button"
+                  ref={menuButtonRef}
                   onClick={() => setMenuOpen((prev) => !prev)}
                   className="flex items-center gap-2 text-slate-900 transition hover:opacity-70"
                   aria-haspopup="menu"
                   aria-expanded={menuOpen}
-                  aria-label={authenticated ? "Account menu" : "Sign in"}
+                  aria-label={showAsAuthenticated ? "Account menu" : "Sign in"}
                 >
-                  {authenticated && profile?.role === "customer" ? (
+                  {showAsAuthenticated ? (
                     <span className="relative flex h-9 w-9 overflow-hidden rounded-full bg-white ring-1 ring-black/10">
                       {avatarUrl ? (
                         <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
@@ -228,106 +382,13 @@ export default function Navbar() {
                     <i className="fa-regular fa-user text-2xl" aria-hidden />
                   )}
                   {/* Customer: avatar-only (no name). Others: keep label. */}
-                  {!(authenticated && profile?.role === "customer") && (
+                  {!showAsAuthenticated && (
                     <span className="hidden text-sm font-semibold sm:inline">Sign in account</span>
                   )}
                 </button>
 
-                {menuOpen && (
-                  <ClickAwaySurface
-                    onClose={() => setMenuOpen(false)}
-                    className="absolute right-0 mt-2 w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg"
-                  >
-                    <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3">
-                      <div className="relative h-10 w-10 overflow-hidden rounded-full bg-white ring-1 ring-black/10">
-                        {authenticated && profile?.role === "customer" && avatarUrl ? (
-                          <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
-                        ) : authenticated && profile?.role === "customer" ? (
-                          <div className="flex h-full w-full items-center justify-center text-xs font-extrabold text-slate-700">
-                            {initials}
-                          </div>
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-slate-700">
-                            <i className="fa-regular fa-user" aria-hidden />
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-extrabold text-slate-900">
-                          {loading ? "Loading..." : userName}
-                        </div>
-                        {authenticated && profile?.email && (
-                          <div className="truncate text-xs font-semibold text-slate-600">{profile.email}</div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="py-1 text-sm font-semibold text-slate-700">
-                      {authenticated ? (
-                        <>
-                          <Link
-                            href="/account"
-                            className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
-                            onClick={() => setMenuOpen(false)}
-                          >
-                            <i className="fa-regular fa-id-card text-sm text-slate-600" aria-hidden />
-                            <span>My Account</span>
-                          </Link>
-
-                          <Link
-                            href="/orders"
-                            className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
-                            onClick={() => setMenuOpen(false)}
-                          >
-                            <i className="fa-solid fa-box text-sm text-slate-600" aria-hidden />
-                            <span>Orders</span>
-                          </Link>
-
-                          {isSellerPending && (
-                            <Link
-                              href="/auth/seller/pending"
-                              className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
-                              onClick={() => setMenuOpen(false)}
-                            >
-                              <i className="fa-solid fa-clock-rotate-left text-sm text-slate-600" aria-hidden />
-                              <span>Seller Pending</span>
-                            </Link>
-                          )}
-
-                          <div className="my-1 border-t border-slate-100" />
-
-                          <button
-                            type="button"
-                            onClick={handleSignOut}
-                            className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-red-700 hover:bg-red-50"
-                          >
-                            <i className="fa-solid fa-arrow-right-from-bracket text-sm" aria-hidden />
-                            <span>Logout</span>
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <Link
-                            href="/auth/login"
-                            className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
-                            onClick={() => setMenuOpen(false)}
-                          >
-                            <i className="fa-solid fa-right-to-bracket text-sm text-slate-600" aria-hidden />
-                            <span>Login</span>
-                          </Link>
-
-                          <Link
-                            href="/auth/register"
-                            className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
-                            onClick={() => setMenuOpen(false)}
-                          >
-                            <i className="fa-solid fa-user-plus text-sm text-slate-600" aria-hidden />
-                            <span>Register</span>
-                          </Link>
-                        </>
-                      )}
-                    </div>
-                  </ClickAwaySurface>
+                {renderMenuDropdown(
+                  "absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg"
                 )}
               </div>
             </div>

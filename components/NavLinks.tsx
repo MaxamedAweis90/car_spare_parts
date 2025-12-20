@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "@/lib/useSession";
 import Button from "./Button";
 
 export default function NavLinks() {
   const pathname = usePathname();
+  const { authenticated } = useSession();
 
   const links = [
     { label: "Home", href: "/" },
@@ -35,14 +37,16 @@ export default function NavLinks() {
         })}
       </div>
 
-      <Button
-        href="/auth/seller/register"
-        variant="secondary"
-        size="sm"
-        className="hidden shrink-0 transition-all duration-300 hover:bg-(--color-primary) hover:text-slate-900 hover:shadow-md sm:inline-flex"
-      >
-        Become a Seller
-      </Button>
+      {!authenticated && (
+        <Button
+          href="/auth/seller/register"
+          variant="secondary"
+          size="sm"
+          className="hidden shrink-0 transition-all duration-300 hover:bg-(--color-primary) hover:text-slate-900 hover:shadow-md sm:inline-flex"
+        >
+          Become a Seller
+        </Button>
+      )}
     </div>
   );
 }

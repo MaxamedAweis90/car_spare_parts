@@ -5,7 +5,6 @@ import "./globals.css";
 
 import CDNs from "@/components/Tools/CDNs";
 import SiteShell from "@/components/SiteShell";
-import TopBar from "@/components/TopBar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,7 +34,6 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-foreground`}
       >
-        <TopBar />
         <SiteShell>{children}</SiteShell>
       </body>
     </html>

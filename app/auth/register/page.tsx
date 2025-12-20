@@ -1,7 +1,5 @@
-"use client";
+import RegisterClient from "./RegisterClient";
 
-import RegisterPage from "../../(auth)/register/page";
-
-export default function RegisterAliasPage() {
-  return <RegisterPage />;
+export default function RegisterPage() {
+  return <RegisterClient />;
 }

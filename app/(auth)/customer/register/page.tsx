@@ -1,7 +1,5 @@
-"use client";
-
-import RegisterPage from "../../register/page";
+import { redirect } from "next/navigation";
 
 export default function CustomerRegisterAlias() {
-  return <RegisterPage />;
+  redirect("/auth/register");
 }

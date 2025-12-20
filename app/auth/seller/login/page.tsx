@@ -1,7 +1,5 @@
-"use client";
+import SellerLoginClient from "./SellerLoginClient";
 
-import SellerLoginPage from "../../../(auth)/seller/login/page";
-
-export default function SellerLoginAlias() {
-  return <SellerLoginPage />;
+export default function SellerLoginPage() {
+  return <SellerLoginClient />;
 }
