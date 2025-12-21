@@ -26,21 +26,30 @@ export default function Navbar() {
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const menuPanelRef = useRef<HTMLDivElement | null>(null);
   const [query, setQuery] = useState("");
-  const [language, setLanguage] = useState<(typeof LANG_OPTIONS)[number]>(() => {
-    if (typeof window === "undefined") return "EN";
-    const saved = localStorage.getItem(LANG_KEY);
-    if (saved && LANG_OPTIONS.includes(saved as (typeof LANG_OPTIONS)[number])) {
-      return saved as (typeof LANG_OPTIONS)[number];
-    }
-    return "EN";
-  });
+  const [language, setLanguage] = useState<(typeof LANG_OPTIONS)[number]>("EN");
   const [menuOpen, setMenuOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem(LANG_KEY);
+      if (saved && LANG_OPTIONS.includes(saved as (typeof LANG_OPTIONS)[number])) {
+        setLanguage(saved as (typeof LANG_OPTIONS)[number]);
+      }
+    } catch {
+      // ignore
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
       localStorage.setItem(LANG_KEY, language);
+    } catch {
+      // ignore
     }
   }, [language]);
 

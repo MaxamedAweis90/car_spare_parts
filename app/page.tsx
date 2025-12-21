@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import ProductCard from "@/components/ProductCard";
+import Skeleton from "@mui/material/Skeleton";
 import { HeroSection } from "./sections/HeroSection";
 import { TopDealsSection } from "./sections/TopDealsSection";
 
@@ -14,70 +15,8 @@ type Product = {
   category?: string | null;
   sellerId: string;
   imageId?: string | null;
+  imageUrl?: string | null;
 };
-
-const SHOWCASE_PRODUCTS_DB: Product[] = [
-  {
-    $id: "showcase-1",
-    name: "Front Brake Pad Set",
-    description: "High-friction ceramic pads for daily driving.",
-    price: 2200,
-    stock: 14,
-    category: "Brakes",
-    sellerId: "showcase-seller",
-    imageId: null,
-  },
-  {
-    $id: "showcase-2",
-    name: "Oil Filter (Universal Fit)",
-    description: "Long-life oil filter for common engines.",
-    price: 650,
-    stock: 42,
-    category: "Engine",
-    sellerId: "showcase-seller",
-    imageId: null,
-  },
-  {
-    $id: "showcase-3",
-    name: "Wiper Blade Pair 24\" + 18\"",
-    description: "All-weather rubber blades.",
-    price: 900,
-    stock: 8,
-    category: "Accessories",
-    sellerId: "showcase-seller",
-    imageId: null,
-  },
-  {
-    $id: "showcase-4",
-    name: "LED Headlight Bulb (H4) test tsest  wholy test test ste sfa f teta",
-    description: "Bright white LED replacement bulb.",
-    price: 3100,
-    stock: 5,
-    category: "Electrical",
-    sellerId: "showcase-seller",
-    imageId: null,
-  },
-  {
-    $id: "showcase-5",
-    name: "Spark Plug Set (4 pcs)",
-    description: "Improves ignition stability and efficiency.",
-    price: 1800,
-    stock: 19,
-    category: "Engine",
-    sellerId: "showcase-seller",
-    imageId: null,
-  },
-  {
-    $id: "showcase-6",
-    name: "Brake Disc Rotor (Front)",
-    description: "Vented rotor with anti-corrosion coating.",
-    price: 5400,
-    stock: 3,
-    category: "Brakes",
-    sellerId: "showcase-seller",
-    imageId: null,
-  },
-];
 
 function buildPublicProductImageUrl(fileId?: string | null) {
   if (!fileId) return null;
@@ -167,6 +106,7 @@ export default function Home() {
             category: p.category ?? null,
             sellerId: String(p.sellerId ?? ""),
             imageId: p.imageId ?? null,
+            imageUrl: p.imageUrl ?? null,
           }))
           .filter((p) => p.name && p.sellerId);
 
@@ -183,8 +123,6 @@ export default function Home() {
   const featured = useMemo(() => products.slice(0, 4), [products]);
   const categories = useMemo(() => groupByCategory(products), [products]);
   const categoryList = useMemo(() => Object.keys(categories).sort(), [categories]);
-
-  const showcaseProducts = useMemo(() => (products.length ? products : SHOWCASE_PRODUCTS_DB), [products]);
 
   const sliderItems = useMemo(() => {
     const base = featured.length ? featured : products;
@@ -222,22 +160,40 @@ export default function Home() {
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
               <h2 className="text-2xl font-black text-(--color-text)">Products</h2>
-              <p className="text-sm font-medium text-(--color-muted)">Showcase uses the same fields as the database product schema.</p>
             </div>
             {error && <p className="text-sm font-medium text-(--color-danger)">{error}</p>}
-            {loading && !error && products.length === 0 && <p className="text-sm font-medium text-(--color-muted)">Loading products…</p>}
             <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 ">
-              {showcaseProducts.slice(0, 12).map((product) => (
-                <ProductCard
-                  key={product.$id}
-                  id={product.$id}
-                  name={product.name}
-                  price={product.price ?? null}
-                  stock={product.stock ?? null}
-                  imageId={product.imageId ?? null}
-                  href={`/products/${product.$id}`}
-                />
-              ))}
+              {loading && !error && products.length === 0
+                ? Array.from({ length: 12 }).map((_, index) => (
+                    <div
+                      key={`skeleton-${index}`}
+                      className="flex h-full flex-col overflow-hidden rounded-2xl border border-(--color-border-strong) bg-(--color-surface) shadow-panel"
+                    >
+                      <div className="relative aspect-4/3 w-full bg-(--color-bg)">
+                        <Skeleton variant="rectangular" width="100%" height="100%" sx={{ position: "absolute", inset: 0 }} />
+                      </div>
+                      <div className="flex flex-1 flex-col gap-2 px-3 py-3 sm:px-4 sm:py-4">
+                        <Skeleton variant="text" height={24} />
+                        <Skeleton variant="text" width="55%" height={26} />
+                        <div className="mt-auto flex items-center justify-between gap-3 pt-1">
+                          <Skeleton variant="text" width="45%" height={18} />
+                          <Skeleton variant="circular" width={36} height={36} />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                : products.slice(0, 12).map((product) => (
+                    <ProductCard
+                      key={product.$id}
+                      id={product.$id}
+                      name={product.name}
+                      price={product.price ?? null}
+                      stock={product.stock ?? null}
+                      imageId={product.imageId ?? null}
+                      imageUrl={product.imageUrl ?? null}
+                      href={`/products/${product.$id}`}
+                    />
+                  ))}
             </div>
           </div>
         </div>

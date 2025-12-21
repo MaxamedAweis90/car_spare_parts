@@ -1,6 +1,7 @@
 export interface UserPayload {
   name?: string;
   email?: string;
+  password?: string;
   role?: "main_admin" | "admin" | "seller" | "customer";
   isActive?: boolean;
   userId?: string;       // required for update/delete

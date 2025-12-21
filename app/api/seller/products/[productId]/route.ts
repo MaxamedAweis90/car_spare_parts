@@ -4,6 +4,12 @@ import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
 import { buildProductImageUrl, type ProductDocument } from "@/lib/server/productService";
 import { deleteProductImage, uploadProductImage } from "@/lib/server/productImageService";
 import { Query, type Models } from "node-appwrite";
+import {
+  listCompatibilitiesForProduct,
+  replaceCompatibilitiesForProduct,
+  type CompatibilityDocument,
+  type CompatibilityInput,
+} from "@/lib/server/compatibilityService";
 
 type SellerProductResponse = ProductDocument & {
   imageIds?: string[];
@@ -40,13 +46,11 @@ type CompatibilityOptionDocument = Models.Document & {
 function ensureCompatibilityOptionsCollectionId() {
   const id =
     process.env.APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID ||
-    process.env.NEXT_PUBLIC_APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID ||
-    process.env.APPWRITE_COMPATIBILITIES_COLLECTION_ID ||
-    process.env.NEXT_PUBLIC_APPWRITE_COMPATIBILITIES_COLLECTION_ID;
+    process.env.NEXT_PUBLIC_APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID;
 
   if (!id) {
     throw new Error(
-      "Missing Appwrite compatibilities/options collection id (set APPWRITE_COMPATIBILITIES_COLLECTION_ID or APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID)"
+      "Missing Appwrite compatibility options collection id (APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID)"
     );
   }
 
@@ -76,6 +80,71 @@ async function resolveCompatibilityOptions(ids: string[]) {
   return list.documents.map((d) => ({ id: d.$id, label: buildCompatibilityLabel(d) }));
 }
 
+function compatibilityKey(value: {
+  vehicleType?: unknown;
+  make?: unknown;
+  model?: unknown;
+  yearFrom?: unknown;
+  yearTo?: unknown;
+}) {
+  const vehicleType = String(value.vehicleType ?? "").trim().toLowerCase();
+  const make = String(value.make ?? "").trim().toLowerCase();
+  const model = String(value.model ?? "").trim().toLowerCase();
+  const yearFrom = Number(value.yearFrom);
+  const yearTo = Number(value.yearTo);
+  return `${vehicleType}|${make}|${model}|${Number.isFinite(yearFrom) ? yearFrom : ""}|${
+    Number.isFinite(yearTo) ? yearTo : ""
+  }`;
+}
+
+async function listAllCompatibilityOptions(limit = 200) {
+  const collectionId = ensureCompatibilityOptionsCollectionId();
+  const list = await databasesServer.listDocuments<CompatibilityOptionDocument>(
+    appwriteConfig.databaseId,
+    collectionId,
+    [Query.orderDesc("$createdAt"), Query.limit(Math.min(Math.max(limit, 1), 200))]
+  );
+  return list.documents as CompatibilityOptionDocument[];
+}
+
+async function resolveOptionIdsFromCompatibilities(compatDocs: CompatibilityDocument[]) {
+  if (!compatDocs.length) return [] as string[];
+
+  const options = await listAllCompatibilityOptions(200).catch(() => [] as CompatibilityOptionDocument[]);
+  const optionIdByKey = new Map<string, string>();
+  for (const opt of options) {
+    optionIdByKey.set(compatibilityKey(opt), opt.$id);
+  }
+
+  const ids: string[] = [];
+  for (const compat of compatDocs) {
+    const id = optionIdByKey.get(compatibilityKey(compat));
+    if (id) ids.push(id);
+  }
+  return Array.from(new Set(ids));
+}
+
+function toCompatibilityInput(doc: CompatibilityOptionDocument): CompatibilityInput {
+  return {
+    vehicleType: String((doc as any).vehicleType ?? "").trim(),
+    make: String((doc as any).make ?? "").trim(),
+    model: String((doc as any).model ?? "").trim(),
+    yearFrom: Number((doc as any).yearFrom),
+    yearTo: Number((doc as any).yearTo),
+  };
+}
+
+async function loadCompatibilityOptionDocsByIds(ids: string[]) {
+  if (!ids.length) return [] as CompatibilityOptionDocument[];
+  const collectionId = ensureCompatibilityOptionsCollectionId();
+  const list = await databasesServer.listDocuments<CompatibilityOptionDocument>(
+    appwriteConfig.databaseId,
+    collectionId,
+    [Query.equal("$id", ids), Query.limit(Math.min(ids.length, 200))]
+  );
+  return list.documents as CompatibilityOptionDocument[];
+}
+
 async function getOwnedProduct(profileId: string, productId: string) {
   const doc = await databasesServer.getDocument<ProductDocument>(
     appwriteConfig.databaseId,
@@ -99,9 +168,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ productId: 
     const imageIds = Array.isArray((product as any).imageIds) ? ((product as any).imageIds as string[]) : [];
     const imageId = (product as any).imageId ?? (imageIds[0] ?? null);
 
-    const compatibilityOptionIds: string[] = Array.isArray((product as any).compatibilityOptionIds)
-      ? ((product as any).compatibilityOptionIds as string[])
-      : [];
+    const compatDocs = await listCompatibilitiesForProduct({ sellerId: profile.$id, productId, limit: 200 }).catch(() => []);
+    const compatibilityOptionIds = await resolveOptionIdsFromCompatibilities(compatDocs).catch(() => []);
     const compatibilityOptions = await resolveCompatibilityOptions(compatibilityOptionIds).catch(() => []);
 
     const response: SellerProductResponse = {
@@ -109,13 +177,14 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ productId: 
       imageId,
       imageIds,
       imageUrls: imageIds.map((id) => buildProductImageUrl(id) ?? "").filter(Boolean),
+      compatibilityOptionIds,
       compatibilityOptions,
     };
 
     return NextResponse.json({ product: response });
   } catch (error: any) {
     console.error("Seller product GET error", error);
-    return jsonError(error?.message || "Server error", error?.status || 500);
+    return jsonError(error?.message || "Server error", error?.code || error?.status || 500);
   }
 }
 
@@ -189,9 +258,15 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ productId
       updates.imageId = imageIds[0] ?? null;
     }
 
-    // Optional: replace compatibilities.
+    // Optional: replace compatibilities (stored in compatibilities collection, not on product document).
     if (formData.has("compatibilityOptionIds")) {
-      updates.compatibilityOptionIds = parseStringArrayJson(formData.get("compatibilityOptionIds"));
+      const ids = parseStringArrayJson(formData.get("compatibilityOptionIds"));
+      const entries: CompatibilityInput[] = ids.length
+        ? (await loadCompatibilityOptionDocsByIds(ids)).map(toCompatibilityInput)
+        : [];
+      await replaceCompatibilitiesForProduct({ sellerId: profile.$id, productId, entries }).catch((e) => {
+        console.error("Failed to save compatibilities for product", e);
+      });
     }
 
     const updated = await databasesServer.updateDocument<ProductDocument>(
@@ -204,9 +279,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ productId
     const finalImageIds = Array.isArray((updated as any).imageIds) ? ((updated as any).imageIds as string[]) : imageIds;
     const imageId = (updated as any).imageId ?? (finalImageIds[0] ?? null);
 
-    const compatibilityOptionIds: string[] = Array.isArray((updated as any).compatibilityOptionIds)
-      ? ((updated as any).compatibilityOptionIds as string[])
-      : [];
+    const compatDocs = await listCompatibilitiesForProduct({ sellerId: profile.$id, productId, limit: 200 }).catch(() => []);
+    const compatibilityOptionIds = await resolveOptionIdsFromCompatibilities(compatDocs).catch(() => []);
     const compatibilityOptions = await resolveCompatibilityOptions(compatibilityOptionIds).catch(() => []);
 
     const response: SellerProductResponse = {
@@ -214,13 +288,14 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ productId
       imageId,
       imageIds: finalImageIds,
       imageUrls: finalImageIds.map((id) => buildProductImageUrl(id) ?? "").filter(Boolean),
+      compatibilityOptionIds,
       compatibilityOptions,
     };
 
     return NextResponse.json({ product: response });
   } catch (error: any) {
     console.error("Seller product PATCH error", error);
-    return jsonError(error?.message || "Server error", error?.status || 500);
+    return jsonError(error?.message || "Server error", error?.code || error?.status || 500);
   }
 }
 
@@ -244,6 +319,6 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ productI
     return NextResponse.json({ ok: true });
   } catch (error: any) {
     console.error("Seller product DELETE error", error);
-    return jsonError(error?.message || "Server error", error?.status || 500);
+    return jsonError(error?.message || "Server error", error?.code || error?.status || 500);
   }
 }

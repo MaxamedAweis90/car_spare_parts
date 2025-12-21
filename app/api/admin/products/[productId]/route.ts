@@ -4,16 +4,14 @@ import { requireAdmin } from "@/lib/server/requireAdmin";
 import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
 import { buildProductImageUrl, type ProductDocument } from "@/lib/server/productService";
 import { deleteProductImage, uploadProductImage } from "@/lib/server/productImageService";
+import {
+  listCompatibilitiesForProduct,
+  replaceCompatibilitiesForProduct,
+  type CompatibilityDocument as BaseCompatibilityDocument,
+  type CompatibilityInput,
+} from "@/lib/server/compatibilityService";
 
-type CompatibilityDocument = Models.Document & {
-  productId: string;
-  vehicleType: string;
-  make: string;
-  model: string;
-  yearFrom: number;
-  yearTo: number;
-  label?: string;
-};
+type CompatibilityDocument = BaseCompatibilityDocument & { label?: string };
 
 type ProductResponse = ProductDocument & {
   imageIds?: string[];
@@ -31,22 +29,6 @@ function toNumber(value: unknown) {
   return NaN;
 }
 
-function ensureCompatibilitiesCollectionId() {
-  const id =
-    process.env.APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID ||
-    process.env.NEXT_PUBLIC_APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID ||
-    process.env.APPWRITE_COMPATIBILITIES_COLLECTION_ID ||
-    process.env.NEXT_PUBLIC_APPWRITE_COMPATIBILITIES_COLLECTION_ID;
-
-  if (!id) {
-    throw new Error(
-      "Missing Appwrite compatibilities collection id (APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID)"
-    );
-  }
-
-  return String(id);
-}
-
 function parseStringArrayJson(raw: unknown): string[] {
   if (typeof raw !== "string" || !raw.trim()) return [];
   const parsed = JSON.parse(raw);
@@ -54,14 +36,48 @@ function parseStringArrayJson(raw: unknown): string[] {
   return parsed.map((v) => String(v)).map((v) => v.trim()).filter(Boolean);
 }
 
-async function listCompatibilitiesForProduct(productId: string) {
-  const compatCollectionId = ensureCompatibilitiesCollectionId();
-  const list = await databasesServer.listDocuments<CompatibilityDocument>(
+type CompatibilityOptionDocument = Models.Document & {
+  vehicleType: string;
+  make: string;
+  model: string;
+  yearFrom: number;
+  yearTo: number;
+  label?: string;
+};
+
+function ensureCompatibilityOptionsCollectionId() {
+  const id =
+    process.env.APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID ||
+    process.env.NEXT_PUBLIC_APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID;
+
+  if (!id) {
+    throw new Error(
+      "Missing Appwrite compatibility options collection id (APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID)"
+    );
+  }
+
+  return String(id);
+}
+
+function toCompatibilityInput(doc: CompatibilityOptionDocument): CompatibilityInput {
+  return {
+    vehicleType: String((doc as any).vehicleType ?? "").trim(),
+    make: String((doc as any).make ?? "").trim(),
+    model: String((doc as any).model ?? "").trim(),
+    yearFrom: Number((doc as any).yearFrom),
+    yearTo: Number((doc as any).yearTo),
+  };
+}
+
+async function loadCompatibilityOptionDocsByIds(ids: string[]) {
+  if (!ids.length) return [] as CompatibilityOptionDocument[];
+  const collectionId = ensureCompatibilityOptionsCollectionId();
+  const list = await databasesServer.listDocuments<CompatibilityOptionDocument>(
     appwriteConfig.databaseId,
-    compatCollectionId,
-    [Query.equal("productId", productId), Query.orderDesc("$createdAt"), Query.limit(200)]
+    collectionId,
+    [Query.equal("$id", ids), Query.limit(Math.min(ids.length, 200))]
   );
-  return list.documents as CompatibilityDocument[];
+  return list.documents as CompatibilityOptionDocument[];
 }
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ productId: string }> }) {
@@ -78,7 +94,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ productId: 
     const imageIds = Array.isArray((product as any).imageIds) ? ((product as any).imageIds as string[]) : [];
     const imageUrls = imageIds.map((id) => buildProductImageUrl(id) ?? "").filter(Boolean);
 
-    const compatibilities = await listCompatibilitiesForProduct(productId).catch(() => []);
+    const sellerId = String((product as any).sellerId ?? "").trim();
+    const compatibilities = sellerId
+      ? ((await listCompatibilitiesForProduct({ sellerId, productId, limit: 200 }).catch(() => [])) as CompatibilityDocument[])
+      : ([] as CompatibilityDocument[]);
 
     const response: ProductResponse = {
       ...(product as any),
@@ -143,8 +162,18 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ productId
       updates.mainCategoryId = cat;
     }
 
+    // Optional: replace compatibilities (stored in compatibilities collection, not on product document).
     if (formData.has("compatibilityOptionIds")) {
-      updates.compatibilityOptionIds = parseStringArrayJson(formData.get("compatibilityOptionIds"));
+      const ids = parseStringArrayJson(formData.get("compatibilityOptionIds"));
+      const entries: CompatibilityInput[] = ids.length
+        ? (await loadCompatibilityOptionDocsByIds(ids)).map(toCompatibilityInput)
+        : [];
+      const sellerId = String((updates as any).sellerId ?? (existing as any).sellerId ?? "").trim();
+      if (sellerId) {
+        await replaceCompatibilitiesForProduct({ sellerId, productId, entries }).catch((e) => {
+          console.error("Failed to save compatibilities for product", e);
+        });
+      }
     }
 
     // Optional image replacement.
@@ -183,7 +212,10 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ productId
     const finalImageIds = Array.isArray((updated as any).imageIds) ? ((updated as any).imageIds as string[]) : imageIds;
     const imageUrls = finalImageIds.map((id) => buildProductImageUrl(id) ?? "").filter(Boolean);
 
-    const compatibilities = await listCompatibilitiesForProduct(productId).catch(() => []);
+    const sellerId = String((updated as any).sellerId ?? (existing as any).sellerId ?? "").trim();
+    const compatibilities = sellerId
+      ? ((await listCompatibilitiesForProduct({ sellerId, productId, limit: 200 }).catch(() => [])) as CompatibilityDocument[])
+      : ([] as CompatibilityDocument[]);
 
     const response: ProductResponse = {
       ...(updated as any),

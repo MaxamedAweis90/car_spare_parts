@@ -25,7 +25,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import AddBoxOutlinedIcon from "@mui/icons-material/AddBoxOutlined";
 import FilterAltOutlinedIcon from "@mui/icons-material/FilterAltOutlined";
 
-type CategoryItem = { id: string; name: string };
+type CategoryItem = { id: string; name: string; label?: string };
 
 type CompatibilityOptionItem = { id: string; label: string };
 
@@ -157,7 +157,9 @@ export default function SellerProductsPage() {
       const prodsBody = await prodRes.json();
 
       const loadedCategories: CategoryItem[] = Array.isArray(catsBody?.items)
-        ? catsBody.items.filter((c: any) => c && typeof c.id === "string" && typeof c.name === "string")
+        ? catsBody.items
+            .filter((c: any) => c && typeof c.id === "string" && typeof c.name === "string")
+            .map((c: any) => ({ id: c.id, name: c.name, label: typeof c.label === "string" ? c.label : undefined }))
         : [];
       setCategories(loadedCategories);
 
@@ -184,9 +186,9 @@ export default function SellerProductsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const categoryNameById = useMemo(() => {
+  const categoryLabelById = useMemo(() => {
     const map = new Map<string, string>();
-    categories.forEach((c) => map.set(c.id, c.name));
+    categories.forEach((c) => map.set(c.id, c.label || c.name));
     return map;
   }, [categories]);
 
@@ -347,7 +349,7 @@ export default function SellerProductsPage() {
                     <MenuItem value="all">All categories</MenuItem>
                     {categories.map((c) => (
                       <MenuItem key={c.id} value={c.id}>
-                        {c.name}
+                        {c.label || c.name}
                       </MenuItem>
                     ))}
                   </Select>
@@ -390,7 +392,7 @@ export default function SellerProductsPage() {
                   {filtered.map((item) => {
                     const stock = typeof item.stock === "number" ? item.stock : 0;
                     const status = stockLabel(stock);
-                    const categoryName = item.mainCategoryId ? categoryNameById.get(item.mainCategoryId) : "";
+                    const categoryName = item.mainCategoryId ? categoryLabelById.get(item.mainCategoryId) : "";
 
                     return (
                       <TableRow key={item.$id} hover>
@@ -455,7 +457,7 @@ export default function SellerProductsPage() {
                     <TextField label="Category" value={payload.mainCategoryId} onChange={(e) => setPayload((p) => ({ ...p, mainCategoryId: e.target.value }))} required select fullWidth>
                       {categories.map((c) => (
                         <MenuItem key={c.id} value={c.id}>
-                          {c.name}
+                          {c.label || c.name}
                         </MenuItem>
                       ))}
                     </TextField>

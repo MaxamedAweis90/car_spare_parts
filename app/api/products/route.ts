@@ -84,10 +84,15 @@ export async function GET(req: NextRequest) {
       [Query.greaterThan("stock", 0), Query.limit(limit)]
     );
 
-    const items: ProductResponse[] = list.documents.map((doc) => ({
-      ...doc,
-      imageUrl: buildProductImageUrl(doc.imageId ?? null),
-    }));
+    const items: ProductResponse[] = list.documents.map((doc) => {
+      const imageIds = Array.isArray((doc as any).imageIds) ? ((doc as any).imageIds as string[]) : [];
+      const imageId = (doc as any).imageId ?? (imageIds[0] ?? null);
+      return {
+        ...(doc as any),
+        imageId,
+        imageUrl: buildProductImageUrl(imageId ?? null),
+      } as ProductResponse;
+    });
 
     return NextResponse.json({ items });
   } catch (error: any) {

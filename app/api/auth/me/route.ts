@@ -4,6 +4,7 @@ import { buildUserAvatarUrl } from "@/lib/server/userProfileService";
 
 const endpoint = process.env.APPWRITE_ENDPOINT!;
 const projectId = process.env.APPWRITE_PROJECT_ID!;
+const mainAdminId = (process.env.APPWRITE_MAIN_ADMIN_USER_ID || process.env.NEXT_PUBLIC_APPWRITE_MAIN_ADMIN_USER_ID || "").trim();
 
 export async function GET(req: NextRequest) {
   const cookieHeader = req.headers.get("cookie");
@@ -36,10 +37,16 @@ export async function GET(req: NextRequest) {
     const safeProfile = profile ? sanitizeUser(profile) : null;
     const avatarUrl = profile ? buildUserAvatarUrl(profile.avatarId) : null;
 
+    const isMainAdminAccount = Boolean(mainAdminId) && account?.$id === mainAdminId;
+    const hydratedProfile =
+      safeProfile && isMainAdminAccount
+        ? { ...safeProfile, role: "main_admin" as const }
+        : safeProfile;
+
     return NextResponse.json({
       authenticated: true,
       account,
-      profile: safeProfile ? { ...safeProfile, avatarUrl } : null,
+      profile: hydratedProfile ? { ...hydratedProfile, avatarUrl } : null,
     });
   } catch (error: unknown) {
     console.error("Me error:", error);

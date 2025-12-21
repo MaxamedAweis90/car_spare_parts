@@ -1,139 +1,150 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import CreateUserForm from "@/components/CreateUserForm";
-import { useSession } from "@/lib/useSession";
-import { getUsers, updateUser } from "@/services/users";
+import Link from "next/link";
 
-interface UserItem {
-  $id: string;
-  name: string;
-  email: string;
-  role: string;
-  sellerApproved?: boolean;
-}
+type DashboardStats = {
+  users: { total: number; active: number; inactive: number };
+  sellers: { total: number; active: number; inactive: number; pendingApproval: number };
+  visitors: { year: number; week: number; day: number };
+  generatedAt: string;
+};
 
 export default function AdminPage() {
-  const { profile } = useSession();
-  const [pendingSellers, setPendingSellers] = useState<UserItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const fetchPending = async () => {
-    setLoading(true);
-    setMessage("");
+  const fetchStats = async () => {
+    setStatsLoading(true);
     try {
-      const res = await getUsers({ role: "seller", sellerApproved: false });
-      setPendingSellers(res?.documents || []);
-    } catch {
-      setMessage("Failed to load pending sellers");
+      const res = await fetch("/api/admin/dashboard", { method: "GET" });
+      const body = await res.json();
+      if (!res.ok) {
+        throw new Error(body?.error || "Failed to load dashboard stats");
+      }
+      setStats(body);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Failed to load dashboard stats";
+      setMessage(message);
     } finally {
-      setLoading(false);
+      setStatsLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPending();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchStats();
   }, []);
 
-  const approveSeller = async (userId: string) => {
-    if (!profile?.$id) return;
-    setMessage("");
-    try {
-      await updateUser({ userId, sellerApproved: true, updaterId: profile.$id });
-      setMessage("Seller approved");
-      fetchPending();
-    } catch {
-      setMessage("Failed to approve seller");
-    }
-  };
+  const cards = [
+    {
+      label: "Total users",
+      value: stats?.users.total,
+      sub: stats ? `${stats.users.active} active • ${stats.users.inactive} inactive` : "—",
+    },
+    {
+      label: "Total sellers",
+      value: stats?.sellers.total,
+      sub: stats ? `${stats.sellers.active} active • ${stats.sellers.inactive} inactive` : "—",
+    },
+    {
+      label: "Sellers pending",
+      value: stats?.sellers.pendingApproval,
+      sub: "Awaiting approval",
+    },
+    {
+      label: "Visitors / year",
+      value: stats?.visitors.year,
+      sub: "Based on order volume",
+    },
+    {
+      label: "Visitors / week",
+      value: stats?.visitors.week,
+      sub: "Based on order volume",
+    },
+    {
+      label: "Visitors / day",
+      value: stats?.visitors.day,
+      sub: "Based on order volume",
+    },
+  ] as const;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Admin Dashboard</h1>
-        <p className="text-gray-700">Manage admins and approve sellers.</p>
-      </div>
-
-      <section className="border rounded p-4 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">Seller role settings</h2>
-            <p className="text-sm text-gray-600">
-              Toggle seller activation when you need to restrict access.
-            </p>
+      <section className="rounded-3xl border bg-white shadow-sm overflow-hidden">
+        <div className="bg-linear-to-br from-slate-900 via-slate-800 to-blue-900 px-5 py-6 text-white">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-semibold tracking-widest text-blue-100">ADMIN CONSOLE</p>
+              <h1 className="mt-1 text-2xl font-semibold">Dashboard</h1>
+              <p className="mt-1 text-sm text-blue-100">
+                Oversight, approvals, and system health.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/admin/seller-settings"
+                className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold text-white hover:bg-white/15"
+              >
+                Seller settings
+              </Link>
+              <Link
+                href="/admin/catalog"
+                className="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-900 hover:bg-slate-100"
+              >
+                Catalog
+              </Link>
+            </div>
           </div>
-          <Link
-            href="/admin/seller-settings"
-            className="rounded bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
-          >
-            Manage sellers
-          </Link>
         </div>
-      </section>
 
-      <section className="border rounded p-4 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold">Catalog management</h2>
-            <p className="text-sm text-gray-600">
-              Manage products, categories, and compatibilities.
-            </p>
-          </div>
-          <Link
-            href="/admin/catalog"
-            className="rounded bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
-          >
-            Open catalog
-          </Link>
-        </div>
-      </section>
-
-      <section className="border rounded p-4 bg-white shadow-sm">
-        <h2 className="text-lg font-semibold mb-2">Create admin or seller</h2>
-        {profile?.$id ? (
-          <CreateUserForm currentUserId={profile.$id} />
-        ) : (
-          <p className="text-sm text-gray-600">Loading current admin...</p>
-        )}
-      </section>
-
-      <section className="border rounded p-4 bg-white shadow-sm">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-semibold">Pending sellers</h2>
-          <button
-            onClick={fetchPending}
-            className="text-sm px-3 py-1 border rounded"
-          >
-            Refresh
-          </button>
-        </div>
-        {loading && <p className="text-sm text-gray-600">Loading...</p>}
-        {!loading && pendingSellers.length === 0 && (
-          <p className="text-sm text-gray-700">No pending sellers.</p>
-        )}
-        <div className="space-y-3">
-          {pendingSellers.map((u) => (
-            <div
-              key={u.$id}
-              className="flex items-center justify-between border rounded p-2"
-            >
+        <div className="p-5">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="font-medium">{u.name}</p>
-                <p className="text-sm text-gray-600">{u.email}</p>
+                <h2 className="text-lg font-semibold text-slate-900">System snapshot</h2>
+                <p className="text-sm text-slate-600">Core KPIs for users, sellers, and traffic.</p>
               </div>
               <button
-                onClick={() => approveSeller(u.$id)}
-                className="px-3 py-1 bg-blue-600 text-white text-sm rounded"
+                type="button"
+                onClick={() => {
+                  setMessage("");
+                  fetchStats();
+                }}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                disabled={statsLoading}
               >
-                Approve
+                {statsLoading ? "Refreshing..." : "Refresh"}
               </button>
             </div>
-          ))}
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {cards.map((card) => (
+                <div key={card.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p className="text-sm font-semibold text-slate-600">{card.label}</p>
+                  <div className="mt-2 flex items-end justify-between">
+                    <p className="text-3xl font-semibold text-slate-900">
+                      {statsLoading && stats === null ? "—" : (card.value ?? "—")}
+                    </p>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">{card.sub}</p>
+                </div>
+              ))}
+            </div>
+
+            {stats?.generatedAt && (
+              <p className="text-xs text-slate-500">
+                Last updated: {new Date(stats.generatedAt).toLocaleString()}
+              </p>
+            )}
+          </div>
+
+          {message && (
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-sm text-slate-700">{message}</p>
+            </div>
+          )}
         </div>
-        {message && <p className="text-sm text-gray-700 mt-3">{message}</p>}
       </section>
     </div>
   );

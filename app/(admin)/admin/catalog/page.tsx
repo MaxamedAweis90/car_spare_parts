@@ -10,6 +10,27 @@ type CategoryDoc = {
   type?: string | null;
 };
 
+type CategoryType = "vehicle" | "system" | "sellable";
+
+function parseCategoryType(value: unknown): CategoryType | null {
+  const v = typeof value === "string" ? value.trim() : "";
+  const lower = v.toLowerCase();
+  if (lower === "vehicle" || lower === "system" || lower === "sellable") return lower as CategoryType;
+  return null;
+}
+
+function inferCategoryType(category: CategoryDoc, byId: Map<string, CategoryDoc>): "vehicle" | "system" | "sellable" | null {
+  const explicit = parseCategoryType(category.type);
+  if (explicit) return explicit;
+  const parentId = category.parentCategoryId || null;
+  if (!parentId) return "vehicle";
+  const parent = byId.get(parentId);
+  if (!parent) return "system";
+  const grandParentId = parent.parentCategoryId || null;
+  if (!grandParentId) return "system";
+  return "sellable";
+}
+
 type ProductDoc = {
   $id: string;
   name: string;
@@ -63,7 +84,13 @@ export default function AdminCatalogPage() {
   const [compatibilities, setCompatibilities] = useState<CompatibilityDoc[]>([]);
 
   // Category editor
-  const [categoryForm, setCategoryForm] = useState({ name: "", parentCategoryId: "", type: "" });
+  const [categoryForm, setCategoryForm] = useState<{ name: string; type: "" | CategoryType; parentCategoryId: string }>(
+    {
+      name: "",
+      type: "",
+      parentCategoryId: "",
+    }
+  );
   const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
 
   // Compatibility editor
@@ -133,14 +160,77 @@ export default function AdminCatalogPage() {
     return map;
   }, [categories]);
 
+  const categoryById = useMemo(() => {
+    const map = new Map<string, CategoryDoc>();
+    categories.forEach((c) => map.set(c.$id, c));
+    return map;
+  }, [categories]);
+
+  const categorized = useMemo(() => {
+    const vehicles: CategoryDoc[] = [];
+    const systems: CategoryDoc[] = [];
+    const sellables: CategoryDoc[] = [];
+    const unknown: CategoryDoc[] = [];
+
+    categories.forEach((c) => {
+      const t = inferCategoryType(c, categoryById);
+      if (t === "vehicle") vehicles.push(c);
+      else if (t === "system") systems.push(c);
+      else if (t === "sellable") sellables.push(c);
+      else unknown.push(c);
+    });
+
+    return {
+      vehicles,
+      systems,
+      sellables,
+      unknown,
+    };
+  }, [categories, categoryById]);
+
+  const allowedParentOptions = useMemo(() => {
+    if (!categoryForm.type) return [] as CategoryDoc[];
+    if (categoryForm.type === "vehicle") return [];
+    if (categoryForm.type === "system") return categorized.vehicles;
+    return categorized.systems;
+  }, [categoryForm.type, categorized.systems, categorized.vehicles]);
+
+  useEffect(() => {
+    if (categoryForm.type === "vehicle") {
+      if (categoryForm.parentCategoryId) setCategoryForm((p) => ({ ...p, parentCategoryId: "" }));
+      return;
+    }
+    if (!categoryForm.type) return;
+    if (!categoryForm.parentCategoryId) return;
+    const exists = allowedParentOptions.some((c) => c.$id === categoryForm.parentCategoryId);
+    if (!exists) setCategoryForm((p) => ({ ...p, parentCategoryId: "" }));
+  }, [allowedParentOptions, categoryForm.parentCategoryId, categoryForm.type]);
+
   const onCreateOrUpdateCategory = async () => {
     setSaving(true);
     setError(null);
     try {
+      if (!categoryForm.name.trim()) throw new Error("Category name is required");
+      if (!categoryForm.type) throw new Error("Category type is required");
+      if (categoryForm.type === "system" && !categoryForm.parentCategoryId) throw new Error("System category requires a vehicle parent");
+      if (categoryForm.type === "sellable" && !categoryForm.parentCategoryId) throw new Error("Sellable category requires a system parent");
+
+      const isBulkCreate = !editingCategoryId;
+      const names = isBulkCreate
+        ? Array.from(
+            new Set(
+              categoryForm.name
+                .split(/[\n,]+/g)
+                .map((n) => n.trim())
+                .filter(Boolean)
+            )
+          )
+        : [categoryForm.name.trim()];
+
       const payload = {
-        name: categoryForm.name,
-        parentCategoryId: categoryForm.parentCategoryId || null,
-        type: categoryForm.type || null,
+        ...(names.length > 1 ? { names } : { name: names[0] }),
+        parentCategoryId: categoryForm.type === "vehicle" ? null : categoryForm.parentCategoryId || null,
+        type: categoryForm.type,
       };
 
       const res = await fetch(
@@ -167,10 +257,11 @@ export default function AdminCatalogPage() {
 
   const onEditCategory = (c: CategoryDoc) => {
     setEditingCategoryId(c.$id);
+    const safeType = parseCategoryType(c.type);
     setCategoryForm({
       name: c.name || "",
       parentCategoryId: c.parentCategoryId || "",
-      type: c.type || "",
+      type: safeType || "",
     });
   };
 
@@ -328,31 +419,65 @@ export default function AdminCatalogPage() {
       )}
 
       {!loading && tab === "categories" && (
-        <section className="grid gap-6 lg:grid-cols-2">
+        <section className="grid gap-6">
           <div className="rounded-3xl border border-slate-200 bg-white">
             <div className="border-b border-slate-200 px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-900">{editingCategoryId ? "Edit category" : "Create category"}</h2>
-              <p className="text-sm text-slate-600">Fields: name, parentCategoryId, type</p>
+              <p className="text-sm text-slate-600">Types: vehicle → system → sellable</p>
             </div>
             <div className="grid gap-3 px-6 py-5">
-              <input
+              {editingCategoryId ? (
+                <input
+                  className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  placeholder="Name"
+                  value={categoryForm.name}
+                  onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))}
+                />
+              ) : (
+                <textarea
+                  className="min-h-21 rounded-xl border border-slate-300 px-3 py-2 text-sm"
+                  placeholder="Names (comma or newline separated)"
+                  value={categoryForm.name}
+                  onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))}
+                />
+              )}
+
+              {!editingCategoryId && (
+                <p className="text-xs text-slate-500">
+                  Tip: paste <span className="font-semibold">Sellable</span> names like <span className="font-mono">Oil Filter, Air Filter, Spark Plug</span>.
+                </p>
+              )}
+
+              <select
                 className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                placeholder="Name"
-                value={categoryForm.name}
-                onChange={(e) => setCategoryForm((p) => ({ ...p, name: e.target.value }))}
-              />
-              <input
-                className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                placeholder="Parent category id (optional)"
-                value={categoryForm.parentCategoryId}
-                onChange={(e) => setCategoryForm((p) => ({ ...p, parentCategoryId: e.target.value }))}
-              />
-              <input
-                className="rounded-xl border border-slate-300 px-3 py-2 text-sm"
-                placeholder="Type (optional)"
                 value={categoryForm.type}
-                onChange={(e) => setCategoryForm((p) => ({ ...p, type: e.target.value }))}
-              />
+                onChange={(e) => setCategoryForm((p) => ({ ...p, type: e.target.value as any }))}
+              >
+                <option value="">Select type…</option>
+                <option value="vehicle">Vehicle (top level)</option>
+                <option value="system">System (child of vehicle)</option>
+                <option value="sellable">Sellable (child of system)</option>
+              </select>
+
+              <select
+                className="rounded-xl border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-50"
+                value={categoryForm.parentCategoryId}
+                disabled={!categoryForm.type || categoryForm.type === "vehicle"}
+                onChange={(e) => setCategoryForm((p) => ({ ...p, parentCategoryId: e.target.value }))}
+              >
+                <option value="">
+                  {categoryForm.type === "system"
+                    ? "Select vehicle parent…"
+                    : categoryForm.type === "sellable"
+                    ? "Select system parent…"
+                    : "No parent (vehicle)"}
+                </option>
+                {allowedParentOptions.map((c) => (
+                  <option key={c.$id} value={c.$id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
 
               <div className="flex items-center gap-2 pt-2">
                 <button
@@ -383,39 +508,91 @@ export default function AdminCatalogPage() {
           <div className="rounded-3xl border border-slate-200 bg-white">
             <div className="border-b border-slate-200 px-6 py-4">
               <h2 className="text-lg font-semibold text-slate-900">Categories</h2>
-              <p className="text-sm text-slate-600">{categories.length} total</p>
+              <p className="text-sm text-slate-600">
+                {categorized.vehicles.length} vehicles • {categorized.systems.length} systems • {categorized.sellables.length} sellables
+                {categorized.unknown.length ? ` • ${categorized.unknown.length} unknown` : ""}
+              </p>
             </div>
-            <ul className="divide-y divide-slate-200">
-              {categories.map((c) => (
-                <li key={c.$id} className="flex items-center justify-between gap-3 px-6 py-4">
-                  <div>
-                    <p className="font-semibold text-slate-900">{c.name}</p>
-                    <p className="text-xs text-slate-500">
-                      id: {c.$id}
-                      {c.parentCategoryId ? ` • parent: ${c.parentCategoryId}` : ""}
-                      {c.type ? ` • type: ${c.type}` : ""}
-                    </p>
+            <div className="divide-y divide-slate-200">
+              {([
+                { key: "vehicle", title: "Vehicle", items: categorized.vehicles },
+                { key: "system", title: "System", items: categorized.systems },
+                { key: "sellable", title: "Sellable", items: categorized.sellables },
+              ] as const).map((section) => (
+                <div key={section.key}>
+                  <div className="bg-slate-50 px-6 py-3 text-xs font-semibold text-slate-700">{section.title} ({section.items.length})</div>
+                  <div className="grid gap-3 p-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {section.items.map((c) => {
+                      const parentName = c.parentCategoryId ? categoryNameById.get(c.parentCategoryId) : null;
+                      return (
+                        <div key={c.$id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                          <div className="space-y-1">
+                            <p className="font-semibold text-slate-900">{c.name}</p>
+                            <p className="text-xs text-slate-500">
+                              id: {c.$id}
+                              {parentName ? ` • parent: ${parentName}` : c.parentCategoryId ? ` • parent: ${c.parentCategoryId}` : ""}
+                              {parseCategoryType(c.type) ? ` • type: ${String(c.type)}` : ""}
+                            </p>
+                          </div>
+
+                          <div className="mt-3 flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => onEditCategory(c)}
+                              className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-100"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              disabled={saving}
+                              onClick={() => onDeleteCategory(c.$id)}
+                              className="rounded-full bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onEditCategory(c)}
-                      className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-100"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      disabled={saving}
-                      onClick={() => onDeleteCategory(c.$id)}
-                      className="rounded-full bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </li>
+                </div>
               ))}
-            </ul>
+
+              {!!categorized.unknown.length && (
+                <div>
+                  <div className="bg-amber-50 px-6 py-3 text-xs font-semibold text-amber-800">Unknown / legacy ({categorized.unknown.length})</div>
+                  <div className="grid gap-3 p-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {categorized.unknown.map((c) => (
+                      <div key={c.$id} className="rounded-2xl border border-slate-200 bg-white p-4">
+                        <div className="space-y-1">
+                          <p className="font-semibold text-slate-900">{c.name}</p>
+                          <p className="text-xs text-slate-500">id: {c.$id}</p>
+                        </div>
+
+                        <div className="mt-3 flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => onEditCategory(c)}
+                            className="rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-300 hover:bg-slate-100"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            disabled={saving}
+                            onClick={() => onDeleteCategory(c.$id)}
+                            className="rounded-full bg-rose-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-rose-700 disabled:opacity-50"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </section>
       )}

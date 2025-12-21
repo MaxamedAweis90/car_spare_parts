@@ -1,84 +1,92 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSession } from "@/lib/useSession";
+import { getUsers, updateUser } from "@/services/users";
 
 type SellerRecord = {
-  id: string;
-  name: string;
-  email: string;
-  active: boolean;
-  totalOrders: number;
-  lastOrder: string;
+  $id: string;
+  name?: string;
+  email?: string;
+  isActive?: boolean;
+  sellerApproved?: boolean;
+  createdAt?: string;
 };
 
-const initialSellers: SellerRecord[] = [
-  {
-    id: "sel-1001",
-    name: "Aisha Malik",
-    email: "aisha.malik@example.com",
-    active: true,
-    totalOrders: 184,
-    lastOrder: "2024-02-18",
-  },
-  {
-    id: "sel-1002",
-    name: "Diego Ramirez",
-    email: "diego.ramirez@example.com",
-    active: true,
-    totalOrders: 96,
-    lastOrder: "2024-02-17",
-  },
-  {
-    id: "sel-1003",
-    name: "Saanvi Patel",
-    email: "saanvi.patel@example.com",
-    active: false,
-    totalOrders: 41,
-    lastOrder: "2024-02-05",
-  },
-  {
-    id: "sel-1004",
-    name: "Noah Andersen",
-    email: "noah.andersen@example.com",
-    active: true,
-    totalOrders: 223,
-    lastOrder: "2024-02-19",
-  },
-  {
-    id: "sel-1005",
-    name: "Maya Chen",
-    email: "maya.chen@example.com",
-    active: false,
-    totalOrders: 12,
-    lastOrder: "2024-01-29",
-  },
-];
-
 export default function SellerRoleSettingsPage() {
-  const [sellers, setSellers] = useState(initialSellers);
+  const { profile } = useSession();
+  const [sellers, setSellers] = useState<SellerRecord[]>([]);
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  const loadSellers = async () => {
+    setLoading(true);
+    setMessage(null);
+    try {
+      const res = await getUsers({ role: "seller" });
+      const docs: SellerRecord[] = Array.isArray(res?.documents) ? res.documents : [];
+      setSellers(docs);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to load sellers";
+      setMessage(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSellers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const { activeCount, inactiveCount } = useMemo(() => {
-    const active = sellers.filter((seller) => seller.active).length;
+    const active = sellers.filter((seller) => seller.isActive !== false).length;
     const inactive = sellers.length - active;
     return { activeCount: active, inactiveCount: inactive };
   }, [sellers]);
 
-  const toggleSellerStatus = (id: string) => {
-    setSellers((existing) => {
-      const nextSellers = existing.map((seller) =>
-        seller.id === id ? { ...seller, active: !seller.active } : seller,
-      );
+  const pendingApprovalCount = useMemo(() => {
+    return sellers.filter((seller) => seller.sellerApproved === false).length;
+  }, [sellers]);
 
-      const updatedSeller = nextSellers.find((seller) => seller.id === id);
-      if (updatedSeller) {
-        setMessage(
-          `${updatedSeller.name} ${updatedSeller.active ? "activated" : "deactivated"}.`,
-        );
+  const setSellerActive = async (seller: SellerRecord, nextActive: boolean) => {
+    if (!profile?.$id) {
+      setMessage("Missing admin profile; please re-login.");
+      return;
+    }
+    setMessage(null);
+    try {
+      const res = await updateUser({ userId: seller.$id, updaterId: profile.$id, isActive: nextActive });
+      if (res?.error) {
+        setMessage(res.error);
+        return;
       }
+      setSellers((prev) => prev.map((s) => (s.$id === seller.$id ? { ...s, isActive: nextActive } : s)));
+      setMessage(`${seller.name || seller.email || "Seller"} ${nextActive ? "activated" : "deactivated"}.`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to update seller";
+      setMessage(msg);
+    }
+  };
 
-      return nextSellers;
-    });
+  const approveSeller = async (seller: SellerRecord) => {
+    if (!profile?.$id) {
+      setMessage("Missing admin profile; please re-login.");
+      return;
+    }
+    setMessage(null);
+    try {
+      const res = await updateUser({ userId: seller.$id, updaterId: profile.$id, sellerApproved: true });
+      if (res?.error) {
+        setMessage(res.error);
+        return;
+      }
+      setSellers((prev) => prev.map((s) => (s.$id === seller.$id ? { ...s, sellerApproved: true } : s)));
+      setMessage(`${seller.name || seller.email || "Seller"} approved.`);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : "Failed to approve seller";
+      setMessage(msg);
+    }
   };
 
   return (
@@ -86,7 +94,7 @@ export default function SellerRoleSettingsPage() {
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold text-slate-900">Seller role settings</h1>
         <p className="text-sm text-slate-600">
-          Enable or disable access to seller tools for each account. Changes sync with the permissions service when connected to the API.
+          Manage seller access and approvals. This page loads real seller accounts from Appwrite.
         </p>
       </header>
 
@@ -106,6 +114,11 @@ export default function SellerRoleSettingsPage() {
           <p className="mt-1 text-2xl font-semibold">{inactiveCount}</p>
           <p className="text-xs text-slate-500">Awaiting reactivation</p>
         </div>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:col-span-3">
+          <p className="text-xs uppercase tracking-wide text-slate-600">Pending approvals</p>
+          <p className="mt-1 text-2xl font-semibold">{pendingApprovalCount}</p>
+          <p className="text-xs text-slate-500">Sellers that cannot access the seller console yet</p>
+        </div>
       </section>
 
       {message && (
@@ -120,45 +133,62 @@ export default function SellerRoleSettingsPage() {
             <h2 className="text-lg font-semibold text-slate-900">Seller roster</h2>
             <p className="text-sm text-slate-600">Toggle their live access status in one place.</p>
           </div>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-            Mock data for prototype use
-          </span>
+          <button
+            type="button"
+            onClick={loadSellers}
+            disabled={loading}
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          >
+            {loading ? "Loading..." : "Refresh"}
+          </button>
         </div>
 
         <ul className="divide-y divide-slate-200">
           {sellers.map((seller) => (
-            <li key={seller.id} className="flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between">
+            <li key={seller.$id} className="flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-base font-semibold text-slate-900">{seller.name}</p>
+                  <p className="text-base font-semibold text-slate-900">{seller.name || "—"}</p>
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      seller.active
+                      seller.isActive !== false
                         ? "bg-emerald-100 text-emerald-700"
                         : "bg-slate-200 text-slate-600"
                     }`}
                   >
-                    {seller.active ? "Active" : "Inactive"}
+                    {seller.isActive !== false ? "Active" : "Inactive"}
+                  </span>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      seller.sellerApproved === false ? "bg-amber-100 text-amber-700" : "bg-blue-50 text-blue-700"
+                    }`}
+                  >
+                    {seller.sellerApproved === false ? "Pending" : "Approved"}
                   </span>
                 </div>
-                <p className="text-sm text-slate-600">{seller.email}</p>
-                <div className="flex flex-wrap gap-4 text-xs text-slate-500">
-                  <span>Total orders: {seller.totalOrders}</span>
-                  <span>Last order: {seller.lastOrder}</span>
-                </div>
+                <p className="text-sm text-slate-600">{seller.email || "—"}</p>
               </div>
 
               <div className="flex items-center gap-3 self-start md:self-auto">
+                {seller.sellerApproved === false && (
+                  <button
+                    type="button"
+                    onClick={() => approveSeller(seller)}
+                    className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500"
+                  >
+                    Approve
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => toggleSellerStatus(seller.id)}
+                  onClick={() => setSellerActive(seller, seller.isActive === false)}
                   className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                    seller.active
+                    seller.isActive !== false
                       ? "bg-slate-900 text-white hover:bg-slate-700"
                       : "bg-white text-slate-700 ring-1 ring-slate-300 hover:bg-slate-100"
                   }`}
                 >
-                  {seller.active ? "Deactivate" : "Activate"}
+                  {seller.isActive !== false ? "Deactivate" : "Activate"}
                 </button>
               </div>
             </li>

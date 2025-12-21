@@ -15,7 +15,7 @@ import Chip from "@mui/material/Chip";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Checkbox from "@mui/material/Checkbox";
 
-type CategoryItem = { id: string; name: string };
+type CategoryItem = { id: string; name: string; label?: string };
 
 type CompatibilityOptionItem = { id: string; label: string };
 
@@ -113,9 +113,9 @@ export default function SellerEditProductPage() {
     };
   }, [images]);
 
-  const categoryNameById = useMemo(() => {
+  const categoryLabelById = useMemo(() => {
     const map = new Map<string, string>();
-    categories.forEach((c) => map.set(c.id, c.name));
+    categories.forEach((c) => map.set(c.id, c.label || c.name));
     return map;
   }, [categories]);
 
@@ -150,7 +150,9 @@ export default function SellerEditProductPage() {
       const prodBody = await prodRes.json();
 
       const loadedCategories: CategoryItem[] = Array.isArray(catsBody?.items)
-        ? catsBody.items.filter((c: any) => c && typeof c.id === "string" && typeof c.name === "string")
+        ? catsBody.items
+            .filter((c: any) => c && typeof c.id === "string" && typeof c.name === "string")
+            .map((c: any) => ({ id: c.id, name: c.name, label: typeof c.label === "string" ? c.label : undefined }))
         : [];
       setCategories(loadedCategories);
 
@@ -255,7 +257,7 @@ export default function SellerEditProductPage() {
     }
   };
 
-  const currentCategoryName = product?.mainCategoryId ? categoryNameById.get(product.mainCategoryId) : undefined;
+  const currentCategoryName = product?.mainCategoryId ? categoryLabelById.get(product.mainCategoryId) : undefined;
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
@@ -338,7 +340,7 @@ export default function SellerEditProductPage() {
                     >
                       {categories.map((c) => (
                         <MenuItem key={c.id} value={c.id}>
-                          {c.name}
+                          {c.label || c.name}
                         </MenuItem>
                       ))}
                     </TextField>

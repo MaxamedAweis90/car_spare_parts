@@ -9,6 +9,29 @@ type CategoryDocument = Models.Document & {
   type?: string | null;
 };
 
+type CategoryType = "vehicle" | "system" | "sellable";
+type StoredCategoryType = "Vehicle" | "System" | "sellable";
+
+function parseCategoryType(value: unknown): CategoryType | null {
+  const v = typeof value === "string" ? value.trim() : "";
+  const lower = v.toLowerCase();
+  if (lower === "vehicle" || lower === "system" || lower === "sellable") return lower as CategoryType;
+  return null;
+}
+
+function toStoredCategoryType(type: CategoryType): StoredCategoryType {
+  if (type === "vehicle") return "Vehicle";
+  if (type === "system") return "System";
+  return "sellable";
+}
+
+function inferParentType(parent: CategoryDocument): "vehicle" | "system" | null {
+  const explicit = parseCategoryType(parent.type);
+  if (explicit === "vehicle" || explicit === "system") return explicit;
+  // Legacy inference: root-ish categories behave like vehicles; non-root behave like systems.
+  return parent.parentCategoryId ? "system" : "vehicle";
+}
+
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
 }
@@ -41,7 +64,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ items: list.documents });
   } catch (error: any) {
     console.error("Admin categories GET error", error);
-    return jsonError(error?.message || "Server error", error?.status || 500);
+    return jsonError(error?.message || "Server error", error?.code || error?.status || 500);
   }
 }
 
@@ -51,26 +74,84 @@ export async function POST(req: NextRequest) {
     const categoriesCollectionId = ensureCategoriesCollectionId();
 
     const body = await req.json().catch(() => null);
-    const name = String(body?.name ?? "").trim();
-    if (!name) return jsonError("Category name is required", 400);
+    const rawName = String(body?.name ?? "");
+    const providedNames = Array.isArray(body?.names) ? (body.names as unknown[]) : null;
+
+    const names: string[] = (
+      providedNames
+        ? providedNames.map((n) => String(n ?? "").trim())
+        : rawName
+            .split(/[\n,]+/g)
+            .map((n) => n.trim())
+    ).filter(Boolean);
+
+    const uniqueNames = Array.from(new Set(names));
+    if (!uniqueNames.length) return jsonError("Category name is required", 400);
 
     const parentCategoryId = String(body?.parentCategoryId ?? "").trim() || null;
-    const type = String(body?.type ?? "").trim() || null;
 
-    const created = await databasesServer.createDocument<CategoryDocument>(
-      appwriteConfig.databaseId,
-      categoriesCollectionId,
-      ID.unique(),
-      {
-        name,
-        parentCategoryId,
-        type,
-      } as any
+    const type = parseCategoryType(body?.type);
+    if (!type) return jsonError("Category type must be one of: vehicle, system, sellable", 400);
+
+    if (type === "vehicle") {
+      if (parentCategoryId) return jsonError("Vehicle categories cannot have a parentCategoryId", 400);
+    }
+
+    if (type === "system") {
+      if (!parentCategoryId) return jsonError("System categories must have a vehicle parentCategoryId", 400);
+      const parent = await databasesServer.getDocument<CategoryDocument>(
+        appwriteConfig.databaseId,
+        categoriesCollectionId,
+        parentCategoryId
+      );
+      const parentType = inferParentType(parent);
+      if (parentType !== "vehicle") return jsonError("System categories must have a vehicle parent", 400);
+    }
+
+    if (type === "sellable") {
+      if (!parentCategoryId) return jsonError("Sellable categories must have a system parentCategoryId", 400);
+      const parent = await databasesServer.getDocument<CategoryDocument>(
+        appwriteConfig.databaseId,
+        categoriesCollectionId,
+        parentCategoryId
+      );
+      const parentType = inferParentType(parent);
+      if (parentType !== "system") return jsonError("Sellable categories must have a system parent", 400);
+    }
+
+    if (uniqueNames.length === 1) {
+      const created = await databasesServer.createDocument<CategoryDocument>(
+        appwriteConfig.databaseId,
+        categoriesCollectionId,
+        ID.unique(),
+        {
+          name: uniqueNames[0],
+          parentCategoryId,
+          type: toStoredCategoryType(type),
+        } as any
+      );
+
+      return NextResponse.json({ category: created }, { status: 201 });
+    }
+
+    const createdMany = await Promise.all(
+      uniqueNames.map((name) =>
+        databasesServer.createDocument<CategoryDocument>(
+          appwriteConfig.databaseId,
+          categoriesCollectionId,
+          ID.unique(),
+          {
+            name,
+            parentCategoryId,
+            type: toStoredCategoryType(type),
+          } as any
+        )
+      )
     );
 
-    return NextResponse.json({ category: created }, { status: 201 });
+    return NextResponse.json({ categories: createdMany }, { status: 201 });
   } catch (error: any) {
     console.error("Admin categories POST error", error);
-    return jsonError(error?.message || "Server error", error?.status || 500);
+    return jsonError(error?.message || "Server error", error?.code || error?.status || 500);
   }
 }

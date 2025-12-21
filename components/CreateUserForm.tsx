@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { createUser } from "@/services/users";
 
-type CreateRole = "admin" | "seller";
-
 export default function CreateUserForm({
   currentUserId,
 }: {
@@ -12,12 +10,17 @@ export default function CreateUserForm({
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<CreateRole>("seller");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (password !== confirmPassword) {
+      setMessage("Passwords do not match");
+      return;
+    }
     setLoading(true);
     setMessage("");
 
@@ -25,15 +28,17 @@ export default function CreateUserForm({
       const res = await createUser({
         name,
         email,
-        role,
+        password,
+        role: "admin",
         creatorId: currentUserId, // admin ID
       });
 
-      if (res?.$id) {
-        setMessage("User created successfully");
+      if (res?.$id || res?.user?.$id) {
+        setMessage("Admin created successfully");
         setName("");
         setEmail("");
-        setRole("seller");
+        setPassword("");
+        setConfirmPassword("");
       } else {
         setMessage(res?.error || "Failed to create user");
       }
@@ -50,7 +55,7 @@ export default function CreateUserForm({
       className="p-4 border rounded max-w-md mx-auto mt-6"
     >
       <h2 className="text-xl font-semibold mb-4">
-        Admin . Create User
+        Create admin (main admin only)
       </h2>
 
       <label className="block mb-3">
@@ -75,18 +80,27 @@ export default function CreateUserForm({
         />
       </label>
 
-      <label className="block mb-4">
-        Role
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value as CreateRole)}
+      <label className="block mb-3">
+        Password
+        <input
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
           className="w-full p-2 border rounded mt-1"
-        >
-          <option value="admin">Admin</option>
-          <option value="seller">Seller</option>
-        </select>
+        />
       </label>
 
+      <label className="block mb-3">
+        Confirm password
+        <input
+          type="password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          required
+          className="w-full p-2 border rounded mt-1"
+        />
+      </label>
       <button
         type="submit"
         disabled={loading}

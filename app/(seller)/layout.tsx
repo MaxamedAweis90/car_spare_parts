@@ -172,7 +172,7 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f4f1e9] text-slate-900 flex">
       <aside
-        className={`${sidebarOpen ? "w-68" : "w-18"} hidden lg:flex flex-col lg:sticky lg:top-0 lg:h-screen shrink-0 bg-[#161616] text-white transition-all duration-200 shadow-xl`}
+        className={`${sidebarOpen ? "w-68" : "w-18"} hidden lg:flex fixed left-0 top-0 h-screen flex-col shrink-0 bg-[#161616] text-white transition-all duration-200 shadow-xl`}
       >
         <div className="flex items-center justify-between px-4 py-5 border-b border-[#1f1f1f]">
           <div className="flex items-center gap-3">
@@ -228,6 +228,12 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
           )}
         </div>
       </aside>
+
+      {/* Spacer so content doesn't sit under the fixed sidebar */}
+      <div
+        className={`${sidebarOpen ? "w-68" : "w-18"} hidden lg:block shrink-0 transition-all duration-200`}
+        aria-hidden="true"
+      />
 
       <div className="flex-1 flex min-h-screen flex-col">
         <header className="sticky top-0 z-30 flex items-center justify-between bg-[#f4f1e9]/90 backdrop-blur border-b border-[#e3ddcf] px-4 py-3">

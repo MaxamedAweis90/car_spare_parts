@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ID, Query } from "node-appwrite";
+import { ID, Query, type Models } from "node-appwrite";
 import { requireSeller } from "@/lib/server/requireSeller";
 import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
 import { buildProductImageUrl, type ProductDocument } from "@/lib/server/productService";
 import { uploadProductImage } from "@/lib/server/productImageService";
+import { replaceCompatibilitiesForProduct, type CompatibilityInput } from "@/lib/server/compatibilityService";
 
 type SellerProductResponse = ProductDocument & {
   imageIds?: string[];
@@ -25,6 +26,50 @@ function parseStringArrayJson(raw: unknown): string[] {
   const parsed = JSON.parse(raw);
   if (!Array.isArray(parsed)) return [];
   return parsed.map((v) => String(v)).map((v) => v.trim()).filter(Boolean);
+}
+
+type CompatibilityOptionDocument = Models.Document & {
+  vehicleType: string;
+  make: string;
+  model: string;
+  yearFrom: number;
+  yearTo: number;
+  label?: string;
+};
+
+function ensureCompatibilityOptionsCollectionId() {
+  const id =
+    process.env.APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID ||
+    process.env.NEXT_PUBLIC_APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID;
+
+  if (!id) {
+    throw new Error(
+      "Missing Appwrite compatibility options collection id (APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID)"
+    );
+  }
+
+  return String(id);
+}
+
+function toCompatibilityInput(doc: CompatibilityOptionDocument): CompatibilityInput {
+  return {
+    vehicleType: String((doc as any).vehicleType ?? "").trim(),
+    make: String((doc as any).make ?? "").trim(),
+    model: String((doc as any).model ?? "").trim(),
+    yearFrom: Number((doc as any).yearFrom),
+    yearTo: Number((doc as any).yearTo),
+  };
+}
+
+async function loadCompatibilityOptionDocsByIds(ids: string[]) {
+  if (!ids.length) return [] as CompatibilityOptionDocument[];
+  const collectionId = ensureCompatibilityOptionsCollectionId();
+  const list = await databasesServer.listDocuments<CompatibilityOptionDocument>(
+    appwriteConfig.databaseId,
+    collectionId,
+    [Query.equal("$id", ids), Query.limit(Math.min(ids.length, 200))]
+  );
+  return list.documents as CompatibilityOptionDocument[];
 }
 
 export async function GET(req: NextRequest) {
@@ -57,7 +102,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ items });
   } catch (error: any) {
     console.error("Seller products GET error", error);
-    return jsonError(error?.message || "Server error", error?.status || 500);
+    return jsonError(error?.message || "Server error", error?.code || error?.status || 500);
   }
 }
 
@@ -96,8 +141,12 @@ export async function POST(req: NextRequest) {
       imageIds.push(fileId);
     }
 
-    // Seller cannot create compatibilities; they can only select admin-managed compatibility options.
+    // Seller selects admin-managed compatibility options. We store the selected *details* in the compatibilities collection
+    // because the products collection may not contain a `compatibilityOptionIds` attribute.
     const compatibilityOptionIds = parseStringArrayJson(formData.get("compatibilityOptionIds"));
+    const compatibilityEntries: CompatibilityInput[] = compatibilityOptionIds.length
+      ? (await loadCompatibilityOptionDocsByIds(compatibilityOptionIds)).map(toCompatibilityInput)
+      : [];
 
     const created = await databasesServer.createDocument<ProductDocument>(
       appwriteConfig.databaseId,
@@ -113,10 +162,16 @@ export async function POST(req: NextRequest) {
         brand,
         condition,
         partNumber,
-        compatibilityOptionIds,
         imageIds,
         imageId: imageIds[0] ?? null,
       } as any
+    );
+
+    // Persist compatibility selections separately.
+    await replaceCompatibilitiesForProduct({ sellerId: profile.$id, productId: created.$id, entries: compatibilityEntries }).catch(
+      (e) => {
+        console.error("Failed to save compatibilities for product", e);
+      }
     );
 
     const response: SellerProductResponse = {
@@ -129,6 +184,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ product: response }, { status: 201 });
   } catch (error: any) {
     console.error("Seller products POST error", error);
-    return jsonError(error?.message || "Server error", error?.status || 500);
+    return jsonError(error?.message || "Server error", error?.code || error?.status || 500);
   }
 }

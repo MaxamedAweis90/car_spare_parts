@@ -8,6 +8,7 @@ export interface ProductCardProps {
   name: string;
   price?: number | null;
   imageId?: string | null;
+  imageUrl?: string | null;
   href?: string;
   stock?: number | null;
 }
@@ -28,13 +29,14 @@ export default function ProductCard({
   name,
   price,
   imageId,
+  imageUrl: imageUrlProp,
   href,
   stock,
 }: ProductCardProps) {
   const cart = useCart();
   const priceDisplay = typeof price === "number" ? `£${price.toFixed(2)}` : "";
   const linkHref = href ?? `/products/${id}`;
-  const imageUrl = buildPublicProductImageUrl(imageId ?? null);
+  const imageUrl = imageUrlProp ?? buildPublicProductImageUrl(imageId ?? null);
   const canAddToCart = typeof price === "number" && (typeof stock !== "number" || stock > 0);
 
   const handleAddToCart: React.MouseEventHandler<HTMLButtonElement> = (e) => {
