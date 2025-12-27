@@ -1,374 +1,645 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import Chip from "@mui/material/Chip";
-import Divider from "@mui/material/Divider";
-import LinearProgress from "@mui/material/LinearProgress";
 import Button from "@mui/material/Button";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
 import TableCell from "@mui/material/TableCell";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
-import Avatar from "@mui/material/Avatar";
-import Tooltip from "@mui/material/Tooltip";
-import IconButton from "@mui/material/IconButton";
-import MonetizationOnOutlinedIcon from "@mui/icons-material/MonetizationOnOutlined";
-import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
-import ShoppingBagOutlinedIcon from "@mui/icons-material/ShoppingBagOutlined";
-import WarningAmberOutlinedIcon from "@mui/icons-material/WarningAmberOutlined";
-import LocalShippingOutlinedIcon from "@mui/icons-material/LocalShippingOutlined";
-import AddBoxOutlinedIcon from "@mui/icons-material/AddBoxOutlined";
-import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
-import TableRowsOutlinedIcon from "@mui/icons-material/TableRowsOutlined";
-import CircleIcon from "@mui/icons-material/Circle";
-import { getImageUrl } from "@/lib/appwrite/storage";
+import CircularProgress from "@mui/material/CircularProgress";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import { useSellerStore } from "@/lib/SellerStoreProvider";
 
-const SNAPSHOT = [
-  { label: "Active products", value: 128, delta: "+6 this week", icon: <Inventory2OutlinedIcon fontSize="small" />, color: "#3f5c45", spark: [34, 32, 36, 41, 44] },
-  { label: "Open orders", value: 18, delta: "+4 vs yesterday", icon: <ShoppingBagOutlinedIcon fontSize="small" />, color: "#956200", spark: [9, 11, 12, 15, 18] },
-  { label: "Revenue YTD", value: 12840, delta: "+12% MoM", icon: <MonetizationOnOutlinedIcon fontSize="small" />, color: "#1d3d83", spark: [8200, 9300, 10100, 11850, 12840] },
-  { label: "Stock alerts", value: 4, delta: "Needs attention", icon: <WarningAmberOutlinedIcon fontSize="small" />, color: "#a3410f", spark: [6, 5, 4, 4, 4] },
-];
+interface SellerStats {
+  totalVisits: number;
+  bounceRate: number;
+  returningUsers: number;
+  revenueData: Array<{ date: string; revenue: number }>;
+  lastWeekRevenue: Array<{ date: string; revenue: number }>;
+  customerStats: {
+    newCustomers: number;
+    returningCustomers: number;
+  };
+}
 
-const ORDERS = [
-  { id: "ORD-1041", product: "Ceramic Brake Kit", buyer: "Dev Patel", qty: 2, status: "New", total: 220 },
-  { id: "ORD-1040", product: "Alloy Wheel Set", buyer: "Lina Chen", qty: 1, status: "Processing", total: 540 },
-  { id: "ORD-1039", product: "Air Filter", buyer: "Sam Wilson", qty: 3, status: "Shipped", total: 90 },
-  { id: "ORD-1038", product: "Oil Pack", buyer: "Ravi Kumar", qty: 1, status: "Completed", total: 45 },
-];
-
-const INVENTORY_WATCH = [
-  { name: "Brake Pads", sku: "BR-401", qty: 6, status: "Low" },
-  { name: "Air Filter", sku: "EN-212", qty: 4, status: "Low" },
-  { name: "Spark Plug", sku: "EN-110", qty: 0, status: "Out" },
-  { name: "Oil Pack", sku: "FL-102", qty: 3, status: "Low" },
-];
-
-const QUICK_TASKS = [
-  "Publish draft products",
-  "Confirm new orders",
-  "Upload store logo",
-  "Add tracking numbers",
-];
-
-const WEEKLY_SALES = [
-  { label: "Mon", value: 18 },
-  { label: "Tue", value: 32 },
-  { label: "Wed", value: 46 },
-  { label: "Thu", value: 34 },
-  { label: "Fri", value: 64 },
-  { label: "Sat", value: 58 },
-  { label: "Sun", value: 42 },
-];
-
-const FULFILLMENT = [
-  { label: "Pending", value: 14, color: "#f59e0b" },
-  { label: "Processing", value: 22, color: "#2563eb" },
-  { label: "Shipped", value: 28, color: "#0f766e" },
-  { label: "Completed", value: 36, color: "#1f2937" },
-];
-
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
+interface Transaction {
+  id: string;
+  date: string;
+  amount: number;
+  status: string;
 }
 
 export default function SellerDashboardPage() {
   const { store } = useSellerStore();
-  const storeSlug = store?.storeSlug ?? null;
+  const [stats, setStats] = useState<SellerStats | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [transactionsLoading, setTransactionsLoading] = useState(true);
 
-  const storeAvatarUrl = useMemo(() => {
-    if (!store?.storeAvatarId) return null;
-    try {
-      return getImageUrl("storeAvatars", store.storeAvatarId);
-    } catch (error) {
-      console.error("Failed to resolve store avatar", error);
-      return null;
+  const sellerId = store?.sellerId;
+
+  useEffect(() => {
+    if (!sellerId) return;
+
+    const fetchStats = async () => {
+      try {
+        setStatsLoading(true);
+        const statsRes = await fetch(`/api/seller/stats?sellerId=${sellerId}`);
+        const statsData = await statsRes.json();
+        if (statsData.success) {
+          setStats(statsData.stats);
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard stats:", error);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
+
+    const fetchTransactions = async () => {
+      try {
+        setTransactionsLoading(true);
+        const ordersRes = await fetch(`/api/orders?sellerId=${sellerId}`);
+        const ordersData = await ordersRes.json();
+        if (ordersData.success) {
+          const recentTransactions = ordersData.orders
+            .slice(0, 5)
+            .map((order: any) => ({
+              id: order.$id,
+              date: new Date(order.createdAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
+              amount: order.totalPrice,
+              status: order.status,
+            }));
+          setTransactions(recentTransactions);
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard transactions:", error);
+      } finally {
+        setTransactionsLoading(false);
+      }
+    };
+
+    void fetchStats();
+    void fetchTransactions();
+  }, [sellerId]);
+
+  // Initialize charts
+  useEffect(() => {
+    if (!stats || typeof window === "undefined") return;
+
+    const interval = setInterval(() => {
+      if ((window as any).Chart) {
+        clearInterval(interval);
+        initCharts();
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [stats]);
+
+  const initCharts = () => {
+    const Chart = (window as any).Chart;
+    if (!Chart || !stats) return;
+
+    // Revenue Chart
+    const revenueCtx = document.getElementById(
+      "revenueChart"
+    ) as HTMLCanvasElement;
+    if (revenueCtx) {
+      const existing = Chart.getChart("revenueChart");
+      if (existing) existing.destroy();
+
+      const labels = stats.revenueData.map((d) => {
+        const date = new Date(d.date);
+        return date.toLocaleDateString("en-US", { weekday: "short" });
+      });
+
+      new Chart(revenueCtx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [
+            {
+              label: "This Week",
+              data: stats.revenueData.map((d) => d.revenue),
+              borderColor: "#7cb342",
+              backgroundColor: "rgba(124, 179, 66, 0.1)",
+              borderWidth: 3,
+              tension: 0.4,
+              fill: true,
+              pointBackgroundColor: "#7cb342",
+              pointBorderColor: "#fff",
+              pointBorderWidth: 2,
+              pointRadius: 4,
+            },
+            {
+              label: "Last Week",
+              data: stats.lastWeekRevenue.map((d) => d.revenue),
+              borderColor: "#ffa726",
+              backgroundColor: "rgba(255, 167, 38, 0.1)",
+              borderWidth: 3,
+              tension: 0.4,
+              fill: true,
+              pointBackgroundColor: "#ffa726",
+              pointBorderColor: "#fff",
+              pointBorderWidth: 2,
+              pointRadius: 4,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              position: "top",
+              align: "end",
+              labels: {
+                usePointStyle: true,
+                padding: 15,
+                font: { size: 12, weight: "bold" },
+              },
+            },
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: "#f0f0f0", drawBorder: false },
+              ticks: {
+                callback: (value: any) => `£${value}`,
+                font: { size: 11 },
+              },
+            },
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 11 } },
+            },
+          },
+        },
+      });
     }
-  }, [store?.storeAvatarId]);
+
+    // Customer Donut Chart
+    const customerCtx = document.getElementById(
+      "customerChart"
+    ) as HTMLCanvasElement;
+    if (customerCtx) {
+      const existing = Chart.getChart("customerChart");
+      if (existing) existing.destroy();
+
+      const total =
+        stats.customerStats.newCustomers +
+        stats.customerStats.returningCustomers;
+      const percentage =
+        total > 0
+          ? Math.round((stats.customerStats.returningCustomers / total) * 100)
+          : 0;
+
+      new Chart(customerCtx, {
+        type: "doughnut",
+        data: {
+          labels: ["Current Customers", "New Customers"],
+          datasets: [
+            {
+              data: [
+                stats.customerStats.returningCustomers,
+                stats.customerStats.newCustomers,
+              ],
+              backgroundColor: ["#7cb342", "#e0e0e0"],
+              borderWidth: 0,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "70%",
+          plugins: {
+            legend: {
+              display: true,
+              position: "bottom",
+              labels: {
+                usePointStyle: true,
+                padding: 15,
+                font: { size: 12 },
+              },
+            },
+            tooltip: {
+              callbacks: {
+                label: (context: any) => {
+                  const label = context.label || "";
+                  const value = context.parsed || 0;
+                  return `${label}: ${value}`;
+                },
+              },
+            },
+          },
+        },
+        plugins: [
+          {
+            id: "centerText",
+            beforeDraw: (chart: any) => {
+              const { width, height, ctx } = chart;
+              ctx.restore();
+              const fontSize = (height / 114).toFixed(2);
+              ctx.font = `bold ${fontSize}em sans-serif`;
+              ctx.textBaseline = "middle";
+              ctx.fillStyle = "#333";
+              const text = `${percentage}%`;
+              const textX = Math.round(
+                (width - ctx.measureText(text).width) / 2
+              );
+              const textY = height / 2;
+              ctx.fillText(text, textX, textY);
+              ctx.save();
+            },
+          },
+        ],
+      });
+    }
+  };
+
+  // if (loading) {
+  //   return (
+  //     <Box
+  //       sx={{
+  //         display: "flex",
+  //         alignItems: "center",
+  //         justifyContent: "center",
+  //         minHeight: "60vh",
+  //       }}
+  //     >
+  //       <CircularProgress color="warning" />
+  //     </Box>
+  //   );
+  // }
+
+  const statCards = [
+    {
+      label: "Total Visits",
+      value: stats?.totalVisits || 0,
+      change: "+14.5%",
+      sparkline: [42, 45, 48, 46, 50, 52, 49],
+    },
+    {
+      label: "Bounce Rate",
+      value: `${stats?.bounceRate || 0}%`,
+      change: "-3.1%",
+      sparkline: [35, 32, 30, 28, 26, 25, 24],
+    },
+    {
+      label: "Returning Users",
+      value: stats?.returningUsers || 0,
+      change: "+23.8%",
+      sparkline: [18, 20, 22, 25, 28, 30, 32],
+    },
+  ];
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: 3, bgcolor: "transparent", p: { xs: 1.5, md: 0 } }}>
-      <Paper
-        elevation={0}
-        sx={{
-          borderRadius: 3,
-          p: { xs: 2, md: 3 },
-          border: "1px solid #ece8de",
-          background: "linear-gradient(135deg, #fbfaf7 0%, #f2eee5 55%, #ffffff 100%)",
-        }}
-      >
-        <Stack direction={{ xs: "column", md: "row" }} alignItems={{ xs: "flex-start", md: "center" }} justifyContent="space-between" spacing={2}>
-          <div className="flex flex-col gap-3">
-            <Stack direction="row" spacing={2} alignItems="center">
-              <Avatar src={storeAvatarUrl || undefined} sx={{ width: 64, height: 64, borderRadius: 2, bgcolor: "#111827" }}>
-                {(store?.storeName || "Store").slice(0, 2).toUpperCase()}
-              </Avatar>
-              <div>
-                <Typography variant="subtitle2" color="text.secondary" fontWeight={800}>
-                  {store?.storeSlug ? `Storefront / ${store.storeSlug}` : "Storefront"}
-                </Typography>
-                <Typography variant="h5" fontWeight={900}>
-                  {store?.storeName || "Seller control center"}
-                </Typography>
-              </div>
-            </Stack>
-            <Typography variant="overline" color="text.secondary" fontWeight={800}>
-              Seller control center
-            </Typography>
-            <Typography variant="h5" fontWeight={900}>
-              Health, fulfillment, and growth snapshot
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Review the latest performance signals and jump into the next action fast.
-            </Typography>
-          </div>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={1} width={{ xs: "100%", sm: "auto" }}>
-            <Button
-              variant="outlined"
-              startIcon={<VisibilityOutlinedIcon />}
-              color="inherit"
-              fullWidth
-              href={storeSlug ? `/stores/${storeSlug}` : undefined}
-              disabled={!storeSlug}
-            >
-              View storefront
-            </Button>
-            <Button variant="contained" startIcon={<AddBoxOutlinedIcon />} disableElevation href="/seller/products/new" fullWidth>
-              Add product
-            </Button>
-          </Stack>
-        </Stack>
-      </Paper>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 3,
+        p: 0,
+      }}
+    >
+      {/* Header */}
+      <Box>
+        <Typography variant="h4" fontWeight={900} gutterBottom>
+          Dashboard
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          All details about your selling products are here.
+        </Typography>
+      </Box>
 
+      {/* Stat Cards */}
       <Box
         sx={{
           display: "grid",
           gap: 2,
           gridTemplateColumns: {
             xs: "1fr",
-            sm: "repeat(2, minmax(0, 1fr))",
-            lg: "repeat(4, minmax(0, 1fr))",
+            sm: "repeat(2, 1fr)",
+            md: "repeat(3, 1fr)",
           },
         }}
       >
-        {SNAPSHOT.map((item) => (
-          <Paper key={item.label} elevation={0} sx={{ borderRadius: 2.5, border: "1px solid #ece8de", bgcolor: "#fff", p: 2, display: "flex", gap: 1.25 }}>
-            <Avatar sx={{ width: 44, height: 44, bgcolor: `${item.color}20`, color: item.color }}>{item.icon}</Avatar>
-            <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" color="text.secondary" fontWeight={700}>
-                {item.label}
-              </Typography>
-              <Typography variant="h6" fontWeight={900}>
-                {item.label === "Revenue YTD" ? formatCurrency(item.value) : item.value}
-              </Typography>
-              <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.5 }}>
-                <CircleIcon sx={{ fontSize: 8, color: item.label === "Stock alerts" ? "#d97706" : "#0f766e" }} />
-                <Typography variant="caption" color="text.secondary">
-                  {item.delta}
+        {statCards.map((card, index) => (
+          <Paper
+            key={card.label}
+            elevation={0}
+            sx={{
+              borderRadius: 3,
+              background: statsLoading
+                ? "#fff"
+                : "linear-gradient(135deg, #7cb342 0%, #9ccc65 100%)",
+              border: statsLoading ? "1px solid #e0e0e0" : "none",
+              p: 2.5,
+              color: statsLoading ? "text.secondary" : "#fff",
+              position: "relative",
+              overflow: "hidden",
+              minHeight: 160,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+            }}
+          >
+            {statsLoading ? (
+              <Stack alignItems="center" justifyContent="center" spacing={1}>
+                <CircularProgress size={20} color="inherit" />
+                <Typography variant="caption">
+                  Loading {card.label}...
                 </Typography>
               </Stack>
-              <Box sx={{ mt: 1, display: "flex", alignItems: "flex-end", gap: 0.5, height: 36 }}>
-                {item.spark.map((value, index) => {
-                  const max = Math.max(...item.spark);
-                  return (
-                    <Box key={`${item.label}-${index}`} sx={{ width: 7, borderRadius: 9999, bgcolor: `${item.color}55` }} style={{ height: `${Math.max(12, (value / max) * 34)}%` }} />
-                  );
-                })}
-              </Box>
-            </Box>
+            ) : (
+              <>
+                <Typography
+                  variant="body2"
+                  sx={{ opacity: 0.9, fontWeight: 600, mb: 1 }}
+                >
+                  {card.label}
+                </Typography>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  spacing={1}
+                  sx={{ mb: 1.5 }}
+                >
+                  <Typography variant="h4" fontWeight={900}>
+                    {card.value}
+                  </Typography>
+                  <Chip
+                    label={card.change}
+                    size="small"
+                    sx={{
+                      bgcolor: "rgba(255,255,255,0.2)",
+                      color: "#fff",
+                      fontWeight: 700,
+                      fontSize: "0.7rem",
+                    }}
+                  />
+                </Stack>
+
+                {/* Mini Sparkline */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "flex-end",
+                    gap: 0.5,
+                    height: 40,
+                    mt: 2,
+                  }}
+                >
+                  {card.sparkline.map((value, idx) => {
+                    const max = Math.max(...card.sparkline);
+                    const height = (value / max) * 100;
+                    return (
+                      <Box
+                        key={idx}
+                        sx={{
+                          flex: 1,
+                          bgcolor: "rgba(255,255,255,0.3)",
+                          borderRadius: 1,
+                          transition: "all 0.3s",
+                          "&:hover": { bgcolor: "rgba(255,255,255,0.5)" },
+                        }}
+                        style={{ height: `${height}%` }}
+                      />
+                    );
+                  })}
+                </Box>
+              </>
+            )}
           </Paper>
         ))}
       </Box>
 
+      {/* Charts Row */}
       <Box
         sx={{
           display: "grid",
           gap: 2,
           gridTemplateColumns: { xs: "1fr", md: "2fr 1fr" },
-          alignItems: "stretch",
         }}
       >
-        <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.75 } }}>
-          <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1.5} sx={{ mb: 2 }}>
-            <div>
-              <Typography variant="subtitle1" fontWeight={900}>
-                Weekly sales trend
+        {/* Revenue Chart */}
+        <Paper
+          elevation={0}
+          sx={{
+            borderRadius: 3,
+            border: "1px solid #e0e0e0",
+            bgcolor: "#fff",
+            p: 3,
+          }}
+        >
+          <Stack
+            direction="row"
+            justifyContent="space-between"
+            alignItems="center"
+            sx={{ mb: 2 }}
+          >
+            <Box>
+              <Typography variant="h6" fontWeight={900}>
+                Revenue
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Traffic and paid order volume across the last seven days.
-              </Typography>
-            </div>
-            <Chip label="Last 7 days" size="small" sx={{ bgcolor: "#f9f7f2", border: "1px solid #ece8de" }} />
-          </Stack>
-
-          <Box sx={{ position: "relative", height: 240, borderRadius: 12, border: "1px solid #f0eae1", bgcolor: "#fbf9f4", p: 2, display: "grid", alignItems: "end" }}>
-            <Divider sx={{ position: "absolute", bottom: 72, left: 24, right: 24, borderColor: "#e8e0d2" }} />
-            <Divider sx={{ position: "absolute", bottom: 144, left: 24, right: 24, borderColor: "#e8e0d2" }} />
-            <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 1.2, alignItems: "end", height: "100%" }}>
-              {WEEKLY_SALES.map((entry) => (
-                <Stack key={entry.label} spacing={1} alignItems="center">
+              <Stack direction="row" spacing={2} sx={{ mt: 0.5 }}>
+                <Stack direction="row" spacing={0.5} alignItems="center">
                   <Box
                     sx={{
-                      width: "70%",
-                      height: `${Math.max(12, entry.value)}%`,
-                      maxHeight: "100%",
-                      bgcolor: "#1f2937",
-                      borderRadius: "12px 12px 6px 6px",
-                      boxShadow: "0 10px 20px rgba(17, 24, 39, 0.12)",
-                      transition: "height 0.25s ease",
+                      width: 12,
+                      height: 12,
+                      borderRadius: "50%",
+                      bgcolor: "#7cb342",
                     }}
                   />
                   <Typography variant="caption" color="text.secondary">
-                    {entry.label}
+                    This week
                   </Typography>
                 </Stack>
-              ))}
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <Box
+                    sx={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: "50%",
+                      bgcolor: "#ffa726",
+                    }}
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    Last week
+                  </Typography>
+                </Stack>
+              </Stack>
             </Box>
+          </Stack>
+          <Box
+            sx={{
+              position: "relative",
+              height: 280,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {statsLoading ? (
+              <Stack alignItems="center" spacing={2}>
+                <CircularProgress color="warning" />
+                <Typography variant="body2" color="text.secondary">
+                  Loading revenue data...
+                </Typography>
+              </Stack>
+            ) : (
+              <canvas
+                id="revenueChart"
+                style={{ width: "100%", height: "100%" }}
+              ></canvas>
+            )}
           </Box>
         </Paper>
-        <Box sx={{ display: "grid", gap: 2 }}>
-          <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.5 } }}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
-              <Typography variant="subtitle1" fontWeight={900}>
-                Fulfillment mix
-              </Typography>
-              <Chip label="Today" size="small" sx={{ bgcolor: "#f9f7f2", border: "1px solid #ece8de" }} />
-            </Stack>
-            <Stack spacing={1.5}>
-              {FULFILLMENT.map((item) => (
-                <Stack key={item.label} spacing={0.5}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center">
-                    <Typography variant="body2" fontWeight={800}>{item.label}</Typography>
-                    <Typography variant="caption" color="text.secondary">{item.value}%</Typography>
-                  </Stack>
-                  <LinearProgress
-                    variant="determinate"
-                    value={item.value}
-                    sx={{ height: 8, borderRadius: 9999, bgcolor: "#f3ede4", "& .MuiLinearProgress-bar": { bgcolor: item.color } }}
-                  />
-                </Stack>
-              ))}
-            </Stack>
-          </Paper>
 
-          <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.5 } }}>
-            <Typography variant="subtitle1" fontWeight={900} sx={{ mb: 1 }}>
-              Quick actions
-            </Typography>
-            <Stack spacing={1.2}>
-              {QUICK_TASKS.map((action, index) => (
-                <Stack key={action} direction="row" alignItems="center" spacing={1.25}>
-                  <Avatar sx={{ width: 28, height: 28, bgcolor: "#1f2937", fontSize: 12 }}>{index + 1}</Avatar>
-                  <Typography variant="body2" fontWeight={700}>
-                    {action}
-                  </Typography>
-                </Stack>
-              ))}
-            </Stack>
-          </Paper>
-        </Box>
+        {/* Customer Chart */}
+        <Paper
+          elevation={0}
+          sx={{
+            borderRadius: 3,
+            border: "1px solid #e0e0e0",
+            bgcolor: "#fff",
+            p: 3,
+          }}
+        >
+          <Typography variant="h6" fontWeight={900} sx={{ mb: 2 }}>
+            Customers
+          </Typography>
+          <Box
+            sx={{
+              position: "relative",
+              height: 280,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {statsLoading ? (
+              <Stack alignItems="center" spacing={2}>
+                <CircularProgress color="warning" />
+                <Typography variant="body2" color="text.secondary">
+                  Loading insights...
+                </Typography>
+              </Stack>
+            ) : (
+              <canvas
+                id="customerChart"
+                style={{ width: "100%", height: "100%" }}
+              ></canvas>
+            )}
+          </Box>
+        </Paper>
       </Box>
 
-      <Box
+      {/* Recent Transactions */}
+      <Paper
+        elevation={0}
         sx={{
-          display: "grid",
-          gap: 2,
-          gridTemplateColumns: { xs: "1fr", lg: "2fr 1fr" },
-          alignItems: "stretch",
+          borderRadius: 3,
+          border: "1px solid #e0e0e0",
+          bgcolor: "#fff",
+          p: 3,
         }}
       >
-        <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.5 } }}>
-          <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "flex-start", sm: "center" }} justifyContent="space-between" spacing={1.5} sx={{ mb: 1.5 }}>
-            <Typography variant="subtitle1" fontWeight={900}>
-              Recent orders
-            </Typography>
-            <Stack direction="row" spacing={1}>
-              <Button size="small" variant="outlined" startIcon={<LocalShippingOutlinedIcon />} color="inherit">
-                Ship queue
-              </Button>
-              <Button size="small" variant="text" href="/seller/orders">
-                View all
-              </Button>
-            </Stack>
-          </Stack>
-          <Divider sx={{ mb: 1 }} />
-          <Table size="small" sx={{ "& th": { bgcolor: "#fbf9f4", fontWeight: 800, color: "#3b3325", borderColor: "#f0eae1" }, "& td": { borderColor: "#f3ede4" } }}>
-            <TableHead>
-              <TableRow>
-                <TableCell>Order</TableCell>
-                <TableCell>Product</TableCell>
-                <TableCell>Buyer</TableCell>
-                <TableCell align="right">Qty</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell align="right">Total</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {ORDERS.map((order) => (
-                <TableRow key={order.id} hover>
-                  <TableCell>{order.id}</TableCell>
-                  <TableCell>{order.product}</TableCell>
-                  <TableCell>{order.buyer}</TableCell>
-                  <TableCell align="right">{order.qty}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={order.status}
-                      size="small"
-                      color={order.status === "Completed" ? "success" : order.status === "Shipped" ? "info" : order.status === "Processing" ? "warning" : "default"}
-                      variant={order.status === "New" ? "outlined" : "filled"}
-                      sx={{ fontWeight: 700, borderRadius: 1.5 }}
-                    />
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{ mb: 2 }}
+        >
+          <Typography variant="h6" fontWeight={900}>
+            Recent Transaction
+          </Typography>
+          <Button size="small" href="/seller/orders">
+            View All
+          </Button>
+        </Stack>
+
+        <Box sx={{ overflowX: "auto" }}>
+          {transactionsLoading ? (
+            <Box
+              sx={{
+                py: 4,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
+              }}
+            >
+              <CircularProgress size={30} color="warning" />
+              <Typography variant="body2" color="text.secondary">
+                Fetching transactions...
+              </Typography>
+            </Box>
+          ) : transactions.length === 0 ? (
+            <Box sx={{ py: 4, textAlign: "center" }}>
+              <Typography variant="body2" color="text.secondary">
+                No recent transactions found.
+              </Typography>
+            </Box>
+          ) : (
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 700 }}>Transaction ID</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    Amount
                   </TableCell>
-                  <TableCell align="right">{formatCurrency(order.total)}</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Paper>
-        <Paper elevation={0} sx={{ borderRadius: 3, border: "1px solid #ece8de", bgcolor: "#fff", p: { xs: 2, md: 2.5 } }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
-            <Typography variant="subtitle1" fontWeight={900}>
-              Inventory watchlist
-            </Typography>
-            <Tooltip title="Manage products">
-              <IconButton size="small" href="/seller/products" component="a">
-                <TableRowsOutlinedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
-          </Stack>
-          <Stack spacing={1.2}>
-            {INVENTORY_WATCH.map((item) => {
-              const color = item.status === "Out" ? "error" : item.status === "Low" ? "warning" : "success";
-              return (
-                <Paper key={item.sku} variant="outlined" sx={{ p: 1.5, borderColor: "#e5dece", borderRadius: 2 }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                    <div>
-                      <Typography variant="body2" fontWeight={800}>{item.name}</Typography>
-                      <Typography variant="caption" color="text.secondary">SKU {item.sku}</Typography>
-                    </div>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Chip label={`${item.qty} in stock`} size="small" color={color as any} variant={item.status === "Healthy" ? "outlined" : "filled"} sx={{ borderRadius: 1.5 }} />
-                      <Chip label={item.status} size="small" color={color as any} variant="outlined" sx={{ borderRadius: 1.5 }} />
-                    </Stack>
-                  </Stack>
-                  <LinearProgress
-                    variant="determinate"
-                    value={item.status === "Out" ? 0 : Math.min(100, (item.qty / 12) * 100)}
-                    color={color as any}
-                    sx={{ mt: 1, borderRadius: 9999, height: 6 }}
-                  />
-                </Paper>
-              );
-            })}
-          </Stack>
-        </Paper>
-      </Box>
+              </TableHead>
+              <TableBody>
+                {transactions.map((transaction) => (
+                  <TableRow key={transaction.id} hover>
+                    <TableCell>
+                      #{transaction.id.slice(-6).toUpperCase()}
+                    </TableCell>
+                    <TableCell>{transaction.date}</TableCell>
+                    <TableCell align="right">
+                      £{transaction.amount.toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={transaction.status}
+                        size="small"
+                        color={
+                          transaction.status === "completed"
+                            ? "success"
+                            : transaction.status === "pending"
+                            ? "warning"
+                            : "default"
+                        }
+                        sx={{ fontWeight: 700, textTransform: "capitalize" }}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </Box>
+      </Paper>
     </Box>
   );
 }

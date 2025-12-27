@@ -9,6 +9,7 @@ export default function AdminLoginClient() {
   const { authenticated, profile, loading } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const shouldHide = loading || authenticated;
@@ -72,7 +73,9 @@ export default function AdminLoginClient() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-extrabold text-slate-900 mb-4">Admin Login</h1>
+        <h1 className="text-2xl font-extrabold text-slate-900 mb-4">
+          Admin Login
+        </h1>
         <form onSubmit={handleSubmit} className="space-y-3">
           <label className="block text-sm font-semibold text-slate-700">
             Email
@@ -87,13 +90,28 @@ export default function AdminLoginClient() {
 
           <label className="block text-sm font-semibold text-slate-700">
             Password
-            <input
-              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+            <div className="relative mt-2">
+              <input
+                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 pr-10"
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                <i
+                  className={`fa-regular ${
+                    showPassword ? "fa-eye-slash" : "fa-eye"
+                  }`}
+                  aria-hidden
+                ></i>
+              </button>
+            </div>
           </label>
 
           <button
@@ -105,7 +123,9 @@ export default function AdminLoginClient() {
           </button>
         </form>
 
-        {message && <p className="mt-3 text-sm font-semibold text-slate-700">{message}</p>}
+        {message && (
+          <p className="mt-3 text-sm font-semibold text-slate-700">{message}</p>
+        )}
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ export default function RegisterClient() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const shouldHide = sessionLoading || authenticated;
@@ -34,7 +35,13 @@ export default function RegisterClient() {
     if (profile?.role === "admin" || profile?.role === "main_admin") {
       router.replace("/admin");
     }
-  }, [authenticated, profile?.role, profile?.sellerApproved, sessionLoading, router]);
+  }, [
+    authenticated,
+    profile?.role,
+    profile?.sellerApproved,
+    sessionLoading,
+    router,
+  ]);
 
   if (shouldHide) return null;
 
@@ -79,10 +86,15 @@ export default function RegisterClient() {
 
   const handleGoogleSignup = async () => {
     try {
-      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "";
       const success = `${origin}/auth/callback`;
       const failure = `${origin}/auth/register?error=oauth`;
-      await accountClient.createOAuth2Session(OAuthProvider.Google, success, failure);
+      await accountClient.createOAuth2Session(
+        OAuthProvider.Google,
+        success,
+        failure
+      );
     } catch (err) {
       console.error(err);
       setMessage("Google sign-up failed. Try email instead.");
@@ -93,8 +105,12 @@ export default function RegisterClient() {
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_35%)] bg-[#f7f9fc] flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-xl rounded-3xl bg-white p-8 shadow-[0_30px_80px_rgba(15,23,42,0.08)]">
         <div className="text-center mb-6">
-          <h1 className="text-2xl font-extrabold text-slate-900">Create Account</h1>
-          <p className="text-sm text-slate-600 mt-1">Join us to manage orders and save your cart.</p>
+          <h1 className="text-2xl font-extrabold text-slate-900">
+            Create Account
+          </h1>
+          <p className="text-sm text-slate-600 mt-1">
+            Join us to manage orders and save your cart.
+          </p>
         </div>
 
         {message && (
@@ -143,7 +159,10 @@ export default function RegisterClient() {
           <label className="block text-sm font-semibold text-slate-700">
             Email
             <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-[#1d4ed8] focus-within:ring-2 focus-within:ring-[#1d4ed8]/20">
-              <i className="fa-regular fa-envelope text-slate-500" aria-hidden></i>
+              <i
+                className="fa-regular fa-envelope text-slate-500"
+                aria-hidden
+              ></i>
               <input
                 className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
                 type="email"
@@ -161,14 +180,30 @@ export default function RegisterClient() {
               <i className="fa-regular fa-lock text-slate-500" aria-hidden></i>
               <input
                 className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                minLength={8}
                 placeholder="••••••••"
               />
-              <i className="fa-regular fa-eye text-slate-400" aria-hidden></i>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-slate-400 hover:text-slate-600 focus:outline-none"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                <i
+                  className={`fa-regular ${
+                    showPassword ? "fa-eye-slash" : "fa-eye"
+                  }`}
+                  aria-hidden
+                ></i>
+              </button>
             </div>
+            <p className="mt-1 text-xs text-slate-500">
+              Must be at least 8 characters
+            </p>
           </label>
 
           <button
@@ -182,7 +217,10 @@ export default function RegisterClient() {
 
         <div className="mt-6 text-center text-sm text-slate-600">
           Already have an account?{" "}
-          <a className="font-semibold text-[#1d4ed8] hover:underline" href="/auth/login">
+          <a
+            className="font-semibold text-[#1d4ed8] hover:underline"
+            href="/auth/login"
+          >
             Sign In
           </a>
         </div>

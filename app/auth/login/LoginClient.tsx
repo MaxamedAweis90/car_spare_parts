@@ -22,6 +22,7 @@ function LoginClientContent() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const shouldHide = loading || authenticated;
@@ -100,7 +101,9 @@ function LoginClientContent() {
       <div className="w-full max-w-xl rounded-3xl bg-white p-8 shadow-[0_30px_80px_rgba(15,23,42,0.08)]">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-extrabold text-slate-900">Sign In</h1>
-          <p className="text-sm text-slate-600 mt-1">Welcome back, you&apos;ve been missed!</p>
+          <p className="text-sm text-slate-600 mt-1">
+            Welcome back, you&apos;ve been missed!
+          </p>
         </div>
 
         {oauthError && (
@@ -139,7 +142,10 @@ function LoginClientContent() {
           <label className="block text-sm font-semibold text-slate-700">
             Email
             <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-[#1d4ed8] focus-within:ring-2 focus-within:ring-[#1d4ed8]/20">
-              <i className="fa-regular fa-envelope text-slate-500" aria-hidden></i>
+              <i
+                className="fa-regular fa-envelope text-slate-500"
+                aria-hidden
+              ></i>
               <input
                 className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
                 type="email"
@@ -157,13 +163,25 @@ function LoginClientContent() {
               <i className="fa-regular fa-lock text-slate-500" aria-hidden></i>
               <input
                 className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 placeholder="••••••••"
               />
-              <i className="fa-regular fa-eye text-slate-400" aria-hidden></i>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-slate-400 hover:text-slate-600 focus:outline-none"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                <i
+                  className={`fa-regular ${
+                    showPassword ? "fa-eye-slash" : "fa-eye"
+                  }`}
+                  aria-hidden
+                ></i>
+              </button>
             </div>
           </label>
 
@@ -175,7 +193,10 @@ function LoginClientContent() {
               />
               <span>Remember me</span>
             </label>
-            <a className="font-semibold text-[#1d4ed8] hover:underline" href="/auth/login">
+            <a
+              className="font-semibold text-[#1d4ed8] hover:underline"
+              href="/auth/login"
+            >
               Forgot password?
             </a>
           </div>
@@ -191,7 +212,10 @@ function LoginClientContent() {
 
         <div className="mt-6 text-center text-sm text-slate-600">
           You haven&apos;t any account?{" "}
-          <a className="font-semibold text-[#1d4ed8] hover:underline" href="/auth/register">
+          <a
+            className="font-semibold text-[#1d4ed8] hover:underline"
+            href="/auth/register"
+          >
             Sign Up
           </a>
         </div>

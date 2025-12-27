@@ -19,7 +19,9 @@ function buildPublicProductImageUrl(fileId?: string | null) {
   const project = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
   const bucket = process.env.NEXT_PUBLIC_APPWRITE_PRODUCT_BUCKET_ID;
   if (!endpoint || !project || !bucket) return null;
-  const url = new URL(`${endpoint}/storage/buckets/${bucket}/files/${fileId}/view`);
+  const url = new URL(
+    `${endpoint}/storage/buckets/${bucket}/files/${fileId}/view`
+  );
   url.searchParams.set("project", project);
   return url.toString();
 }
@@ -37,13 +39,20 @@ export default function ProductCard({
   const priceDisplay = typeof price === "number" ? `£${price.toFixed(2)}` : "";
   const linkHref = href ?? `/products/${id}`;
   const imageUrl = imageUrlProp ?? buildPublicProductImageUrl(imageId ?? null);
-  const canAddToCart = typeof price === "number" && (typeof stock !== "number" || stock > 0);
+  const canAddToCart =
+    typeof price === "number" && (typeof stock !== "number" || stock > 0);
 
   const handleAddToCart: React.MouseEventHandler<HTMLButtonElement> = (e) => {
     e.preventDefault();
     e.stopPropagation();
     if (!canAddToCart) return;
-    cart.addItem({ id, name, price: price as number, imageId: imageId ?? null });
+    cart.addItem({
+      id,
+      name,
+      price: price as number,
+      imageId: imageId ?? null,
+      imageUrl: imageUrl ?? null,
+    });
     cart.openCart();
   };
 
@@ -62,13 +71,21 @@ export default function ProductCard({
             loading="lazy"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs sm:text-sm text-(--color-muted)">No image</div>
+          <div className="flex h-full w-full items-center justify-center text-xs sm:text-sm text-(--color-muted)">
+            No image
+          </div>
         )}
       </div>
 
       <div className="flex flex-1 flex-col gap-2 px-3 py-3 sm:px-4 sm:py-4">
-        <h3 className="line-clamp-2 text-sm sm:text-base font-bold leading-snug text-(--color-text) group-hover:text-(--color-primary)">{name}</h3>
-        {priceDisplay && <div className="text-base sm:text-lg font-black text-(--color-text)">{priceDisplay}</div>}
+        <h3 className="line-clamp-2 text-sm sm:text-base font-bold leading-snug text-(--color-text) group-hover:text-(--color-primary)">
+          {name}
+        </h3>
+        {priceDisplay && (
+          <div className="text-base sm:text-lg font-black text-(--color-text)">
+            {priceDisplay}
+          </div>
+        )}
 
         <div className="mt-auto flex items-center justify-between gap-3 pt-1">
           {typeof stock === "number" ? (
@@ -86,9 +103,12 @@ export default function ProductCard({
             onClick={handleAddToCart}
             disabled={!canAddToCart}
             aria-label="Add to cart"
-            className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full border border-(--color-border) text-(--color-muted) transition group-hover:border-(--color-primary) group-hover:text-(--color-primary) disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)] transition-all duration-200 hover:border-[var(--color-accent)] hover:bg-[var(--color-accent)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50 shadow-sm hover:shadow-md"
           >
-            <i className="fa-solid fa-cart-shopping text-sm sm:text-base" aria-hidden></i>
+            <i
+              className="fa-solid fa-cart-shopping text-sm sm:text-base"
+              aria-hidden
+            ></i>
           </button>
         </div>
       </div>

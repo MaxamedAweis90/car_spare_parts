@@ -31,14 +31,19 @@ export default function Button({
   ...props
 }: ButtonProps) {
   // Base styles
-  const baseStyles = "inline-flex items-center justify-center font-bold transition-all duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed";
+  const baseStyles =
+    "inline-flex items-center justify-center font-bold transition-all duration-200 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed";
 
   // Variant styles
   const variants = {
-    primary: "bg-[var(--color-primary)] text-[var(--color-accent)] hover:bg-[var(--color-primary-strong)] border border-transparent",
-    secondary: "bg-[var(--color-accent)] text-white hover:bg-black border border-transparent",
-    outline: "bg-transparent border-2 border-[var(--color-border-strong)] text-[var(--color-text)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]",
-    ghost: "bg-transparent text-[var(--color-text)] hover:bg-black/5",
+    primary:
+      "bg-[var(--color-primary)] text-[var(--color-primary-foreground)] hover:brightness-110 border border-transparent shadow-sm",
+    secondary:
+      "bg-[var(--color-accent)] text-[var(--color-accent-foreground)] hover:brightness-110 border border-transparent shadow-sm",
+    outline:
+      "bg-transparent border-2 border-[var(--color-border-strong)] text-[var(--color-text)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]",
+    ghost:
+      "bg-transparent text-[var(--color-text)] hover:bg-[var(--color-surface-hover)]",
     link: "bg-transparent text-[var(--color-primary)] hover:underline p-0 h-auto",
   };
 
@@ -63,7 +68,9 @@ export default function Button({
     ${variant !== "link" ? sizes[size] : "text-sm gap-1"} 
     ${roundness[rounded]}
     ${className}
-  `.trim().replace(/\s+/g, " ");
+  `
+    .trim()
+    .replace(/\s+/g, " ");
 
   // Content with icons and loading state
   const content = (
@@ -71,17 +78,21 @@ export default function Button({
       {isLoading && (
         <i className="fa-solid fa-circle-notch fa-spin text-current"></i>
       )}
-      {!isLoading && leftIcon && <span className="flex items-center">{leftIcon}</span>}
+      {!isLoading && leftIcon && (
+        <span className="flex items-center">{leftIcon}</span>
+      )}
       <span>{children}</span>
-      {!isLoading && rightIcon && <span className="flex items-center">{rightIcon}</span>}
+      {!isLoading && rightIcon && (
+        <span className="flex items-center">{rightIcon}</span>
+      )}
     </>
   );
 
   // Render as Link if href is present
   if (href) {
     return (
-      <Link 
-        href={href} 
+      <Link
+        href={href}
         className={combinedClassName}
         aria-disabled={disabled || isLoading}
       >

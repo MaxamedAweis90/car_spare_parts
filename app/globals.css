@@ -20,7 +20,7 @@ body {
 
 html,
 body {
-  overflow-x: hidden;
+  /* overflow-x: hidden; removed to allow sticky navbar */
 }
 
 img,

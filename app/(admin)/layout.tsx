@@ -1,10 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import CircularProgress from "@mui/material/CircularProgress";
-import Avatar from "@mui/material/Avatar";
+import {
+  Avatar,
+  Menu,
+  MenuItem,
+  IconButton,
+  Tooltip,
+  Divider,
+} from "@mui/material";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
@@ -24,16 +31,39 @@ type NavItem = {
 };
 
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "/admin", icon: <DashboardOutlinedIcon fontSize="small" /> },
-  { label: "Seller approvals", href: "/admin/approvals", icon: <VerifiedUserOutlinedIcon fontSize="small" /> },
-  { label: "Admin accounts", href: "/admin/admins", icon: <AdminPanelSettingsOutlinedIcon fontSize="small" />, mainAdminOnly: true },
-  { label: "Catalog", href: "/admin/catalog", icon: <Inventory2OutlinedIcon fontSize="small" /> },
-  { label: "Seller settings", href: "/admin/seller-settings", icon: <SettingsOutlinedIcon fontSize="small" /> },
+  {
+    label: "Dashboard",
+    href: "/admin",
+    icon: <DashboardOutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Seller approvals",
+    href: "/admin/approvals",
+    icon: <VerifiedUserOutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Admin accounts",
+    href: "/admin/admins",
+    icon: <AdminPanelSettingsOutlinedIcon fontSize="small" />,
+    mainAdminOnly: true,
+  },
+  {
+    label: "Catalog",
+    href: "/admin/catalog",
+    icon: <Inventory2OutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Seller settings",
+    href: "/admin/seller-settings",
+    icon: <SettingsOutlinedIcon fontSize="small" />,
+  },
 ] satisfies readonly NavItem[];
 
 function getPageTitle(pathname: string) {
   if (!pathname) return "Admin";
-  const match = NAV_ITEMS.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+  const match = NAV_ITEMS.find(
+    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
+  );
   return match?.label || "Admin";
 }
 
@@ -45,19 +75,26 @@ export default function AdminLayout({
   const { authenticated, profile, loading } = useSession();
   const router = useRouter();
   const pathname = usePathname();
+  const [moreMenuAnchor, setMoreMenuAnchor] = useState<null | HTMLElement>(
+    null
+  );
   const isAllowed = authenticated && allowedRoles.has(profile?.role);
-  const mainAdminId = (process.env.NEXT_PUBLIC_APPWRITE_MAIN_ADMIN_USER_ID || "").trim();
-  const isMainAdmin = profile?.role === "main_admin" || (Boolean(mainAdminId) && profile?.$id === mainAdminId);
+  const mainAdminId = (
+    process.env.NEXT_PUBLIC_APPWRITE_MAIN_ADMIN_USER_ID || ""
+  ).trim();
+  const isMainAdmin =
+    profile?.role === "main_admin" ||
+    (Boolean(mainAdminId) && profile?.$id === mainAdminId);
 
   const redirectTarget = !authenticated
     ? "/auth/admin/login"
     : !isAllowed
-      ? profile?.role === "seller"
-        ? "/auth/seller/login"
-        : profile?.role === "customer"
-          ? "/"
-          : "/auth/admin/login"
-      : null;
+    ? profile?.role === "seller"
+      ? "/auth/seller/login"
+      : profile?.role === "customer"
+      ? "/"
+      : "/auth/admin/login"
+    : null;
 
   const handleLogout = async () => {
     await performLogout();
@@ -87,7 +124,9 @@ export default function AdminLayout({
     return (
       <AdminAccessGate
         title="Redirecting"
-        description={`Taking you to ${describeAdminDestination(redirectTarget)}...`}
+        description={`Taking you to ${describeAdminDestination(
+          redirectTarget
+        )}...`}
         loading
         actionLabel="Open now"
         onAction={() => router.replace(redirectTarget)}
@@ -96,7 +135,12 @@ export default function AdminLayout({
   }
 
   const pageTitle = getPageTitle(pathname);
-  const initials = profile?.name?.split(" ").map((n: string) => n[0]).join("")?.slice(0, 2) || "AD";
+  const initials =
+    profile?.name
+      ?.split(" ")
+      .map((n: string) => n[0])
+      .join("")
+      ?.slice(0, 2) || "AD";
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900 flex">
@@ -104,7 +148,16 @@ export default function AdminLayout({
       <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-72 flex-col bg-slate-950 text-white">
         <div className="px-5 py-5 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <Avatar sx={{ width: 40, height: 40, bgcolor: "#ffffff", color: "#0f172a", fontWeight: 900, borderRadius: 2 }}>
+            <Avatar
+              sx={{
+                width: 40,
+                height: 40,
+                bgcolor: "#ffffff",
+                color: "#0f172a",
+                fontWeight: 900,
+                borderRadius: 2,
+              }}
+            >
               {initials}
             </Avatar>
             <div className="leading-tight">
@@ -115,48 +168,89 @@ export default function AdminLayout({
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {NAV_ITEMS.filter((item) => !item.mainAdminOnly || isMainAdmin).map((item) => {
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={
-                  "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition " +
-                  (active ? "bg-white/10 text-white" : "text-slate-200 hover:bg-white/5 hover:text-white")
-                }
-              >
-                <span className={"inline-flex h-8 w-8 items-center justify-center rounded-lg " + (active ? "bg-white/10" : "bg-white/5")}>{item.icon}</span>
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+          {NAV_ITEMS.filter((item) => !item.mainAdminOnly || isMainAdmin).map(
+            (item) => {
+              const active =
+                pathname === item.href || pathname.startsWith(`${item.href}/`);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={
+                    "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition " +
+                    (active
+                      ? "bg-white/10 text-white"
+                      : "text-slate-200 hover:bg-white/5 hover:text-white")
+                  }
+                >
+                  <span
+                    className={
+                      "inline-flex h-8 w-8 items-center justify-center rounded-lg " +
+                      (active ? "bg-white/10" : "bg-white/5")
+                    }
+                  >
+                    {item.icon}
+                  </span>
+                  <span>{item.label}</span>
+                </Link>
+              );
+            }
+          )}
         </nav>
 
         <div className="px-5 py-4 border-t border-white/10">
-          <Link href="/" className="text-sm font-semibold text-slate-200 hover:text-white">Back home</Link>
+          <Link
+            href="/"
+            className="text-sm font-semibold text-slate-200 hover:text-white"
+          >
+            Back home
+          </Link>
         </div>
       </aside>
 
       {/* Spacer so content doesn't sit under the fixed sidebar */}
       <div className="hidden lg:block w-72 shrink-0" aria-hidden="true" />
 
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
         <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
           <div className="px-4 py-3 flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold tracking-widest text-slate-500">ADMIN</p>
-              <p className="text-lg font-semibold text-slate-900 truncate">{pageTitle}</p>
+            <div className="min-w-0 flex items-center gap-3">
+              <Avatar
+                className="lg:hidden flex"
+                sx={{
+                  width: 32,
+                  height: 32,
+                  bgcolor: "#0f172a",
+                  color: "#ffffff",
+                  fontWeight: 900,
+                  borderRadius: 1.5,
+                  fontSize: 12,
+                }}
+              >
+                {initials}
+              </Avatar>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold tracking-widest text-slate-500">
+                  ADMIN
+                </p>
+                <p className="text-lg font-semibold text-slate-900 truncate">
+                  {pageTitle}
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <div className="hidden sm:block text-right">
-                <p className="text-sm font-semibold text-slate-900 truncate max-w-[16rem]">{profile?.name || "Admin"}</p>
-                <p className="text-xs text-slate-500 truncate max-w-[16rem]">{profile?.email || profile?.role}</p>
+                <p className="text-sm font-semibold text-slate-900 truncate max-w-[16rem]">
+                  {profile?.name || "Admin"}
+                </p>
+                <p className="text-xs text-slate-500 truncate max-w-[16rem]">
+                  {profile?.email || profile?.role}
+                </p>
               </div>
               <button
                 type="button"
                 onClick={handleLogout}
-                className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+                className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-700 transition-colors"
               >
                 Logout
               </button>
@@ -164,7 +258,106 @@ export default function AdminLayout({
           </div>
         </header>
 
-        <main className="p-4 lg:p-6">{children}</main>
+        <main className="p-4 lg:p-6 flex-1 pb-24 lg:pb-6">{children}</main>
+
+        {/* Mobile/Tablet Bottom Nav */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-2 py-1 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+          <div className="flex items-center justify-around">
+            {NAV_ITEMS.filter((item) => !item.mainAdminOnly || isMainAdmin)
+              .slice(0, 4)
+              .map((item) => {
+                const active =
+                  pathname === item.href ||
+                  pathname.startsWith(`${item.href}/`);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${
+                      active ? "text-slate-900 bg-slate-100" : "text-slate-500"
+                    }`}
+                  >
+                    <span className={active ? "text-slate-900" : ""}>
+                      {item.icon}
+                    </span>
+                    <span className="text-[10px] font-bold truncate max-w-[64px]">
+                      {item.label}
+                    </span>
+                  </Link>
+                );
+              })}
+
+            {NAV_ITEMS.filter((item) => !item.mainAdminOnly || isMainAdmin)
+              .length > 4 && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => setMoreMenuAnchor(e.currentTarget)}
+                  className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-slate-900"
+                >
+                  <i className="fa-solid fa-bars text-lg" aria-hidden />
+                  <span className="text-[10px] font-bold">More</span>
+                </button>
+
+                <Menu
+                  anchorEl={moreMenuAnchor}
+                  open={Boolean(moreMenuAnchor)}
+                  onClose={() => setMoreMenuAnchor(null)}
+                  anchorOrigin={{ vertical: "top", horizontal: "right" }}
+                  transformOrigin={{ vertical: "bottom", horizontal: "right" }}
+                  sx={{
+                    "& .MuiPaper-root": {
+                      borderRadius: "16px",
+                      marginTop: "-12px",
+                      minWidth: 180,
+                      boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+                    },
+                  }}
+                >
+                  <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 mb-2">
+                    <i className="fa-solid fa-ellipsis text-slate-400 text-xs" />
+                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                      More Options
+                    </span>
+                  </div>
+                  {NAV_ITEMS.filter(
+                    (item) => !item.mainAdminOnly || isMainAdmin
+                  )
+                    .slice(4)
+                    .map((item) => {
+                      const active =
+                        pathname === item.href ||
+                        pathname.startsWith(`${item.href}/`);
+                      return (
+                        <MenuItem
+                          key={item.href}
+                          onClick={() => {
+                            setMoreMenuAnchor(null);
+                            router.push(item.href);
+                          }}
+                          sx={{
+                            gap: 2,
+                            py: 1.5,
+                            color: active ? "#0f172a" : "inherit",
+                            fontWeight: active ? 700 : 500,
+                          }}
+                        >
+                          <span
+                            className={
+                              active ? "text-slate-900" : "text-slate-400"
+                            }
+                          >
+                            {item.icon}
+                          </span>
+                          <span className="text-sm">{item.label}</span>
+                        </MenuItem>
+                      );
+                    })}
+                </Menu>
+              </>
+            )}
+          </div>
+        </nav>
       </div>
     </div>
   );
@@ -191,7 +384,13 @@ type AdminAccessGateProps = {
   loading?: boolean;
 };
 
-function AdminAccessGate({ title, description, actionLabel, onAction, loading }: AdminAccessGateProps) {
+function AdminAccessGate({
+  title,
+  description,
+  actionLabel,
+  onAction,
+  loading,
+}: AdminAccessGateProps) {
   const accent = "#2563eb";
 
   return (

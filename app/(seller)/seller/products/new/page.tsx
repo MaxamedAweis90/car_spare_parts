@@ -33,7 +33,10 @@ function normalizeString(value: unknown): string {
 
 function normalizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
-  return value.map((v) => String(v)).map((v) => v.trim()).filter(Boolean);
+  return value
+    .map((v) => String(v))
+    .map((v) => v.trim())
+    .filter(Boolean);
 }
 
 function fileKey(file: File) {
@@ -53,8 +56,12 @@ export default function SellerAddProductPage() {
   const [mainImageIndex, setMainImageIndex] = useState<number>(0);
 
   const [categories, setCategories] = useState<CategoryItem[]>([]);
-  const [compatibilityOptions, setCompatibilityOptions] = useState<CompatibilityOptionItem[]>([]);
-  const [compatibilityOptionIds, setCompatibilityOptionIds] = useState<string[]>([]);
+  const [compatibilityOptions, setCompatibilityOptions] = useState<
+    CompatibilityOptionItem[]
+  >([]);
+  const [compatibilityOptionIds, setCompatibilityOptionIds] = useState<
+    string[]
+  >([]);
 
   const [payload, setPayload] = useState({
     name: "",
@@ -121,7 +128,9 @@ export default function SellerAddProductPage() {
         }
         if (!compatRes.ok) {
           const body = await compatRes.json().catch(() => null);
-          throw new Error(body?.error || "Failed to load compatibility options");
+          throw new Error(
+            body?.error || "Failed to load compatibility options"
+          );
         }
 
         const catsBody = await catRes.json();
@@ -129,7 +138,10 @@ export default function SellerAddProductPage() {
 
         const loadedCategories: CategoryItem[] = Array.isArray(catsBody?.items)
           ? catsBody.items
-              .filter((c: any) => c && typeof c.id === "string" && typeof c.name === "string")
+              .filter(
+                (c: any) =>
+                  c && typeof c.id === "string" && typeof c.name === "string"
+              )
               .map((c: any) => ({
                 id: c.id,
                 name: c.name,
@@ -138,9 +150,14 @@ export default function SellerAddProductPage() {
           : [];
         setCategories(loadedCategories);
 
-        const loadedCompatOptions: CompatibilityOptionItem[] = Array.isArray(compatBody?.items)
+        const loadedCompatOptions: CompatibilityOptionItem[] = Array.isArray(
+          compatBody?.items
+        )
           ? compatBody.items
-              .filter((c: any) => c && typeof c.id === "string" && typeof c.label === "string")
+              .filter(
+                (c: any) =>
+                  c && typeof c.id === "string" && typeof c.label === "string"
+              )
               .map((c: any) => ({ id: c.id, label: c.label }))
           : [];
         setCompatibilityOptions(loadedCompatOptions);
@@ -157,7 +174,12 @@ export default function SellerAddProductPage() {
   }, []);
 
   const canSubmit = useMemo(() => {
-    return Boolean(payload.name.trim() && payload.mainCategoryId && payload.price !== "" && payload.stock !== "");
+    return Boolean(
+      payload.name.trim() &&
+        payload.mainCategoryId &&
+        payload.price !== "" &&
+        payload.stock !== ""
+    );
   }, [payload]);
 
   const categoryValue = useMemo(() => {
@@ -179,7 +201,9 @@ export default function SellerAddProductPage() {
 
     const incoming = Array.from(files);
     const existingKeys = new Set(images.map(fileKey));
-    const uniqueIncoming = incoming.filter((f) => !existingKeys.has(fileKey(f)));
+    const uniqueIncoming = incoming.filter(
+      (f) => !existingKeys.has(fileKey(f))
+    );
 
     const room = Math.max(0, MAX_IMAGES - images.length);
     const next = [...images, ...uniqueIncoming.slice(0, room)];
@@ -206,12 +230,14 @@ export default function SellerAddProductPage() {
       return;
     }
 
-    if (mainFile && next.includes(mainFile)) setMainImageIndex(next.indexOf(mainFile));
+    if (mainFile && next.includes(mainFile))
+      setMainImageIndex(next.indexOf(mainFile));
     else setMainImageIndex(0);
   };
 
   const moveImage = (from: number, to: number) => {
-    if (from < 0 || to < 0 || from >= images.length || to >= images.length) return;
+    if (from < 0 || to < 0 || from >= images.length || to >= images.length)
+      return;
     if (from === to) return;
     setError(null);
     setNotice(null);
@@ -222,7 +248,8 @@ export default function SellerAddProductPage() {
     next.splice(to, 0, moved);
     setImages(next);
 
-    if (mainFile && next.includes(mainFile)) setMainImageIndex(next.indexOf(mainFile));
+    if (mainFile && next.includes(mainFile))
+      setMainImageIndex(next.indexOf(mainFile));
     else setMainImageIndex(0);
   };
 
@@ -263,7 +290,8 @@ export default function SellerAddProductPage() {
 
   useEffect(() => {
     if (mainImageIndex < 0) setMainImageIndex(0);
-    if (mainImageIndex >= images.length && images.length > 0) setMainImageIndex(0);
+    if (mainImageIndex >= images.length && images.length > 0)
+      setMainImageIndex(0);
   }, [images.length, mainImageIndex]);
 
   const onSubmit = async (e: FormEvent) => {
@@ -283,14 +311,23 @@ export default function SellerAddProductPage() {
       form.set("brand", payload.brand);
       form.set("condition", payload.condition);
       form.set("partNumber", payload.partNumber);
-      form.set("compatibilityOptionIds", JSON.stringify(compatibilityOptionIds));
+      form.set(
+        "compatibilityOptionIds",
+        JSON.stringify(compatibilityOptionIds)
+      );
 
       const orderedImages = images.length
-        ? [images[mainImageIndex], ...images.filter((_, idx) => idx !== mainImageIndex)]
+        ? [
+            images[mainImageIndex],
+            ...images.filter((_, idx) => idx !== mainImageIndex),
+          ]
         : [];
       orderedImages.forEach((file) => form.append("images", file));
 
-      const res = await fetch("/api/seller/products", { method: "POST", body: form });
+      const res = await fetch("/api/seller/products", {
+        method: "POST",
+        body: form,
+      });
       const body = await res.json().catch(() => null);
       if (!res.ok) throw new Error(body?.error || "Failed to create product");
 
@@ -306,30 +343,67 @@ export default function SellerAddProductPage() {
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
-      <Paper elevation={0} sx={{ border: "1px solid #ece8de", borderRadius: 3, bgcolor: "#fff" }}>
+      <Paper
+        elevation={0}
+        sx={{ border: "1px solid #ece8de", borderRadius: 3, bgcolor: "#fff" }}
+      >
         <Box sx={{ px: 2.5, py: 2.25 }}>
           <Stack
-            direction={{ xs: "column", md: "row" }}
+            direction={{ xs: "column", sm: "row" }}
             spacing={2}
             justifyContent="space-between"
-            alignItems={{ xs: "flex-start", md: "center" }}
+            alignItems={{ xs: "stretch", sm: "center" }}
           >
-            <div>
+            <Box>
               <Typography variant="h6" fontWeight={900}>
                 Add product
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Add product details, choose category and compatibility, then upload images.
+                Add product details, choose category and compatibility, then
+                upload images.
               </Typography>
-            </div>
-            <Stack direction="row" spacing={1.5} alignItems="center">
-              <Button variant="outlined" color="inherit" onClick={saveDraft} disabled={saving}>
+            </Box>
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              flexWrap="wrap"
+              justifyContent={{ xs: "center", sm: "flex-end" }}
+            >
+              <Button
+                variant="outlined"
+                color="inherit"
+                onClick={saveDraft}
+                disabled={saving}
+                size="small"
+                sx={{ borderRadius: 2, textTransform: "none", fontWeight: 700 }}
+              >
                 Save draft
               </Button>
-              <Button variant="outlined" color="inherit" onClick={resetForm} disabled={saving}>
+              <Button
+                variant="outlined"
+                color="inherit"
+                onClick={resetForm}
+                disabled={saving}
+                size="small"
+                sx={{ borderRadius: 2, textTransform: "none", fontWeight: 700 }}
+              >
                 Reset
               </Button>
-              <Button variant="contained" disableElevation type="submit" form="seller-add-product-form" disabled={!canSubmit || saving || loading}>
+              <Button
+                variant="contained"
+                disableElevation
+                type="submit"
+                form="seller-add-product-form"
+                disabled={!canSubmit || saving || loading}
+                size="small"
+                sx={{
+                  borderRadius: 2,
+                  textTransform: "none",
+                  fontWeight: 700,
+                  color: "#fff",
+                }}
+              >
                 {saving ? "Creating..." : "Create"}
               </Button>
             </Stack>
@@ -349,32 +423,83 @@ export default function SellerAddProductPage() {
               }}
             >
               <Stack direction="row" spacing={1.5} alignItems="center">
-                {loading && <CircularProgress size={18} sx={{ color: "#c56a1b" }} />}
-                <Typography variant="body2" color={error ? "#991b1b" : notice ? "#92400e" : "text.secondary"} fontWeight={800}>
-                  {error ? error : notice ? notice : "Loading categories and compatibility options..."}
+                {loading && (
+                  <CircularProgress size={18} sx={{ color: "#c56a1b" }} />
+                )}
+                <Typography
+                  variant="body2"
+                  color={
+                    error ? "#991b1b" : notice ? "#92400e" : "text.secondary"
+                  }
+                  fontWeight={800}
+                >
+                  {error
+                    ? error
+                    : notice
+                    ? notice
+                    : "Loading categories and compatibility options..."}
                 </Typography>
               </Stack>
             </Paper>
           </Box>
         )}
 
-        <Box component="form" id="seller-add-product-form" onSubmit={onSubmit} sx={{ p: 2.5, display: "grid", gap: 2.5 }}>
-          <Paper elevation={0} sx={{ border: "1px solid #ece8de", borderRadius: 3, p: 3, bgcolor: "#fff" }}>
+        <Box
+          component="form"
+          id="seller-add-product-form"
+          onSubmit={onSubmit}
+          sx={{ p: 2.5, display: "grid", gap: 2.5 }}
+        >
+          <Paper
+            elevation={0}
+            sx={{
+              border: "1px solid #ece8de",
+              borderRadius: 3,
+              p: 3,
+              bgcolor: "#fff",
+            }}
+          >
             <Stack spacing={1.5}>
               <Typography variant="subtitle1" fontWeight={900}>
                 1) Images
               </Typography>
 
-              <Button variant="outlined" component="label" sx={{ width: { xs: "100%", sm: 240 } }} disabled={saving}>
+              <Button
+                variant="outlined"
+                component="label"
+                sx={{ width: { xs: "100%", sm: 240 } }}
+                disabled={saving}
+              >
                 Upload images (max 6)
-                <input hidden accept="image/*" multiple type="file" onChange={(e) => handleImages(e.target.files)} />
+                <input
+                  hidden
+                  accept="image/*"
+                  multiple
+                  type="file"
+                  onChange={(e) => handleImages(e.target.files)}
+                />
               </Button>
               <Typography variant="body2" color="text.secondary">
                 Choose the main image — it will be used as the product cover.
               </Typography>
 
-              <Stack direction="row" gap={1} flexWrap="wrap" sx={{ mt: 0.5 }}>
-                {imagePreviews.length === 0 && <Chip label="No images selected" size="small" />}
+              <Stack direction="row" gap={1.5} flexWrap="wrap" sx={{ mt: 1 }}>
+                {imagePreviews.length === 0 && (
+                  <Box
+                    sx={{
+                      py: 3,
+                      px: 2,
+                      border: "2px dashed #ece8de",
+                      borderRadius: 3,
+                      width: "100%",
+                      textAlign: "center",
+                    }}
+                  >
+                    <Typography variant="body2" color="text.secondary">
+                      No images selected
+                    </Typography>
+                  </Box>
+                )}
 
                 {imagePreviews.map((src, idx) => {
                   const isMain = idx === mainImageIndex;
@@ -384,17 +509,34 @@ export default function SellerAddProductPage() {
                       sx={{
                         width: 110,
                         borderRadius: 2,
-                        border: isMain ? "2px solid #c56a1b" : "1px solid #ece8de",
+                        border: isMain
+                          ? "2px solid #c56a1b"
+                          : "1px solid #ece8de",
                         overflow: "hidden",
                         bgcolor: "#fff",
                       }}
                     >
-                      <Box sx={{ position: "relative", width: "100%", height: 110, bgcolor: "#fbf9f4" }}>
+                      <Box
+                        sx={{
+                          position: "relative",
+                          width: "100%",
+                          height: 110,
+                          bgcolor: "#fbf9f4",
+                        }}
+                      >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={src} alt={images[idx]?.name || `Image ${idx + 1}`} className="h-full w-full object-cover" />
+                        <img
+                          src={src}
+                          alt={images[idx]?.name || `Image ${idx + 1}`}
+                          className="h-full w-full object-cover"
+                        />
                         {isMain && (
                           <Box sx={{ position: "absolute", left: 8, top: 8 }}>
-                            <Chip label="Main" size="small" sx={{ fontWeight: 800, bgcolor: "#fff" }} />
+                            <Chip
+                              label="Main"
+                              size="small"
+                              sx={{ fontWeight: 800, bgcolor: "#fff" }}
+                            />
                           </Box>
                         )}
                       </Box>
@@ -425,13 +567,21 @@ export default function SellerAddProductPage() {
                             size="small"
                             fullWidth
                             onClick={() => moveImage(idx, idx + 1)}
-                            disabled={saving || idx === imagePreviews.length - 1}
+                            disabled={
+                              saving || idx === imagePreviews.length - 1
+                            }
                           >
                             Right
                           </Button>
                         </Stack>
 
-                        <Button variant="outlined" color="error" size="small" onClick={() => removeImage(idx)} disabled={saving}>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          size="small"
+                          onClick={() => removeImage(idx)}
+                          disabled={saving}
+                        >
                           Remove
                         </Button>
                       </Box>
@@ -442,21 +592,42 @@ export default function SellerAddProductPage() {
             </Stack>
           </Paper>
 
-          <Paper elevation={0} sx={{ border: "1px solid #ece8de", borderRadius: 3, p: 3, bgcolor: "#fff" }}>
+          <Paper
+            elevation={0}
+            sx={{
+              border: "1px solid #ece8de",
+              borderRadius: 3,
+              p: 3,
+              bgcolor: "#fff",
+            }}
+          >
             <Stack spacing={2}>
               <Typography variant="subtitle1" fontWeight={900}>
                 2) Basic info
               </Typography>
 
-              <TextField label="Product name" value={payload.name} onChange={(e) => setPayload((p) => ({ ...p, name: e.target.value }))} required />
+              <TextField
+                label="Product name"
+                value={payload.name}
+                onChange={(e) =>
+                  setPayload((p) => ({ ...p, name: e.target.value }))
+                }
+                required
+              />
 
               <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
                 <TextField
                   label="Price"
                   type="number"
                   value={payload.price}
-                  onChange={(e) => setPayload((p) => ({ ...p, price: e.target.value }))}
-                  InputProps={{ startAdornment: <span className="mr-1 text-slate-500">$</span> as any }}
+                  onChange={(e) =>
+                    setPayload((p) => ({ ...p, price: e.target.value }))
+                  }
+                  InputProps={{
+                    startAdornment: (
+                      <span className="mr-1 text-slate-500">$</span>
+                    ) as any,
+                  }}
                   required
                   fullWidth
                 />
@@ -464,18 +635,29 @@ export default function SellerAddProductPage() {
                   label="Stock"
                   type="number"
                   value={payload.stock}
-                  onChange={(e) => setPayload((p) => ({ ...p, stock: e.target.value }))}
+                  onChange={(e) =>
+                    setPayload((p) => ({ ...p, stock: e.target.value }))
+                  }
                   required
                   fullWidth
                 />
               </Stack>
 
               <Stack direction={{ xs: "column", md: "row" }} spacing={2}>
-                <TextField label="Brand" value={payload.brand} onChange={(e) => setPayload((p) => ({ ...p, brand: e.target.value }))} fullWidth />
+                <TextField
+                  label="Brand"
+                  value={payload.brand}
+                  onChange={(e) =>
+                    setPayload((p) => ({ ...p, brand: e.target.value }))
+                  }
+                  fullWidth
+                />
                 <TextField
                   label="Condition"
                   value={payload.condition}
-                  onChange={(e) => setPayload((p) => ({ ...p, condition: e.target.value }))}
+                  onChange={(e) =>
+                    setPayload((p) => ({ ...p, condition: e.target.value }))
+                  }
                   select
                   fullWidth
                 >
@@ -486,13 +668,22 @@ export default function SellerAddProductPage() {
                     </MenuItem>
                   ))}
                 </TextField>
-                <TextField label="Part number" value={payload.partNumber} onChange={(e) => setPayload((p) => ({ ...p, partNumber: e.target.value }))} fullWidth />
+                <TextField
+                  label="Part number"
+                  value={payload.partNumber}
+                  onChange={(e) =>
+                    setPayload((p) => ({ ...p, partNumber: e.target.value }))
+                  }
+                  fullWidth
+                />
               </Stack>
 
               <TextField
                 label="Description"
                 value={payload.description}
-                onChange={(e) => setPayload((p) => ({ ...p, description: e.target.value }))}
+                onChange={(e) =>
+                  setPayload((p) => ({ ...p, description: e.target.value }))
+                }
                 placeholder="Key specs, warranty, notes"
                 multiline
                 minRows={4}
@@ -500,7 +691,15 @@ export default function SellerAddProductPage() {
             </Stack>
           </Paper>
 
-          <Paper elevation={0} sx={{ border: "1px solid #ece8de", borderRadius: 3, p: 3, bgcolor: "#fff" }}>
+          <Paper
+            elevation={0}
+            sx={{
+              border: "1px solid #ece8de",
+              borderRadius: 3,
+              p: 3,
+              bgcolor: "#fff",
+            }}
+          >
             <Stack spacing={2}>
               <Typography variant="subtitle1" fontWeight={900}>
                 3) Category & compatibility

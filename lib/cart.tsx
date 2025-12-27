@@ -1,6 +1,13 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
 export type CartItem = {
   id: string;
@@ -8,6 +15,7 @@ export type CartItem = {
   price: number;
   quantity: number;
   imageId?: string | null;
+  imageUrl?: string | null;
 };
 
 type AddToCartInput = {
@@ -15,6 +23,7 @@ type AddToCartInput = {
   name: string;
   price: number;
   imageId?: string | null;
+  imageUrl?: string | null;
   quantity?: number;
 };
 
@@ -49,8 +58,15 @@ function safeParseCart(raw: string | null): CartItem[] {
         price: Number((x as any).price ?? 0),
         quantity: Math.max(1, Number((x as any).quantity ?? 1)),
         imageId: (x as any).imageId ?? null,
+        imageUrl: (x as any).imageUrl ?? null,
       }))
-      .filter((x) => x.id && x.name && Number.isFinite(x.price) && Number.isFinite(x.quantity));
+      .filter(
+        (x) =>
+          x.id &&
+          x.name &&
+          Number.isFinite(x.price) &&
+          Number.isFinite(x.quantity)
+      );
   } catch {
     return [];
   }
@@ -70,28 +86,50 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(CART_KEY, JSON.stringify(items));
   }, [items]);
 
-  const count = useMemo(() => items.reduce((sum, item) => sum + item.quantity, 0), [items]);
-  const total = useMemo(() => items.reduce((sum, item) => sum + item.price * item.quantity, 0), [items]);
+  const count = useMemo(
+    () => items.reduce((sum, item) => sum + item.quantity, 0),
+    [items]
+  );
+  const total = useMemo(
+    () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    [items]
+  );
 
   const openCart = useCallback(() => setIsOpen(true), []);
   const closeCart = useCallback(() => setIsOpen(false), []);
 
   const addItem = useCallback((input: AddToCartInput) => {
-    const qty = input.quantity != null ? Math.max(1, Math.floor(input.quantity)) : 1;
+    const qty =
+      input.quantity != null ? Math.max(1, Math.floor(input.quantity)) : 1;
     setItems((prev) => {
       const existingIndex = prev.findIndex((x) => x.id === input.id);
       if (existingIndex >= 0) {
         const next = [...prev];
         const existing = next[existingIndex];
-        next[existingIndex] = { ...existing, quantity: existing.quantity + qty };
+        next[existingIndex] = {
+          ...existing,
+          quantity: existing.quantity + qty,
+        };
         return next;
       }
-      return [...prev, { id: input.id, name: input.name, price: input.price, quantity: qty, imageId: input.imageId ?? null }];
+      return [
+        ...prev,
+        {
+          id: input.id,
+          name: input.name,
+          price: input.price,
+          quantity: qty,
+          imageId: input.imageId ?? null,
+          imageUrl: input.imageUrl ?? null,
+        },
+      ];
     });
   }, []);
 
   const increment = useCallback((id: string) => {
-    setItems((prev) => prev.map((x) => (x.id === id ? { ...x, quantity: x.quantity + 1 } : x)));
+    setItems((prev) =>
+      prev.map((x) => (x.id === id ? { ...x, quantity: x.quantity + 1 } : x))
+    );
   }, []);
 
   const decrement = useCallback((id: string) => {
@@ -110,8 +148,32 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const clear = useCallback(() => setItems([]), []);
 
   const value: CartContextValue = useMemo(
-    () => ({ items, isOpen, count, total, openCart, closeCart, addItem, increment, decrement, remove, clear }),
-    [items, isOpen, count, total, openCart, closeCart, addItem, increment, decrement, remove, clear]
+    () => ({
+      items,
+      isOpen,
+      count,
+      total,
+      openCart,
+      closeCart,
+      addItem,
+      increment,
+      decrement,
+      remove,
+      clear,
+    }),
+    [
+      items,
+      isOpen,
+      count,
+      total,
+      openCart,
+      closeCart,
+      addItem,
+      increment,
+      decrement,
+      remove,
+      clear,
+    ]
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

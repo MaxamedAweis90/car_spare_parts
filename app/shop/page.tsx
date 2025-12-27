@@ -10,6 +10,7 @@ type Product = {
   stock?: number | null;
   category?: string | null;
   imageId?: string | null;
+  imageUrl?: string | null;
   active?: boolean;
   published?: boolean;
 };
@@ -22,11 +23,17 @@ export default function ShopPage() {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await fetch("/api/products?limit=48", { cache: "no-store" });
+        const res = await fetch("/api/products?limit=48", {
+          cache: "no-store",
+        });
         const body = await res.json();
         if (!res.ok) throw new Error(body?.error || "Failed to load products");
-        const items: Product[] = Array.isArray(body?.items) ? (body.items as Product[]) : [];
-        const activeItems = items.filter((p) => (p as any)?.active !== false && (p as any)?.published !== false);
+        const items: Product[] = Array.isArray(body?.items)
+          ? (body.items as Product[])
+          : [];
+        const activeItems = items.filter(
+          (p) => (p as any)?.active !== false && (p as any)?.published !== false
+        );
         setProducts(activeItems);
       } catch (err: any) {
         setError(err?.message || "Failed to load products");
@@ -44,16 +51,30 @@ export default function ShopPage() {
       <div className="mx-auto w-full max-w-full sm:max-w-10/12 px-4 sm:px-6">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-[12px] font-semibold uppercase tracking-[0.24em] text-(--color-muted)">Browse catalog</p>
-            <h1 className="text-3xl font-bold text-(--color-text)">Shop All Products</h1>
-            <p className="text-sm text-(--color-muted)">Find brakes, accessories, electronics, and more.</p>
+            <p className="text-[12px] font-semibold uppercase tracking-[0.24em] text-(--color-muted)">
+              Browse catalog
+            </p>
+            <h1 className="text-3xl font-bold text-(--color-text)">
+              Shop All Products
+            </h1>
+            <p className="text-sm text-(--color-muted)">
+              Find brakes, accessories, electronics, and more.
+            </p>
           </div>
-          <span className="text-sm font-semibold text-(--color-muted)">{visibleProducts.length} items</span>
+          <span className="text-sm font-semibold text-(--color-muted)">
+            {visibleProducts.length} items
+          </span>
         </div>
 
         {error && <p className="mb-4 text-sm text-(--color-danger)">{error}</p>}
-        {loading && !error && <p className="mb-4 text-sm text-(--color-muted)">Loading products...</p>}
-        {!loading && !error && visibleProducts.length === 0 && <p className="text-sm text-(--color-muted)">No products available.</p>}
+        {loading && !error && (
+          <p className="mb-4 text-sm text-(--color-muted)">
+            Loading products...
+          </p>
+        )}
+        {!loading && !error && visibleProducts.length === 0 && (
+          <p className="text-sm text-(--color-muted)">No products available.</p>
+        )}
 
         <div className="grid grid-cols-2 gap-6 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
           {visibleProducts.map((p) => (
@@ -64,6 +85,7 @@ export default function ShopPage() {
               price={p.price}
               stock={p.stock ?? null}
               imageId={p.imageId ?? null}
+              imageUrl={p.imageUrl ?? null}
             />
           ))}
         </div>

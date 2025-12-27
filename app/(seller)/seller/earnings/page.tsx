@@ -23,13 +23,32 @@ const PAYOUTS = [
 ];
 
 const SUMMARY = [
-  { label: "Total revenue", value: 28400, icon: <MonetizationOnOutlinedIcon fontSize="small" />, color: "#0f766e" },
-  { label: "This month", value: 8400, icon: <ReceiptLongOutlinedIcon fontSize="small" />, color: "#2563eb" },
-  { label: "Pending payouts", value: 950, icon: <AccountBalanceWalletOutlinedIcon fontSize="small" />, color: "#c56a1b" },
+  {
+    label: "Total revenue",
+    value: 28400,
+    icon: <MonetizationOnOutlinedIcon fontSize="small" />,
+    color: "#0f766e",
+  },
+  {
+    label: "This month",
+    value: 8400,
+    icon: <ReceiptLongOutlinedIcon fontSize="small" />,
+    color: "#2563eb",
+  },
+  {
+    label: "Pending payouts",
+    value: 950,
+    icon: <AccountBalanceWalletOutlinedIcon fontSize="small" />,
+    color: "#c56a1b",
+  },
 ];
 
 function formatCurrency(value: number) {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 export default function EarningsPage() {
@@ -47,27 +66,79 @@ export default function EarningsPage() {
         }}
       >
         {SUMMARY.map((item) => (
-          <Paper key={item.label} elevation={0} sx={{ border: "1px solid #ece8de", borderRadius: 3, p: 2.5, bgcolor: "#fff" }}>
+          <Paper
+            key={item.label}
+            elevation={0}
+            sx={{
+              border: "1px solid #ece8de",
+              borderRadius: 3,
+              p: 2.5,
+              bgcolor: "#fff",
+            }}
+          >
             <Stack direction="row" spacing={1.5} alignItems="center">
-              <Box sx={{ width: 40, height: 40, borderRadius: 2, bgcolor: `${item.color}14`, color: item.color, display: "grid", placeItems: "center" }}>
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 2,
+                  bgcolor: `${item.color}14`,
+                  color: item.color,
+                  display: "grid",
+                  placeItems: "center",
+                }}
+              >
                 {item.icon}
               </Box>
               <div>
-                <Typography variant="body2" color="text.secondary" fontWeight={700}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  fontWeight={700}
+                >
                   {item.label}
                 </Typography>
                 <Typography variant="h6" fontWeight={900}>
                   {formatCurrency(item.value)}
                 </Typography>
-                <LinearProgress variant="determinate" value={70} sx={{ mt: 1, height: 6, borderRadius: 9999, bgcolor: "#f2ede4" }} />
+                <LinearProgress
+                  variant="determinate"
+                  value={70}
+                  sx={{
+                    mt: 1,
+                    height: 6,
+                    borderRadius: 9999,
+                    bgcolor: "#f2ede4",
+                  }}
+                />
               </div>
             </Stack>
           </Paper>
         ))}
       </Box>
 
-      <Paper elevation={0} sx={{ border: "1px solid #ece8de", borderRadius: 3, bgcolor: "#fff", overflow: "hidden" }}>
-        <Box sx={{ px: 2.75, py: 2.25, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 2, borderBottom: "1px solid #f0eae1", bgcolor: "#f9f7f2" }}>
+      <Paper
+        elevation={0}
+        sx={{
+          border: "1px solid #ece8de",
+          borderRadius: 3,
+          bgcolor: "#fff",
+          overflow: "hidden",
+        }}
+      >
+        <Box
+          sx={{
+            px: 2.75,
+            py: 2.25,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 2,
+            borderBottom: "1px solid #f0eae1",
+            bgcolor: "#f9f7f2",
+          }}
+        >
           <div>
             <Typography variant="h6" fontWeight={900}>
               Payouts
@@ -86,28 +157,50 @@ export default function EarningsPage() {
           </Stack>
         </Box>
 
-        <Table size="small" sx={{ "& th": { bgcolor: "#fbf9f4", fontWeight: 800, color: "#3b3325", borderColor: "#f0eae1" }, "& td": { borderColor: "#f3ede4" } }}>
-          <TableHead>
-            <TableRow>
-              <TableCell>Payout</TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Date</TableCell>
-              <TableCell align="right">Amount</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {PAYOUTS.map((p) => (
-              <TableRow key={p.id} hover>
-                <TableCell>{p.id}</TableCell>
-                <TableCell>
-                  <Chip label={p.status} size="small" color={p.status === "Paid" ? "success" : "warning"} variant={p.status === "Pending" ? "outlined" : "filled"} sx={{ fontWeight: 700, borderRadius: 1.5 }} />
-                </TableCell>
-                <TableCell>{p.date}</TableCell>
-                <TableCell align="right">{formatCurrency(p.amount)}</TableCell>
+        <Box sx={{ overflowX: "auto" }}>
+          <Table
+            size="small"
+            sx={{
+              minWidth: 600,
+              "& th": {
+                bgcolor: "#fbf9f4",
+                fontWeight: 800,
+                color: "#3b3325",
+                borderColor: "#f0eae1",
+              },
+              "& td": { borderColor: "#f3ede4" },
+            }}
+          >
+            <TableHead>
+              <TableRow>
+                <TableCell>Payout</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Date</TableCell>
+                <TableCell align="right">Amount</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHead>
+            <TableBody>
+              {PAYOUTS.map((p) => (
+                <TableRow key={p.id} hover>
+                  <TableCell>{p.id}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={p.status}
+                      size="small"
+                      color={p.status === "Paid" ? "success" : "warning"}
+                      variant={p.status === "Pending" ? "outlined" : "filled"}
+                      sx={{ fontWeight: 700, borderRadius: 1.5 }}
+                    />
+                  </TableCell>
+                  <TableCell>{p.date}</TableCell>
+                  <TableCell align="right">
+                    {formatCurrency(p.amount)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Box>
       </Paper>
     </Box>
   );

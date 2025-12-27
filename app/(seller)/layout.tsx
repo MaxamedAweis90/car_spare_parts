@@ -3,7 +3,15 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Avatar, Badge, Divider, IconButton, Menu, MenuItem, Tooltip } from "@mui/material";
+import {
+  Avatar,
+  Badge,
+  Divider,
+  IconButton,
+  Menu,
+  MenuItem,
+  Tooltip,
+} from "@mui/material";
 import CircularProgress from "@mui/material/CircularProgress";
 import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
 import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
@@ -21,20 +29,59 @@ import { useSession } from "@/lib/useSession";
 import { performLogout } from "@/lib/logout";
 import { getImageUrl } from "@/lib/appwrite/storage";
 import { SellerStoreProvider, useSellerStore } from "@/lib/SellerStoreProvider";
-import { SellerProfileProvider, useSellerProfile } from "@/lib/SellerProfileProvider";
+import {
+  SellerProfileProvider,
+  useSellerProfile,
+} from "@/lib/SellerProfileProvider";
 
 const allowedRoles = new Set(["seller"]);
 
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "/seller/dashboard", icon: <DashboardOutlinedIcon fontSize="small" /> },
-  { label: "Products", href: "/seller/products", icon: <Inventory2OutlinedIcon fontSize="small" /> },
-  { label: "Add product", href: "/seller/products/new", icon: <AddBoxOutlinedIcon fontSize="small" /> },
-  { label: "Categories", href: "/seller/products/categories", icon: <CategoryOutlinedIcon fontSize="small" /> },
-  { label: "Orders", href: "/seller/orders", icon: <TableRowsOutlinedIcon fontSize="small" /> },
-  { label: "Earnings", href: "/seller/earnings", icon: <MonetizationOnOutlinedIcon fontSize="small" /> },
-  { label: "Store settings", href: "/seller/settings", icon: <StorefrontOutlinedIcon fontSize="small" /> },
-  { label: "Profile", href: "/seller/profile", icon: <PersonOutlineOutlinedIcon fontSize="small" /> },
-  { label: "Support", href: "/seller/support", icon: <HelpOutlineOutlinedIcon fontSize="small" /> },
+  {
+    label: "Dashboard",
+    href: "/seller/dashboard",
+    icon: <DashboardOutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Products",
+    href: "/seller/products",
+    icon: <Inventory2OutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Add product",
+    href: "/seller/products/new",
+    icon: <AddBoxOutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Categories",
+    href: "/seller/products/categories",
+    icon: <CategoryOutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Orders",
+    href: "/seller/orders",
+    icon: <TableRowsOutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Earnings",
+    href: "/seller/earnings",
+    icon: <MonetizationOnOutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Store settings",
+    href: "/seller/settings",
+    icon: <StorefrontOutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Profile",
+    href: "/seller/profile",
+    icon: <PersonOutlineOutlinedIcon fontSize="small" />,
+  },
+  {
+    label: "Support",
+    href: "/seller/support",
+    icon: <HelpOutlineOutlinedIcon fontSize="small" />,
+  },
 ];
 
 function usePageTitle(pathname: string) {
@@ -65,6 +112,9 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
+  const [moreMenuAnchor, setMoreMenuAnchor] = useState<null | HTMLElement>(
+    null
+  );
   const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
   const { store } = useSellerStore();
   const { profile: sellerProfile } = useSellerProfile();
@@ -80,7 +130,10 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
 
     if (!authenticated) {
       target = "/auth/seller/login";
-    } else if (profile?.role === "seller" && profile?.sellerApproved === false) {
+    } else if (
+      profile?.role === "seller" &&
+      profile?.sellerApproved === false
+    ) {
       target = "/auth/seller/pending";
     } else if (!isAllowed) {
       if (profile?.role === "admin" || profile?.role === "main_admin") {
@@ -101,10 +154,23 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
     }
 
     setRedirectTarget(null);
-  }, [authenticated, isAllowed, loading, pathname, profile?.role, profile?.sellerApproved, router]);
+  }, [
+    authenticated,
+    isAllowed,
+    loading,
+    pathname,
+    profile?.role,
+    profile?.sellerApproved,
+    router,
+  ]);
 
   const pageTitle = usePageTitle(pathname);
-  const initials = profile?.name?.split(" ").map((n: string) => n[0]).join("")?.slice(0, 2) || "SE";
+  const initials =
+    profile?.name
+      ?.split(" ")
+      .map((n: string) => n[0])
+      .join("")
+      ?.slice(0, 2) || "SE";
   const storeSlug = store?.storeSlug ?? null;
   const storeDisplayName = store?.storeName || "Seller Hub";
   const sellerAvatarUrl = useMemo(() => {
@@ -148,7 +214,9 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
     return (
       <AccessGate
         title="Redirecting"
-        description={`Taking you to ${describeSellerDestination(redirectTarget)}...`}
+        description={`Taking you to ${describeSellerDestination(
+          redirectTarget
+        )}...`}
         loading
         actionLabel="Open now"
         onAction={() => router.replace(redirectTarget)}
@@ -172,11 +240,16 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f4f1e9] text-slate-900 flex">
       <aside
-        className={`${sidebarOpen ? "w-68" : "w-18"} hidden lg:flex fixed left-0 top-0 h-screen flex-col shrink-0 bg-[#161616] text-white transition-all duration-200 shadow-xl`}
+        className={`${
+          sidebarOpen ? "w-68" : "w-18"
+        } hidden lg:flex fixed left-0 top-0 h-screen flex-col shrink-0 bg-[#161616] text-white transition-all duration-200 shadow-xl`}
       >
         <div className="flex items-center justify-between px-4 py-5 border-b border-[#1f1f1f]">
           <div className="flex items-center gap-3">
-            <Avatar src={storeAvatarUrl || sellerAvatarUrl || undefined} sx={{ width: 40, height: 40, bgcolor: "#f5f5f5", color: "#111" }}>
+            <Avatar
+              src={storeAvatarUrl || sellerAvatarUrl || undefined}
+              sx={{ width: 40, height: 40, bgcolor: "#f5f5f5", color: "#111" }}
+            >
               {storeDisplayName.slice(0, 2).toUpperCase()}
             </Avatar>
             {sidebarOpen && (
@@ -199,12 +272,21 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors relative ${
-                  active ? "bg-white/10 text-white" : "text-gray-300 hover:bg-white/10"
+                  active
+                    ? "bg-white/10 text-white"
+                    : "text-gray-300 hover:bg-white/10"
                 }`}
               >
-                {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 rounded-full bg-[#fbbf24]" aria-hidden />}
+                {active && (
+                  <span
+                    className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 rounded-full bg-[#fbbf24]"
+                    aria-hidden
+                  />
+                )}
                 <span className="text-gray-400">{item.icon}</span>
-                {sidebarOpen && <span className="font-medium">{item.label}</span>}
+                {sidebarOpen && (
+                  <span className="font-medium">{item.label}</span>
+                )}
               </Link>
             );
           })}
@@ -214,14 +296,24 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
           {sidebarOpen ? (
             <div className="rounded-xl bg-white/5 p-3 text-xs text-gray-200">
               <p className="font-semibold text-white">Need help?</p>
-              <p className="mt-1 text-gray-300">Visit Support or contact admin.</p>
-              <Link href="/seller/support" className="text-[#fbbf24] font-semibold mt-2 inline-block">
+              <p className="mt-1 text-gray-300">
+                Visit Support or contact admin.
+              </p>
+              <Link
+                href="/seller/support"
+                className="text-[#fbbf24] font-semibold mt-2 inline-block"
+              >
                 Support
               </Link>
             </div>
           ) : (
             <Tooltip title="Support">
-              <IconButton size="small" sx={{ bgcolor: "white", color: "#111" }} href="/seller/support" component={Link as any}>
+              <IconButton
+                size="small"
+                sx={{ bgcolor: "white", color: "#111" }}
+                href="/seller/support"
+                component={Link as any}
+              >
                 <HelpOutlineOutlinedIcon fontSize="small" />
               </IconButton>
             </Tooltip>
@@ -231,23 +323,45 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
 
       {/* Spacer so content doesn't sit under the fixed sidebar */}
       <div
-        className={`${sidebarOpen ? "w-68" : "w-18"} hidden lg:block shrink-0 transition-all duration-200`}
+        className={`${
+          sidebarOpen ? "w-68" : "w-18"
+        } hidden lg:block shrink-0 transition-all duration-200`}
         aria-hidden="true"
       />
 
       <div className="flex-1 flex min-h-screen flex-col">
         <header className="sticky top-0 z-30 flex items-center justify-between bg-[#f4f1e9]/90 backdrop-blur border-b border-[#e3ddcf] px-4 py-3">
           <div className="flex items-center gap-2">
-            <IconButton onClick={() => setSidebarOpen((v) => !v)}>
+            <IconButton
+              className="lg:flex hidden"
+              onClick={() => setSidebarOpen((v) => !v)}
+            >
               <MenuOpenIcon />
             </IconButton>
-            <div>
+            <div className="lg:block hidden">
               <p className="text-sm text-slate-500">Seller</p>
               <p className="text-lg font-semibold">{pageTitle}</p>
             </div>
+            <div className="lg:hidden flex items-center gap-2">
+              <Avatar
+                src={storeAvatarUrl || sellerAvatarUrl || undefined}
+                sx={{
+                  width: 32,
+                  height: 32,
+                  bgcolor: "#fbbf24",
+                  color: "#111",
+                  fontSize: 12,
+                }}
+              >
+                {storeDisplayName.slice(0, 2).toUpperCase()}
+              </Avatar>
+              <span className="font-bold text-slate-900 text-sm truncate max-w-[120px]">
+                {storeDisplayName}
+              </span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Tooltip title="Notifications">
               <IconButton size="small">
                 <Badge color="error" variant="dot">
@@ -259,8 +373,19 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
             <Divider flexItem orientation="vertical" />
 
             <div>
-              <IconButton onClick={(e) => setMenuAnchor(e.currentTarget)} size="small">
-                <Avatar src={sellerAvatarUrl || undefined} sx={{ bgcolor: "#2563eb", width: 36, height: 36, fontSize: 14 }}>
+              <IconButton
+                onClick={(e) => setMenuAnchor(e.currentTarget)}
+                size="small"
+              >
+                <Avatar
+                  src={sellerAvatarUrl || undefined}
+                  sx={{
+                    bgcolor: "#2563eb",
+                    width: 36,
+                    height: 36,
+                    fontSize: 14,
+                  }}
+                >
                   {initials}
                 </Avatar>
               </IconButton>
@@ -271,9 +396,32 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
                 anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
                 transformOrigin={{ vertical: "top", horizontal: "right" }}
               >
-                <MenuItem onClick={() => router.push("/seller/profile")}>Profile</MenuItem>
-                <MenuItem onClick={() => router.push("/seller/settings")}>Store settings</MenuItem>
-                {storeSlug && <MenuItem onClick={() => router.push(`/stores/${storeSlug}`)}>View storefront</MenuItem>}
+                <MenuItem
+                  onClick={() => {
+                    setMenuAnchor(null);
+                    router.push("/seller/profile");
+                  }}
+                >
+                  Profile
+                </MenuItem>
+                <MenuItem
+                  onClick={() => {
+                    setMenuAnchor(null);
+                    router.push("/seller/settings");
+                  }}
+                >
+                  Store settings
+                </MenuItem>
+                {storeSlug && (
+                  <MenuItem
+                    onClick={() => {
+                      setMenuAnchor(null);
+                      router.push(`/stores/${storeSlug}`);
+                    }}
+                  >
+                    View storefront
+                  </MenuItem>
+                )}
                 <Divider />
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
               </Menu>
@@ -281,9 +429,91 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-4 md:px-8 md:py-6">
+        <main className="flex-1 px-4 py-4 md:px-8 md:py-6 pb-24 lg:pb-6">
           <div className="mx-auto w-full max-w-6xl">{children}</div>
         </main>
+
+        {/* Mobile/Tablet Bottom Nav */}
+        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-2 py-1 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+          <div className="flex items-center justify-around">
+            {NAV_ITEMS.slice(0, 4).map((item) => {
+              const active = pathname?.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${
+                    active ? "text-[#fbbf24]" : "text-slate-500"
+                  }`}
+                >
+                  <span className={active ? "text-[#fbbf24]" : ""}>
+                    {item.icon}
+                  </span>
+                  <span className="text-[10px] font-bold truncate max-w-[64px]">
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={(e) => setMoreMenuAnchor(e.currentTarget)}
+              className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-slate-900"
+            >
+              <i className="fa-solid fa-bars text-lg" aria-hidden />
+              <span className="text-[10px] font-bold">More</span>
+            </button>
+
+            <Menu
+              anchorEl={moreMenuAnchor}
+              open={Boolean(moreMenuAnchor)}
+              onClose={() => setMoreMenuAnchor(null)}
+              anchorOrigin={{ vertical: "top", horizontal: "right" }}
+              transformOrigin={{ vertical: "bottom", horizontal: "right" }}
+              sx={{
+                "& .MuiPaper-root": {
+                  borderRadius: "16px",
+                  marginTop: "-12px",
+                  minWidth: 180,
+                  boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
+                },
+              }}
+            >
+              <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 mb-2">
+                <i className="fa-solid fa-ellipsis text-slate-400 text-xs" />
+                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                  More Options
+                </span>
+              </div>
+              {NAV_ITEMS.slice(4).map((item) => {
+                const active = pathname?.startsWith(item.href);
+                return (
+                  <MenuItem
+                    key={item.href}
+                    onClick={() => {
+                      setMoreMenuAnchor(null);
+                      router.push(item.href);
+                    }}
+                    sx={{
+                      gap: 2,
+                      py: 1.5,
+                      color: active ? "#fbbf24" : "inherit",
+                      fontWeight: active ? 700 : 500,
+                    }}
+                  >
+                    <span
+                      className={active ? "text-[#fbbf24]" : "text-slate-400"}
+                    >
+                      {item.icon}
+                    </span>
+                    <span className="text-sm">{item.label}</span>
+                  </MenuItem>
+                );
+              })}
+            </Menu>
+          </div>
+        </nav>
       </div>
     </div>
   );
@@ -314,7 +544,14 @@ type AccessGateProps = {
   accentColor?: string;
 };
 
-function AccessGate({ title, description, actionLabel, onAction, loading, accentColor = "#2563eb" }: AccessGateProps) {
+function AccessGate({
+  title,
+  description,
+  actionLabel,
+  onAction,
+  loading,
+  accentColor = "#2563eb",
+}: AccessGateProps) {
   const accent = accentColor;
 
   return (

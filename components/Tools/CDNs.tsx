@@ -30,15 +30,13 @@ export default function CDNs({ isAdmin = false }: CDNsProps) {
         defer
       ></script>
 
-      {/* Chart.js (admin only) */}
-      {isAdmin && (
-        <script
-          src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.umd.min.js"
-          crossOrigin="anonymous"
-          referrerPolicy="no-referrer"
-          defer
-        ></script>
-      )}
+      {/* Chart.js (Loaded for everyone now to support Seller dashboard) */}
+      <script
+        src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.3.0/chart.umd.min.js"
+        crossOrigin="anonymous"
+        referrerPolicy="no-referrer"
+        defer
+      ></script>
     </>
   );
 }
