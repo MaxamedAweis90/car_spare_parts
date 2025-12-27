@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { Query } from "node-appwrite";
 import { databasesServer, appwriteConfig } from "@/lib/appwrite-server";
 
 type RouteContext = {
-  params: { orderId: string };
+  params: Promise<{ orderId: string }>;
 };
 
 /**
@@ -11,7 +12,7 @@ type RouteContext = {
  */
 export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
-    const { orderId } = context.params;
+    const { orderId } = await context.params;
     const { status, sellerId } = await req.json();
 
     // Validate status
@@ -48,7 +49,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       const productsResponse = await databasesServer.listDocuments(
         appwriteConfig.databaseId,
         appwriteConfig.productsCollectionId,
-        [{ method: "equal", attribute: "sellerId", values: [sellerId] }]
+        [Query.equal("sellerId", [sellerId])]
       );
 
       const productIds = productsResponse.documents.map((p) => p.$id);
