@@ -621,7 +621,7 @@ export default function Navbar() {
                 </div>
                 <span className="hidden text-sm font-bold sm:block">Cart</span>
                 <span className="hidden text-sm font-bold sm:block">
-                  £{cartTotal.toFixed(2)}
+                  ${cartTotal.toFixed(2)}
                 </span>
               </button>
 

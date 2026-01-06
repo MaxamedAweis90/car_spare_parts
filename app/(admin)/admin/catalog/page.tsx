@@ -82,7 +82,7 @@ function ProductsTab() {
       title: "Price",
       dataIndex: "price",
       key: "price",
-      render: (p: number) => `£${Number(p).toFixed(2)}`,
+      render: (p: number) => `$${Number(p).toFixed(2)}`,
     },
     { title: "Stock", dataIndex: "stock", key: "stock" },
     {

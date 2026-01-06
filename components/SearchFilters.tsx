@@ -171,7 +171,7 @@ export function SearchFilters({
           <div className="flex-1">
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-(--color-muted)">
-                £
+                $
               </span>
               <input
                 type="number"
@@ -190,7 +190,7 @@ export function SearchFilters({
           <div className="flex-1">
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-(--color-muted)">
-                £
+                $
               </span>
               <input
                 type="number"

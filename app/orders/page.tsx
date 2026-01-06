@@ -238,7 +238,7 @@ export default function CustomerOrdersPage() {
                             Total
                           </Typography>
                           <Typography variant="body2" fontWeight={700}>
-                            £{order.totalPrice.toFixed(2)}
+                            ${order.totalPrice.toFixed(2)}
                           </Typography>
                         </Box>
                         <Box>
@@ -360,7 +360,7 @@ export default function CustomerOrdersPage() {
                                 variant="body2"
                                 color="text.secondary"
                               >
-                                Quantity: {item.quantity} | Price: £
+                                Quantity: {item.quantity} | Price: $
                                 {item.price.toFixed(2)}
                               </Typography>
                               <Button

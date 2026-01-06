@@ -167,7 +167,7 @@ export default function SellerDashboardPage() {
       title: "Amount",
       dataIndex: "totalPrice",
       key: "totalPrice",
-      render: (price: number) => <Text strong>£{price.toFixed(2)}</Text>,
+      render: (price: number) => <Text strong>${price.toFixed(2)}</Text>,
     },
     {
       title: "Status",

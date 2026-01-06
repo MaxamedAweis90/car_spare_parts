@@ -44,7 +44,7 @@ function buildPublicProductImageUrl(fileId?: string | null) {
 }
 
 function formatPrice(value: number) {
-  return `£${value.toFixed(2)}`;
+  return `$${value.toFixed(2)}`;
 }
 
 export function CartDrawer({

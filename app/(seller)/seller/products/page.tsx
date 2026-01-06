@@ -150,7 +150,7 @@ export default function SellerProductsPage() {
       key: "category",
       render: (catId: string) => {
         const cat = categories?.find((c) => c.id === catId);
-        return <Tag>{cat?.label || cat?.name || catId || "Uncategorized"}</Tag>;
+        return <Tag>{cat?.name || catId || "Uncategorized"}</Tag>;
       },
     },
     {
@@ -159,10 +159,10 @@ export default function SellerProductsPage() {
       key: "price",
       render: (price: number, record: any) => (
         <Space orientation="vertical" size={0}>
-          <div className="font-bold">£{Number(price).toFixed(2)}</div>
+          <div className="font-bold">${Number(price).toFixed(2)}</div>
           {record.onSale && record.originalPrice && (
             <div className="text-xs text-gray-400 line-through">
-              £{Number(record.originalPrice).toFixed(2)}
+              ${Number(record.originalPrice).toFixed(2)}
             </div>
           )}
           {record.onSale && (
@@ -285,7 +285,7 @@ export default function SellerProductsPage() {
           >
             {categories?.map((c) => (
               <Option key={c.id} value={c.id}>
-                {c.label || c.name}
+                {c.name}
               </Option>
             ))}
           </Select>

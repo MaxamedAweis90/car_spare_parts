@@ -175,7 +175,7 @@ export default function SellerOrdersPage() {
       title: "Total",
       dataIndex: "total",
       key: "total",
-      render: (total: number) => `£${total.toFixed(2)}`,
+      render: (total: number) => `$${total.toFixed(2)}`,
     },
     {
       title: "Status",
@@ -266,7 +266,7 @@ export default function SellerOrdersPage() {
                 <ul>
                   {record.rawItems.map((item: any, idx: number) => (
                     <li key={idx}>
-                      {item.name} x {item.quantity} - £{item.price}
+                      {item.name} x {item.quantity} - ${item.price}
                     </li>
                   ))}
                 </ul>

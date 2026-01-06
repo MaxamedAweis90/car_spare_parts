@@ -55,7 +55,7 @@ export default function ProductCard({
   })();
 
   const cart = useCart();
-  const priceDisplay = typeof price === "number" ? `£${price.toFixed(2)}` : "";
+  const priceDisplay = typeof price === "number" ? `$${price.toFixed(2)}` : "";
   const linkHref = href ?? `/products/${id}`;
   const imageUrl = imageUrlProp ?? buildPublicProductImageUrl(imageId ?? null);
   const canAddToCart =
@@ -120,7 +120,7 @@ export default function ProductCard({
             </div>
             {isCurrentlyOnSale && originalPrice && (
               <div className="text-xs sm:text-sm text-(--color-muted) line-through">
-                £{Number(originalPrice).toFixed(2)}
+                ${Number(originalPrice).toFixed(2)}
               </div>
             )}
           </div>

@@ -377,7 +377,7 @@ export default function CartPage() {
                                 fontWeight={800}
                                 color="#c56a1b"
                               >
-                                £{item.price.toFixed(2)}
+                                ${item.price.toFixed(2)}
                               </Typography>
                             </Stack>
 
@@ -728,7 +728,7 @@ export default function CartPage() {
                   >
                     {isPlacingOrder
                       ? "Processing..."
-                      : `Pay £${total.toFixed(2)}`}
+                      : `Pay $${total.toFixed(2)}`}
                   </Button>
                 )}
               </Box>
@@ -755,7 +755,7 @@ export default function CartPage() {
                   <Stack spacing={1}>
                     <Row
                       label="Subtotal"
-                      value={`£${cartSubtotal.toFixed(2)}`}
+                      value={`$${cartSubtotal.toFixed(2)}`}
                     />
 
                     {/* Delivery Toggle (only meaningful in step 0 or 1 really, but visible always) */}
@@ -808,19 +808,19 @@ export default function CartPage() {
                       label="Delivery"
                       value={
                         deliveryMethod === "delivery"
-                          ? `£${FEES.delivery.toFixed(2)}`
+                          ? `$${FEES.delivery.toFixed(2)}`
                           : "Free"
                       }
                     />
                     <Row
                       label="Service Fee"
-                      value={`£${FEES.service.toFixed(2)}`}
+                      value={`$${FEES.service.toFixed(2)}`}
                     />
-                    <Row label="Tax (10%)" value={`£${taxCost.toFixed(2)}`} />
+                    <Row label="Tax (10%)" value={`$${taxCost.toFixed(2)}`} />
                     <Divider />
                     <Row
                       label="Total Payable"
-                      value={`£${total.toFixed(2)}`}
+                      value={`$${total.toFixed(2)}`}
                       labelStrong
                       valueStrong
                     />
@@ -922,7 +922,7 @@ function DeliveryLabel({
       </Typography>
       {price > 0 && (
         <Typography variant="caption" color="text.secondary">
-          (+£{price.toFixed(2)})
+          (+${price.toFixed(2)})
         </Typography>
       )}
     </Stack>

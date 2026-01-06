@@ -296,7 +296,7 @@ export default function SellerAddProductPage() {
                 tooltip="The price before discount. If set higher than selling price, a 'Sale' tag will appear."
               >
                 <InputNumber
-                  prefix="£"
+                  prefix="$"
                   min={0}
                   step={0.01}
                   className="w-full h-12 rounded-xl flex items-center"
@@ -308,13 +308,13 @@ export default function SellerAddProductPage() {
                 name="price"
                 label={
                   <span className="font-semibold text-gray-700">
-                    Selling Price (GBP)
+                    Selling Price (USD)
                   </span>
                 }
                 rules={[{ required: true, message: "Price is required" }]}
               >
                 <InputNumber
-                  prefix="£"
+                  prefix="$"
                   min={0}
                   step={0.01}
                   className="w-full h-12 rounded-xl flex items-center"
@@ -482,7 +482,7 @@ export default function SellerAddProductPage() {
               >
                 {categories?.map((c) => (
                   <Option key={c.id} value={c.id}>
-                    {c.label || c.name}
+                    {c.name}
                   </Option>
                 ))}
               </Select>

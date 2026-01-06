@@ -76,10 +76,10 @@ function SearchContent() {
 
   const activeFilters = [];
   if (minPrice && Number(minPrice) > 0) {
-    activeFilters.push({ label: `Min: £${minPrice}`, key: "minPrice" });
+    activeFilters.push({ label: `Min: $${minPrice}`, key: "minPrice" });
   }
   if (maxPrice && Number(maxPrice) < 1000) {
-    activeFilters.push({ label: `Max: £${maxPrice}`, key: "maxPrice" });
+    activeFilters.push({ label: `Max: $${maxPrice}`, key: "maxPrice" });
   }
   if (onSale === "true") {
     activeFilters.push({ label: "On Sale", key: "onSale" });
@@ -229,15 +229,15 @@ function SearchContent() {
                     {product.onSale && product.salePrice ? (
                       <>
                         <span className="text-lg font-extrabold text-orange-600">
-                          £{product.salePrice.toFixed(2)}
+                          ${product.salePrice.toFixed(2)}
                         </span>
                         <span className="text-sm font-semibold text-slate-400 line-through">
-                          £{product.price.toFixed(2)}
+                          ${product.price.toFixed(2)}
                         </span>
                       </>
                     ) : (
                       <span className="text-lg font-extrabold text-slate-900">
-                        £{product.price.toFixed(2)}
+                        ${product.price.toFixed(2)}
                       </span>
                     )}
                   </div>
