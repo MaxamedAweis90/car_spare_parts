@@ -12,6 +12,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   size?: ButtonSize;
   rounded?: ButtonRounded;
   href?: string;
+  target?: string;
   isLoading?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
@@ -24,6 +25,7 @@ export default function Button({
   size = "md",
   rounded = "default",
   href,
+  target,
   isLoading = false,
   leftIcon,
   rightIcon,
@@ -93,6 +95,7 @@ export default function Button({
     return (
       <Link
         href={href}
+        target={target}
         className={combinedClassName}
         aria-disabled={disabled || isLoading}
       >

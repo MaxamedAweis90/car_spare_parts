@@ -1,102 +1,111 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  Table,
+  Button,
+  Card,
+  Typography,
+  Tag,
+  Popconfirm,
+  Space,
+  App,
+} from "antd";
+import { CheckOutlined, ReloadOutlined } from "@ant-design/icons";
 import { useSession } from "@/lib/useSession";
-import { getUsers, updateUser } from "@/services/users";
+import { usePendingSellers, useApproveSeller } from "@/hooks/queries/useUsers";
 
-interface UserItem {
-  $id: string;
-  name: string;
-  email: string;
-  role: string;
-  sellerApproved?: boolean;
-}
+const { Title, Text } = Typography;
 
 export default function AdminApprovalsPage() {
   const { profile } = useSession();
-  const [pendingSellers, setPendingSellers] = useState<UserItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
+  const { message } = App.useApp();
+  const { data: sellers, isLoading, refetch } = usePendingSellers();
+  const approveMutation = useApproveSeller();
 
-  const fetchPending = async () => {
-    setLoading(true);
-    setMessage("");
-    try {
-      const res = await getUsers({ role: "seller", sellerApproved: false });
-      setPendingSellers(res?.documents || []);
-    } catch {
-      setMessage("Failed to load pending sellers");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchPending();
-  }, []);
-
-  const approveSeller = async (userId: string) => {
+  const handleApprove = (userId: string) => {
     if (!profile?.$id) return;
-    setMessage("");
-    try {
-      await updateUser({ userId, sellerApproved: true, updaterId: profile.$id });
-      setMessage("Seller approved");
-      fetchPending();
-    } catch {
-      setMessage("Failed to approve seller");
-    }
+    approveMutation.mutate(
+      { userId, updaterId: profile.$id },
+      {
+        onSuccess: () => {
+          message.success("Seller approved successfully");
+        },
+        onError: () => {
+          message.error("Failed to approve seller");
+        },
+      }
+    );
   };
+
+  const columns = [
+    {
+      title: "Name",
+      dataIndex: "name",
+      key: "name",
+    },
+    {
+      title: "Email",
+      dataIndex: "email",
+      key: "email",
+    },
+    {
+      title: "Role",
+      dataIndex: "role",
+      key: "role",
+      render: (role: string) => <Tag color="blue">{role}</Tag>,
+    },
+    {
+      title: "Action",
+      key: "action",
+      render: (_: any, record: any) => (
+        <Popconfirm
+          title="Approve Seller"
+          description={`Are you sure you want to approve ${record.name}?`}
+          onConfirm={() => handleApprove(record.$id)}
+          okText="Approve"
+          cancelText="Cancel"
+        >
+          <Button
+            type="primary"
+            icon={<CheckOutlined />}
+            loading={approveMutation.isPending}
+            className="bg-slate-900"
+          >
+            Approve
+          </Button>
+        </Popconfirm>
+      ),
+    },
+  ];
 
   return (
-    <section className="space-y-4">
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">Seller approvals</h1>
-        <p className="mt-1 text-sm text-slate-600">Approve sellers to unlock seller console access.</p>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <Title level={2} style={{ margin: 0 }}>
+            Seller Approvals
+          </Title>
+          <Text type="secondary">Review and approve new seller accounts.</Text>
+        </div>
+        <Button
+          icon={<ReloadOutlined />}
+          onClick={() => refetch()}
+          loading={isLoading}
+        >
+          Refresh
+        </Button>
       </div>
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-slate-700">Pending sellers</h2>
-          <button
-            onClick={fetchPending}
-            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-            disabled={loading}
-          >
-            {loading ? "Loading..." : "Refresh"}
-          </button>
-        </div>
-
-        {!loading && pendingSellers.length === 0 && (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm text-slate-700">No pending sellers.</p>
-          </div>
-        )}
-
-        <div className="space-y-3">
-          {pendingSellers.map((u) => (
-            <div key={u.$id} className="rounded-2xl border border-slate-200 bg-white p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="font-semibold text-slate-900">{u.name}</p>
-                  <p className="text-sm text-slate-600">{u.email}</p>
-                </div>
-                <button
-                  onClick={() => approveSeller(u.$id)}
-                  className="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
-                >
-                  Approve
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {message && (
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-            <p className="text-sm text-slate-700">{message}</p>
-          </div>
-        )}
-      </div>
-    </section>
+      <Card variant="borderless" className="shadow-sm">
+        <Table
+          columns={columns}
+          dataSource={sellers}
+          rowKey="$id"
+          loading={isLoading}
+          pagination={{ pageSize: 10 }}
+          locale={{ emptyText: "No pending sellers found" }}
+        />
+      </Card>
+    </div>
   );
 }

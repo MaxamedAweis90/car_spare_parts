@@ -1,12 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
+import Skeleton from "@mui/material/Skeleton";
+import Link from "next/link";
+import { SearchFilters } from "@/components/SearchFilters";
+import { useCategories } from "@/hooks/queries/useCategories";
 
 type Product = {
   $id: string;
   name: string;
-  price: number;
+  price?: number | null;
+  originalPrice?: number | null;
+  onSale?: boolean;
+  discountStartDate?: string | null;
+  discountExpiry?: string | null;
   stock?: number | null;
   category?: string | null;
   imageId?: string | null;
@@ -16,24 +25,113 @@ type Product = {
 };
 
 export default function ShopPage() {
+  const router = useRouter();
+  const { data: categories } = useCategories();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const searchParams = useSearchParams();
+  const categoryFilter = searchParams.get("category");
+  const searchQuery = searchParams.get("search");
+  const onSaleFilter = searchParams.get("onSale");
+  const minPriceFilter = searchParams.get("minPrice");
+  const maxPriceFilter = searchParams.get("maxPrice");
+  const makeFilter = searchParams.get("make");
+  const modelFilter = searchParams.get("model");
+  const yearFilter = searchParams.get("year");
+
+  const activeCategory = useMemo(() => {
+    if (!categoryFilter || !categories) return null;
+    const part = categories.find((c) => c.id === categoryFilter);
+    if (!part) return null;
+
+    const names: string[] = [part.name];
+    let current = part;
+    while (current.parentCategoryId) {
+      const parent = categories.find((c) => c.id === current.parentCategoryId);
+      if (parent) {
+        names.unshift(parent.name);
+        current = parent;
+      } else {
+        break;
+      }
+    }
+
+    return { ...part, fullLabel: names.join(" > ") };
+  }, [categoryFilter, categories]);
+
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       try {
-        const res = await fetch("/api/products?limit=48", {
+        const params = new URLSearchParams();
+        params.set("limit", "100"); // Increase limit to fetch more for accurate client-side search/sale filters
+        if (categoryFilter) params.set("category", categoryFilter);
+        if (searchQuery) params.set("search", searchQuery);
+        if (onSaleFilter === "true") params.set("onSale", "true");
+        if (minPriceFilter) params.set("minPrice", minPriceFilter);
+        if (maxPriceFilter) params.set("maxPrice", maxPriceFilter);
+        if (makeFilter) params.set("make", makeFilter);
+        if (modelFilter) params.set("model", modelFilter);
+        if (yearFilter) params.set("year", yearFilter);
+
+        const res = await fetch(`/api/products?${params.toString()}`, {
           cache: "no-store",
         });
         const body = await res.json();
         if (!res.ok) throw new Error(body?.error || "Failed to load products");
-        const items: Product[] = Array.isArray(body?.items)
-          ? (body.items as Product[])
-          : [];
-        const activeItems = items.filter(
-          (p) => (p as any)?.active !== false && (p as any)?.published !== false
+        const items: any[] = Array.isArray(body?.items) ? body.items : [];
+
+        const normalized: Product[] = items
+          .filter((p) => p && typeof p === "object")
+          .map((p) => ({
+            $id: String(p.$id),
+            name: String(p.name ?? ""),
+            price:
+              typeof p.price === "number"
+                ? p.price
+                : p.price != null
+                ? Number(p.price)
+                : null,
+            originalPrice:
+              typeof p.originalPrice === "number"
+                ? p.originalPrice
+                : p.originalPrice != null
+                ? Number(p.originalPrice)
+                : null,
+            onSale: !!p.onSale,
+            discountStartDate: p.discountStartDate ?? null,
+            discountExpiry: p.discountExpiry ?? null,
+            stock:
+              typeof p.stock === "number"
+                ? p.stock
+                : p.stock != null
+                ? Number(p.stock)
+                : null,
+            imageId: p.imageId ?? null,
+            imageUrl: p.imageUrl ?? null,
+            active: p.isActive ?? p.active,
+            published: p.published ?? true,
+          }));
+
+        // Log for debugging (user can check browser console)
+        console.log(
+          "Fetched products:",
+          normalized.length,
+          "Filtering results..."
         );
+
+        const activeItems = normalized.filter((p) => {
+          const isVisible = p.active !== false && p.published !== false;
+          if (!isVisible) {
+            console.log(
+              `Product hidden: ${p.name} (ID: ${p.$id}) - Active: ${p.active}, Published: ${p.published}`
+            );
+          }
+          return isVisible;
+        });
+
         setProducts(activeItems);
       } catch (err: any) {
         setError(err?.message || "Failed to load products");
@@ -42,52 +140,178 @@ export default function ShopPage() {
       }
     };
     load();
-  }, []);
+  }, [
+    categoryFilter,
+    searchQuery,
+    onSaleFilter,
+    minPriceFilter,
+    maxPriceFilter,
+    makeFilter,
+    modelFilter,
+    yearFilter,
+  ]);
 
-  const visibleProducts = useMemo(() => products.slice(0, 32), [products]);
+  const handleFiltersChange = (newFilters: any) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (newFilters.minPrice > 0)
+      params.set("minPrice", newFilters.minPrice.toString());
+    else params.delete("minPrice");
+
+    if (newFilters.maxPrice < 1000)
+      params.set("maxPrice", newFilters.maxPrice.toString());
+    else params.delete("maxPrice");
+
+    if (newFilters.onSale) params.set("onSale", "true");
+    else params.delete("onSale");
+
+    if (newFilters.make) params.set("make", newFilters.make);
+    else params.delete("make");
+
+    if (newFilters.model) params.set("model", newFilters.model);
+    else params.delete("model");
+
+    if (newFilters.year) params.set("year", newFilters.year);
+    else params.delete("year");
+
+    if (newFilters.category) params.set("category", newFilters.category);
+    else params.delete("category");
+
+    router.push(`/shop?${params.toString()}`);
+  };
+
+  const visibleProducts = useMemo(() => products.slice(0, 48), [products]);
+  const hasFilters = !!(
+    categoryFilter ||
+    searchQuery ||
+    onSaleFilter === "true" ||
+    minPriceFilter ||
+    maxPriceFilter ||
+    makeFilter ||
+    modelFilter ||
+    yearFilter
+  );
 
   return (
     <div className="bg-(--color-bg) min-h-screen py-10">
       <div className="mx-auto w-full max-w-full sm:max-w-10/12 px-4 sm:px-6">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <p className="text-[12px] font-semibold uppercase tracking-[0.24em] text-(--color-muted)">
-              Browse catalog
-            </p>
-            <h1 className="text-3xl font-bold text-(--color-text)">
-              Shop All Products
-            </h1>
-            <p className="text-sm text-(--color-muted)">
-              Find brakes, accessories, electronics, and more.
-            </p>
+        <div className="flex flex-col gap-8 lg:flex-row">
+          {/* Sidebar */}
+          <aside className="lg:w-80 lg:shrink-0">
+            <div className="sticky top-24">
+              <SearchFilters
+                filters={{
+                  minPrice: Number(minPriceFilter || 0),
+                  maxPrice: Number(maxPriceFilter || 1000),
+                  onSale: onSaleFilter === "true",
+                  make: makeFilter || "",
+                  model: modelFilter || "",
+                  year: yearFilter || "",
+                  category: categoryFilter || "",
+                }}
+                onFiltersChange={handleFiltersChange}
+                onClose={() => {}}
+              />
+            </div>
+          </aside>
+
+          {/* Main Content */}
+          <div className="flex-1">
+            <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-[12px] font-semibold uppercase tracking-[0.24em] text-(--color-muted)">
+                    Browse catalog
+                  </p>
+                  {hasFilters && (
+                    <Link
+                      href="/shop"
+                      className="text-[10px] font-bold uppercase tracking-wider text-(--color-primary) hover:underline"
+                    >
+                      (Clear All)
+                    </Link>
+                  )}
+                </div>
+                <h1 className="text-3xl font-bold text-(--color-text)">
+                  {activeCategory
+                    ? `Category: ${activeCategory.fullLabel}`
+                    : "Shop All Products"}
+                </h1>
+                <p className="text-sm text-(--color-muted)">
+                  {searchQuery
+                    ? `Showing results for "${searchQuery}"`
+                    : "Find brakes, accessories, electronics, and more."}
+                </p>
+              </div>
+              {!loading && (
+                <span className="text-sm font-semibold text-(--color-muted)">
+                  {products.length} items found
+                </span>
+              )}
+            </div>
+
+            {error && (
+              <p className="mb-4 text-sm text-(--color-danger)">{error}</p>
+            )}
+
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {loading
+                ? Array.from({ length: 12 }).map((_, index) => (
+                    <div
+                      key={`skeleton-${index}`}
+                      className="flex h-full flex-col overflow-hidden rounded-2xl border border-(--color-border-strong) bg-(--color-surface) shadow-panel"
+                    >
+                      <div className="relative aspect-4/3 w-full bg-(--color-bg)">
+                        <Skeleton
+                          variant="rectangular"
+                          width="100%"
+                          height="100%"
+                          sx={{ position: "absolute", inset: 0 }}
+                        />
+                      </div>
+                      <div className="flex flex-1 flex-col gap-2 px-3 py-3 sm:px-4 sm:py-4">
+                        <Skeleton variant="text" height={24} />
+                        <Skeleton variant="text" width="55%" height={26} />
+                        <div className="mt-auto flex items-center justify-between gap-3 pt-1">
+                          <Skeleton variant="text" width="45%" height={18} />
+                          <Skeleton variant="circular" width={36} height={36} />
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                : visibleProducts.map((p) => (
+                    <ProductCard
+                      key={`shop-${p.$id}`}
+                      id={p.$id}
+                      name={p.name}
+                      price={p.price}
+                      originalPrice={p.originalPrice}
+                      onSale={p.onSale}
+                      discountStartDate={p.discountStartDate}
+                      discountExpiry={p.discountExpiry}
+                      stock={p.stock ?? null}
+                      imageId={p.imageId ?? null}
+                      imageUrl={p.imageUrl ?? null}
+                    />
+                  ))}
+            </div>
+
+            {!loading && !error && visibleProducts.length === 0 && (
+              <div className="py-20 text-center">
+                <i className="fa-solid fa-box-open mb-4 block text-5xl text-(--color-border-strong)"></i>
+                <p className="text-lg font-medium text-(--color-muted)">
+                  No products found for this selection.
+                </p>
+                {hasFilters && (
+                  <Link
+                    href="/shop"
+                    className="mt-4 inline-block font-semibold text-(--color-primary) hover:underline"
+                  >
+                    Clear all filters
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
-          <span className="text-sm font-semibold text-(--color-muted)">
-            {visibleProducts.length} items
-          </span>
-        </div>
-
-        {error && <p className="mb-4 text-sm text-(--color-danger)">{error}</p>}
-        {loading && !error && (
-          <p className="mb-4 text-sm text-(--color-muted)">
-            Loading products...
-          </p>
-        )}
-        {!loading && !error && visibleProducts.length === 0 && (
-          <p className="text-sm text-(--color-muted)">No products available.</p>
-        )}
-
-        <div className="grid grid-cols-2 gap-6 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
-          {visibleProducts.map((p) => (
-            <ProductCard
-              key={`shop-${p.$id}`}
-              id={p.$id}
-              name={p.name}
-              price={p.price}
-              stock={p.stock ?? null}
-              imageId={p.imageId ?? null}
-              imageUrl={p.imageUrl ?? null}
-            />
-          ))}
         </div>
       </div>
     </div>

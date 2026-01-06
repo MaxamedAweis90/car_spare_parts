@@ -7,6 +7,10 @@ export interface ProductCardProps {
   id: string;
   name: string;
   price?: number | null;
+  originalPrice?: number | null;
+  onSale?: boolean;
+  discountStartDate?: string | null;
+  discountExpiry?: string | null;
   imageId?: string | null;
   imageUrl?: string | null;
   href?: string;
@@ -25,16 +29,31 @@ function buildPublicProductImageUrl(fileId?: string | null) {
   url.searchParams.set("project", project);
   return url.toString();
 }
-
 export default function ProductCard({
   id,
   name,
   price,
+  originalPrice,
+  onSale,
+  discountStartDate,
+  discountExpiry,
   imageId,
   imageUrl: imageUrlProp,
   href,
   stock,
 }: ProductCardProps) {
+  const isCurrentlyOnSale = (() => {
+    if (!onSale) return false;
+    const now = new Date();
+    if (discountStartDate) {
+      if (now < new Date(discountStartDate)) return false;
+    }
+    if (discountExpiry) {
+      if (now > new Date(discountExpiry)) return false;
+    }
+    return true;
+  })();
+
   const cart = useCart();
   const priceDisplay = typeof price === "number" ? `£${price.toFixed(2)}` : "";
   const linkHref = href ?? `/products/${id}`;
@@ -75,6 +94,19 @@ export default function ProductCard({
             No image
           </div>
         )}
+
+        {isCurrentlyOnSale && (
+          <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
+            <div className="rounded-full bg-red-500 px-3 py-1 text-[11px] font-bold text-white shadow-lg">
+              SALE
+            </div>
+            {originalPrice && price && (
+              <div className="rounded-full bg-green-500 px-2 py-0.5 text-[10px] font-bold text-white shadow-md">
+                -{(((originalPrice - price) / originalPrice) * 100).toFixed(0)}%
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-1 flex-col gap-2 px-3 py-3 sm:px-4 sm:py-4">
@@ -82,8 +114,22 @@ export default function ProductCard({
           {name}
         </h3>
         {priceDisplay && (
-          <div className="text-base sm:text-lg font-black text-(--color-text)">
-            {priceDisplay}
+          <div className="flex items-center gap-2">
+            <div className="text-base sm:text-lg font-black text-(--color-text)">
+              {priceDisplay}
+            </div>
+            {isCurrentlyOnSale && originalPrice && (
+              <div className="text-xs sm:text-sm text-(--color-muted) line-through">
+                £{Number(originalPrice).toFixed(2)}
+              </div>
+            )}
+          </div>
+        )}
+
+        {discountExpiry && isCurrentlyOnSale && (
+          <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold text-red-500 bg-red-50 px-2 py-1 rounded-md w-fit">
+            <i className="fa-solid fa-clock animate-pulse"></i>
+            <span>Ends: {new Date(discountExpiry).toLocaleDateString()}</span>
           </div>
         )}
 
@@ -103,7 +149,7 @@ export default function ProductCard({
             onClick={handleAddToCart}
             disabled={!canAddToCart}
             aria-label="Add to cart"
-            className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)] transition-all duration-200 hover:border-[var(--color-accent)] hover:bg-[var(--color-accent)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50 shadow-sm hover:shadow-md"
+            className="flex h-10 w-10 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-[var(--color-surface)] border border-[var(--color-border)] text-[var(--color-text-muted)] transition-all duration-200 hover:border-[var(--color-accent)] hover:bg-[var(--color-accent)] hover:text-white disabled:cursor-not-allowed disabled:opacity-50 shadow-sm hover:shadow-md active:scale-90"
           >
             <i
               className="fa-solid fa-cart-shopping text-sm sm:text-base"

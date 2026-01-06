@@ -70,7 +70,7 @@ export function CartDrawer({
       onClose={handleClose}
       PaperProps={{
         sx: {
-          width: { xs: 340, sm: 380 },
+          width: { xs: "100%", sm: 380 },
           borderTopLeftRadius: 16,
           borderBottomLeftRadius: 16,
         },
@@ -78,6 +78,8 @@ export function CartDrawer({
     >
       <ClickAwaySurface
         onClose={handleClose}
+        mouseEvent="onMouseDown"
+        touchEvent="onTouchStart"
         className="flex h-full flex-col"
         style={{ backgroundColor: "#f8fafc" }}
       >

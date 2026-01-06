@@ -14,6 +14,11 @@ export type ProductDocument = Models.Document & {
   compatibilityOptionIds?: string[];
   imageIds?: string[];
   imageId?: string | null;
+  isActive?: boolean;
+  originalPrice?: number | null;
+  onSale?: boolean;
+  discountStartDate?: string | null;
+  discountExpiry?: string | null;
 };
 
 export async function findProductsBySellerId(sellerId: string, limit = 10) {
@@ -28,11 +33,18 @@ export async function findProductsBySellerId(sellerId: string, limit = 10) {
 
 export function buildProductImageUrl(fileId: string | null) {
   if (!fileId) return null;
-  const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || process.env.APPWRITE_ENDPOINT;
-  const project = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID || process.env.APPWRITE_PROJECT_ID;
-  const bucket = process.env.NEXT_PUBLIC_APPWRITE_PRODUCT_BUCKET_ID || process.env.APPWRITE_PRODUCT_BUCKET_ID;
+  const endpoint =
+    process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || process.env.APPWRITE_ENDPOINT;
+  const project =
+    process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID ||
+    process.env.APPWRITE_PROJECT_ID;
+  const bucket =
+    process.env.NEXT_PUBLIC_APPWRITE_PRODUCT_BUCKET_ID ||
+    process.env.APPWRITE_PRODUCT_BUCKET_ID;
   if (!endpoint || !project || !bucket) return null;
-  const url = new URL(`${endpoint}/storage/buckets/${bucket}/files/${fileId}/view`);
+  const url = new URL(
+    `${endpoint}/storage/buckets/${bucket}/files/${fileId}/view`
+  );
   url.searchParams.set("project", project);
   return url.toString();
 }

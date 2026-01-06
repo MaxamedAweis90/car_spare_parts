@@ -5,6 +5,8 @@ import "./globals.css";
 
 import CDNs from "@/components/Tools/CDNs";
 import SiteShell from "@/components/SiteShell";
+import QueryProvider from "@/components/providers/QueryProvider";
+import AntdRegistryProvider from "@/components/providers/AntdRegistryProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,7 +36,11 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-foreground`}
       >
-        <SiteShell>{children}</SiteShell>
+        <QueryProvider>
+          <AntdRegistryProvider>
+            <SiteShell>{children}</SiteShell>
+          </AntdRegistryProvider>
+        </QueryProvider>
       </body>
     </html>
   );

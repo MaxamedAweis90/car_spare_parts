@@ -1,17 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { Select } from "antd";
+import { useCategories } from "@/hooks/queries/useCategories";
+import { useCompatibilityOptions } from "@/hooks/queries/useCompatibilityOptions";
+
+const { Option } = Select;
 
 interface SearchFiltersProps {
   filters: {
     minPrice: number;
     maxPrice: number;
     onSale: boolean;
+    make?: string;
+    model?: string;
+    year?: string;
+    category?: string;
   };
   onFiltersChange: (filters: {
     minPrice: number;
     maxPrice: number;
     onSale: boolean;
+    make?: string;
+    model?: string;
+    year?: string;
+    category?: string;
   }) => void;
   onClose: () => void;
 }
@@ -22,6 +35,71 @@ export function SearchFilters({
   onClose,
 }: SearchFiltersProps) {
   const [localFilters, setLocalFilters] = useState(filters);
+  const { data: categories, isLoading: catsLoading } = useCategories();
+  const { data: compatibilityOptions, isLoading: compatLoading } =
+    useCompatibilityOptions();
+
+  // Create flat hierarchy labels for a single dropdown
+  const hierarchicalCategories = useMemo(() => {
+    if (!categories) return [];
+
+    return categories
+      .filter((c) => c.type === "sellable" || !c.type) // Focus on final part categories
+      .map((part) => {
+        const names: string[] = [part.name];
+        let current = part;
+        while (current.parentCategoryId) {
+          const parent = categories.find(
+            (c) => c.id === current.parentCategoryId
+          );
+          if (parent) {
+            names.unshift(parent.name);
+            current = parent;
+          } else {
+            break;
+          }
+        }
+        return {
+          id: part.id,
+          name: part.name,
+          fullLabel: names.join(" > "),
+        };
+      })
+      .sort((a, b) => a.fullLabel.localeCompare(b.fullLabel));
+  }, [categories]);
+
+  // Compatibility Memos
+  const makes = useMemo(() => {
+    if (!compatibilityOptions) return [];
+    return Array.from(
+      new Set(compatibilityOptions.map((o) => (o as any).make).filter(Boolean))
+    ).sort();
+  }, [compatibilityOptions]);
+
+  const models = useMemo(() => {
+    if (!compatibilityOptions || !localFilters.make) return [];
+    return Array.from(
+      new Set(
+        compatibilityOptions
+          .filter((o) => (o as any).make === localFilters.make)
+          .map((o) => (o as any).model)
+          .filter(Boolean)
+      )
+    ).sort();
+  }, [compatibilityOptions, localFilters.make]);
+
+  const years = useMemo(() => {
+    if (!compatibilityOptions) return [];
+    const allYears = new Set<string>();
+    compatibilityOptions.forEach((o: any) => {
+      if (o.yearFrom && o.yearTo) {
+        for (let y = o.yearFrom; y <= o.yearTo; y++) {
+          allYears.add(String(y));
+        }
+      }
+    });
+    return Array.from(allYears).sort((a, b) => Number(b) - Number(a));
+  }, [compatibilityOptions]);
 
   const handleApply = () => {
     onFiltersChange(localFilters);
@@ -29,38 +107,70 @@ export function SearchFilters({
   };
 
   const handleReset = () => {
-    const resetFilters = { minPrice: 0, maxPrice: 1000, onSale: false };
+    const resetFilters = {
+      minPrice: 0,
+      maxPrice: 1000,
+      onSale: false,
+      make: "",
+      model: "",
+      year: "",
+      category: "",
+    };
     setLocalFilters(resetFilters);
     onFiltersChange(resetFilters);
   };
 
   return (
-    <div className="w-80 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
-      <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-bold text-slate-900">Filters</h3>
+    <div className="w-[calc(100vw-2rem)] max-w-80 rounded-[2rem] border border-(--color-border-strong) bg-(--color-surface) p-6 shadow-2xl backdrop-blur-xl sm:w-80">
+      <div className="mb-6 flex items-center justify-between">
+        <h3 className="text-lg font-black uppercase tracking-widest text-(--color-text)">
+          Filters
+        </h3>
         <button
           type="button"
           onClick={onClose}
-          className="text-slate-400 hover:text-slate-600"
+          className="flex h-8 w-8 items-center justify-center rounded-full bg-(--color-bg) text-(--color-muted) hover:text-(--color-primary) transition-colors"
           aria-label="Close filters"
         >
-          <i className="fa-solid fa-xmark text-lg" aria-hidden />
+          <i className="fa-solid fa-xmark" aria-hidden />
         </button>
       </div>
 
+      {/* Single Hierarchical Category Dropdown */}
+      <div className="mb-8">
+        <label className="mb-4 block text-[10px] font-black uppercase tracking-[0.2em] text-(--color-muted)">
+          Category
+        </label>
+        <Select
+          showSearch
+          allowClear
+          placeholder="Filter by Part Category..."
+          loading={catsLoading}
+          value={localFilters.category || undefined}
+          onChange={(val) =>
+            setLocalFilters({ ...localFilters, category: val || "" })
+          }
+          className="w-full custom-antd-select"
+          optionFilterProp="children"
+        >
+          {hierarchicalCategories.map((c) => (
+            <Option key={c.id} value={c.id}>
+              {c.fullLabel}
+            </Option>
+          ))}
+        </Select>
+      </div>
+
       {/* Price Range */}
-      <div className="mb-6">
-        <label className="mb-3 block text-xs font-bold uppercase tracking-wide text-slate-700">
+      <div className="mb-8">
+        <label className="mb-4 block text-[10px] font-black uppercase tracking-[0.2em] text-(--color-muted)">
           Price Range
         </label>
 
         <div className="mb-4 flex items-center gap-3">
           <div className="flex-1">
-            <label className="mb-1 block text-xs font-semibold text-slate-600">
-              From
-            </label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-(--color-muted)">
                 £
               </span>
               <input
@@ -72,19 +182,14 @@ export function SearchFilters({
                     minPrice: Number(e.target.value),
                   })
                 }
-                className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-7 pr-3 text-sm font-semibold text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                min="0"
-                max={localFilters.maxPrice}
+                className="w-full rounded-xl border border-(--color-border-strong) bg-(--color-bg) py-2.5 pl-7 pr-3 text-sm font-bold text-(--color-text) focus:border-(--color-primary) focus:outline-none focus:ring-4 focus:ring-(--color-primary-light)"
+                placeholder="From"
               />
             </div>
           </div>
-
           <div className="flex-1">
-            <label className="mb-1 block text-xs font-semibold text-slate-600">
-              To
-            </label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-(--color-muted)">
                 £
               </span>
               <input
@@ -96,101 +201,147 @@ export function SearchFilters({
                     maxPrice: Number(e.target.value),
                   })
                 }
-                className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-7 pr-3 text-sm font-semibold text-slate-900 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                min={localFilters.minPrice}
+                className="w-full rounded-xl border border-(--color-border-strong) bg-(--color-bg) py-2.5 pl-7 pr-3 text-sm font-bold text-(--color-text) focus:border-(--color-primary) focus:outline-none focus:ring-4 focus:ring-(--color-primary-light)"
+                placeholder="To"
               />
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Dual Range Slider */}
-        <div className="relative h-2">
-          <div className="absolute inset-0 rounded-full bg-slate-200" />
-          <div
-            className="absolute h-full rounded-full bg-orange-500"
-            style={{
-              left: `${(localFilters.minPrice / 1000) * 100}%`,
-              right: `${100 - (localFilters.maxPrice / 1000) * 100}%`,
-            }}
-          />
-          <input
-            type="range"
-            min="0"
-            max="1000"
-            step="10"
-            value={localFilters.minPrice}
-            onChange={(e) =>
-              setLocalFilters({
-                ...localFilters,
-                minPrice: Math.min(
-                  Number(e.target.value),
-                  localFilters.maxPrice - 10
-                ),
-              })
+      {/* Compatibility */}
+      <div className="mb-8 space-y-4">
+        <label className="block text-[10px] font-black uppercase tracking-[0.2em] text-(--color-muted)">
+          Vehicle Compatibility
+        </label>
+
+        <div className="grid gap-3">
+          <Select
+            showSearch
+            allowClear
+            placeholder="Select Make"
+            loading={compatLoading}
+            value={localFilters.make || undefined}
+            onChange={(val) =>
+              setLocalFilters({ ...localFilters, make: val || "", model: "" })
             }
-            className="pointer-events-none absolute inset-0 h-2 w-full cursor-pointer appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-orange-500 [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:transition [&::-webkit-slider-thumb]:hover:scale-110"
-          />
-          <input
-            type="range"
-            min="0"
-            max="1000"
-            step="10"
-            value={localFilters.maxPrice}
-            onChange={(e) =>
-              setLocalFilters({
-                ...localFilters,
-                maxPrice: Math.max(
-                  Number(e.target.value),
-                  localFilters.minPrice + 10
-                ),
-              })
+            className="w-full custom-antd-select"
+            optionFilterProp="children"
+          >
+            {makes.map((m) => (
+              <Option key={m} value={m}>
+                {m}
+              </Option>
+            ))}
+          </Select>
+
+          <Select
+            showSearch
+            allowClear
+            placeholder="Select Model"
+            disabled={!localFilters.make}
+            value={localFilters.model || undefined}
+            onChange={(val) =>
+              setLocalFilters({ ...localFilters, model: val || "" })
             }
-            className="pointer-events-none absolute inset-0 h-2 w-full cursor-pointer appearance-none bg-transparent [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:bg-orange-500 [&::-webkit-slider-thumb]:shadow-md [&::-webkit-slider-thumb]:transition [&::-webkit-slider-thumb]:hover:scale-110"
-          />
+            className="w-full custom-antd-select"
+            optionFilterProp="children"
+          >
+            {models.map((m) => (
+              <Option key={m} value={m}>
+                {m}
+              </Option>
+            ))}
+          </Select>
+
+          <Select
+            showSearch
+            allowClear
+            placeholder="Select Year"
+            value={localFilters.year || undefined}
+            onChange={(val) =>
+              setLocalFilters({ ...localFilters, year: val || "" })
+            }
+            className="w-full custom-antd-select"
+            optionFilterProp="children"
+          >
+            {years.map((y) => (
+              <Option key={y} value={y}>
+                {y}
+              </Option>
+            ))}
+          </Select>
         </div>
       </div>
 
-      {/* On Sale Toggle */}
-      <div className="mb-6">
-        <label className="flex cursor-pointer items-center justify-between">
-          <span className="text-sm font-bold text-slate-900">On Sale Only</span>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={localFilters.onSale}
+      {/* On Sale */}
+      <div className="mb-8">
+        <label className="flex cursor-pointer items-center justify-between group">
+          <span className="text-sm font-black uppercase tracking-wider text-(--color-text) group-hover:text-(--color-primary) transition-colors">
+            On Sale Only
+          </span>
+          <div
             onClick={() =>
               setLocalFilters({ ...localFilters, onSale: !localFilters.onSale })
             }
-            className={`relative h-6 w-11 rounded-full transition ${
-              localFilters.onSale ? "bg-orange-500" : "bg-slate-300"
+            className={`relative h-6 w-11 rounded-full p-1 transition-all duration-300 ${
+              localFilters.onSale
+                ? "bg-(--color-primary)"
+                : "bg-(--color-border-strong)"
             }`}
           >
-            <span
-              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition ${
-                localFilters.onSale ? "left-5" : "left-0.5"
+            <div
+              className={`h-4 w-4 rounded-full bg-white shadow-md transition-transform duration-300 ${
+                localFilters.onSale ? "translate-x-5" : "translate-x-0"
               }`}
             />
-          </button>
+          </div>
         </label>
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-2">
+      <div className="flex gap-3 pt-2">
         <button
           type="button"
           onClick={handleReset}
-          className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+          className="flex-1 rounded-xl border border-(--color-border-strong) bg-(--color-bg) py-3 text-xs font-black uppercase tracking-[0.2em] text-(--color-muted) hover:bg-(--color-surface) transition-all"
         >
           Reset
         </button>
         <button
           type="button"
           onClick={handleApply}
-          className="flex-1 rounded-lg bg-orange-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-orange-600"
+          className="flex-1 rounded-xl bg-(--color-primary) py-3 text-xs font-black uppercase tracking-[0.2em] text-white hover:brightness-110 shadow-lg shadow-(--color-primary-light) transition-all active:scale-95"
         >
           Apply
         </button>
       </div>
+
+      <style jsx global>{`
+        .custom-antd-select .ant-select-selector {
+          border-radius: 12px !important;
+          border-color: var(--color-border-strong) !important;
+          background-color: var(--color-bg) !important;
+          height: 44px !important;
+          display: flex !important;
+          align-items: center !important;
+          font-weight: 700 !important;
+          color: var(--color-text) !important;
+          padding-left: 12px !important;
+        }
+        .custom-antd-select .ant-select-selection-placeholder {
+          color: var(--color-muted) !important;
+          font-weight: 600 !important;
+        }
+        .custom-antd-select .ant-select-item-option-content {
+          font-size: 13px !important;
+          font-weight: 500 !important;
+        }
+        .custom-antd-select .ant-select-selection-item {
+          font-size: 13px !important;
+          font-weight: 700 !important;
+        }
+      `}</style>
     </div>
   );
 }

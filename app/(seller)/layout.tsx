@@ -4,93 +4,94 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Avatar,
-  Badge,
-  Divider,
-  IconButton,
+  Layout,
   Menu,
-  MenuItem,
-  Tooltip,
-} from "@mui/material";
-import CircularProgress from "@mui/material/CircularProgress";
-import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
-import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
-import AddBoxOutlinedIcon from "@mui/icons-material/AddBoxOutlined";
-import CategoryOutlinedIcon from "@mui/icons-material/CategoryOutlined";
-import TableRowsOutlinedIcon from "@mui/icons-material/TableRowsOutlined";
-import MonetizationOnOutlinedIcon from "@mui/icons-material/MonetizationOnOutlined";
-import StorefrontOutlinedIcon from "@mui/icons-material/StorefrontOutlined";
-import PersonOutlineOutlinedIcon from "@mui/icons-material/PersonOutlineOutlined";
-import HelpOutlineOutlinedIcon from "@mui/icons-material/HelpOutlineOutlined";
-import MenuOpenIcon from "@mui/icons-material/MenuOpen";
-import NotificationsNoneOutlinedIcon from "@mui/icons-material/NotificationsNoneOutlined";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+  Button,
+  Avatar,
+  Dropdown,
+  Result,
+  Spin,
+  theme,
+  Typography,
+  Badge,
+} from "antd";
+import {
+  DashboardOutlined,
+  AppstoreOutlined,
+  PlusSquareOutlined,
+  TagsOutlined,
+  UnorderedListOutlined,
+  DollarOutlined,
+  ShopOutlined,
+  UserOutlined,
+  QuestionCircleOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  LogoutOutlined,
+  BellOutlined,
+} from "@ant-design/icons";
+
 import { useSession } from "@/lib/useSession";
 import { performLogout } from "@/lib/logout";
-import { getImageUrl } from "@/lib/appwrite/storage";
+import { getImageUrl } from "@/lib/appwrite/storage"; // Assuming this exists as per original
 import { SellerStoreProvider, useSellerStore } from "@/lib/SellerStoreProvider";
 import {
   SellerProfileProvider,
   useSellerProfile,
 } from "@/lib/SellerProfileProvider";
 
+const { Header, Sider, Content } = Layout;
+const { Text } = Typography;
+
 const allowedRoles = new Set(["seller"]);
 
 const NAV_ITEMS = [
   {
+    key: "/seller/dashboard",
     label: "Dashboard",
-    href: "/seller/dashboard",
-    icon: <DashboardOutlinedIcon fontSize="small" />,
+    icon: <DashboardOutlined />,
   },
   {
+    key: "/seller/products",
     label: "Products",
-    href: "/seller/products",
-    icon: <Inventory2OutlinedIcon fontSize="small" />,
+    icon: <AppstoreOutlined />,
   },
   {
+    key: "/seller/products/new",
     label: "Add product",
-    href: "/seller/products/new",
-    icon: <AddBoxOutlinedIcon fontSize="small" />,
+    icon: <PlusSquareOutlined />,
   },
+  // {
+  //   key: "/seller/products/categories",
+  //   label: "Categories",
+  //   icon: <TagsOutlined />,
+  // },
   {
-    label: "Categories",
-    href: "/seller/products/categories",
-    icon: <CategoryOutlinedIcon fontSize="small" />,
-  },
-  {
+    key: "/seller/orders",
     label: "Orders",
-    href: "/seller/orders",
-    icon: <TableRowsOutlinedIcon fontSize="small" />,
+    icon: <UnorderedListOutlined />,
   },
   {
+    key: "/seller/earnings",
     label: "Earnings",
-    href: "/seller/earnings",
-    icon: <MonetizationOnOutlinedIcon fontSize="small" />,
+    icon: <DollarOutlined />,
   },
   {
+    key: "/seller/settings",
     label: "Store settings",
-    href: "/seller/settings",
-    icon: <StorefrontOutlinedIcon fontSize="small" />,
+    icon: <ShopOutlined />,
   },
   {
+    key: "/seller/profile",
     label: "Profile",
-    href: "/seller/profile",
-    icon: <PersonOutlineOutlinedIcon fontSize="small" />,
+    icon: <UserOutlined />,
   },
   {
+    key: "/seller/support",
     label: "Support",
-    href: "/seller/support",
-    icon: <HelpOutlineOutlinedIcon fontSize="small" />,
+    icon: <QuestionCircleOutlined />,
   },
 ];
-
-function usePageTitle(pathname: string) {
-  return useMemo(() => {
-    if (!pathname) return "Seller";
-    const match = NAV_ITEMS.find((item) => pathname.startsWith(item.href));
-    return match?.label || "Seller";
-  }, [pathname]);
-}
 
 export default function SellerLayout({
   children,
@@ -110,12 +111,12 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
   const { authenticated, profile, loading } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
-  const [moreMenuAnchor, setMoreMenuAnchor] = useState<null | HTMLElement>(
-    null
-  );
-  const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState(false);
+
+  const {
+    token: { colorBgContainer, borderRadiusLG },
+  } = theme.useToken();
+
   const { store } = useSellerStore();
   const { profile: sellerProfile } = useSellerProfile();
 
@@ -123,6 +124,8 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
     authenticated &&
     allowedRoles.has(profile?.role) &&
     (profile?.sellerApproved === undefined || profile?.sellerApproved === true);
+
+  const [redirectTarget, setRedirectTarget] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -164,15 +167,8 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
     router,
   ]);
 
-  const pageTitle = usePageTitle(pathname);
-  const initials =
-    profile?.name
-      ?.split(" ")
-      .map((n: string) => n[0])
-      .join("")
-      ?.slice(0, 2) || "SE";
-  const storeSlug = store?.storeSlug ?? null;
   const storeDisplayName = store?.storeName || "Seller Hub";
+
   const sellerAvatarUrl = useMemo(() => {
     if (!sellerProfile?.avatarId) return sellerProfile?.avatarUrl ?? null;
     try {
@@ -182,18 +178,8 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
       return sellerProfile?.avatarUrl ?? null;
     }
   }, [sellerProfile?.avatarId, sellerProfile?.avatarUrl]);
-  const storeAvatarUrl = useMemo(() => {
-    if (!store?.storeAvatarId) return null;
-    try {
-      return getImageUrl("storeAvatars", store.storeAvatarId);
-    } catch (error) {
-      console.error("Failed to resolve store avatar", error);
-      return null;
-    }
-  }, [store?.storeAvatarId]);
 
   const handleLogout = async () => {
-    setMenuAnchor(null);
     await performLogout();
     router.replace("/auth/seller/login");
     router.refresh();
@@ -201,385 +187,207 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <AccessGate
-        title="Validating access"
-        description="Please wait while we confirm your seller permissions."
-        loading
-        accentColor="#f59e0b"
-      />
+      <div className="flex items-center justify-center min-h-screen bg-[#f4f1e9]">
+        <Spin size="large" tip="Loading seller portal..." fullscreen />
+      </div>
     );
   }
 
   if (redirectTarget) {
+    const title =
+      redirectTarget === "/auth/seller/pending"
+        ? "Account Pending"
+        : "Redirecting";
+    const subTitle =
+      redirectTarget === "/auth/seller/pending"
+        ? "Your account is pending approval."
+        : "Taking you to the login page...";
+
     return (
-      <AccessGate
-        title="Redirecting"
-        description={`Taking you to ${describeSellerDestination(
-          redirectTarget
-        )}...`}
-        loading
-        actionLabel="Open now"
-        onAction={() => router.replace(redirectTarget)}
-        accentColor="#f59e0b"
-      />
+      <div className="flex items-center justify-center min-h-screen bg-[#f4f1e9]">
+        <Result
+          status={
+            redirectTarget === "/auth/seller/pending" ? "warning" : "info"
+          }
+          title={title}
+          subTitle={subTitle}
+        />
+      </div>
     );
   }
 
   if (!isAllowed) {
     return (
-      <AccessGate
-        title="Access denied"
-        description="You do not have permission to view the seller console."
-        actionLabel="Go to homepage"
-        onAction={() => router.replace("/")}
-        accentColor="#f59e0b"
-      />
+      <div className="flex items-center justify-center min-h-screen bg-[#f4f1e9]">
+        <Result
+          status="403"
+          title="Access Denied"
+          subTitle="You do not have permission to view this page."
+          extra={
+            <Button type="primary" href="/">
+              Go to Homepage
+            </Button>
+          }
+        />
+      </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#f4f1e9] text-slate-900 flex">
-      <aside
-        className={`${
-          sidebarOpen ? "w-68" : "w-18"
-        } hidden lg:flex fixed left-0 top-0 h-screen flex-col shrink-0 bg-[#161616] text-white transition-all duration-200 shadow-xl`}
-      >
-        <div className="flex items-center justify-between px-4 py-5 border-b border-[#1f1f1f]">
-          <div className="flex items-center gap-3">
-            <Avatar
-              src={storeAvatarUrl || sellerAvatarUrl || undefined}
-              sx={{ width: 40, height: 40, bgcolor: "#f5f5f5", color: "#111" }}
-            >
-              {storeDisplayName.slice(0, 2).toUpperCase()}
-            </Avatar>
-            {sidebarOpen && (
-              <div className="leading-tight">
-                <p className="text-sm font-semibold">{storeDisplayName}</p>
-                <p className="text-xs text-gray-400">Welcome back</p>
-              </div>
-            )}
+  const userMenu = {
+    items: [
+      {
+        key: "profile",
+        label: (
+          <div className="flex flex-col">
+            <Text strong>{profile?.name}</Text>
+            <Text type="secondary" className="text-xs">
+              {storeDisplayName}
+            </Text>
           </div>
-          {/* <IconButton size="small" onClick={() => setSidebarOpen((v) => !v)} sx={{ color: "#e5e7eb" }}>
-            <MenuOpenIcon fontSize="small" />
-          </IconButton> */}
-        </div>
+        ),
+      },
+      { type: "divider" },
+      {
+        key: "settings",
+        label: "Store Settings",
+        icon: <ShopOutlined />,
+        onClick: () => router.push("/seller/settings"),
+      },
+      {
+        key: "logout",
+        label: "Logout",
+        icon: <LogoutOutlined />,
+        onClick: handleLogout,
+        danger: true,
+      },
+    ],
+  };
 
-        <nav className="flex-1 overflow-y-auto px-2 py-4 space-y-1">
-          {NAV_ITEMS.map((item) => {
-            const active = pathname?.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors relative ${
-                  active
-                    ? "bg-white/10 text-white"
-                    : "text-gray-300 hover:bg-white/10"
-                }`}
-              >
-                {active && (
-                  <span
-                    className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-1 rounded-full bg-[#fbbf24]"
-                    aria-hidden
-                  />
-                )}
-                <span className="text-gray-400">{item.icon}</span>
-                {sidebarOpen && (
-                  <span className="font-medium">{item.label}</span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+  // Menu items config
+  const menuItems = NAV_ITEMS.map((item) => ({
+    key: item.key,
+    icon: item.icon,
+    label: <Link href={item.key}>{item.label}</Link>,
+  }));
 
-        <div className="px-3 py-4 border-t border-[#1f1f1f]">
-          {sidebarOpen ? (
-            <div className="rounded-xl bg-white/5 p-3 text-xs text-gray-200">
-              <p className="font-semibold text-white">Need help?</p>
-              <p className="mt-1 text-gray-300">
-                Visit Support or contact admin.
-              </p>
-              <Link
-                href="/seller/support"
-                className="text-[#fbbf24] font-semibold mt-2 inline-block"
+  const activeKey =
+    NAV_ITEMS.filter(
+      (item) => pathname === item.key || pathname.startsWith(`${item.key}/`)
+    ).sort((a, b) => b.key.length - a.key.length)[0]?.key ||
+    "/seller/dashboard";
+
+  return (
+    <Layout style={{ minHeight: "100vh" }}>
+      <Sider
+        trigger={null}
+        collapsible
+        collapsed={collapsed}
+        theme="light"
+        width={260}
+        collapsedWidth={80}
+        className="shadow-md z-10"
+        style={{
+          overflow: "auto",
+          height: "100vh",
+          position: "fixed",
+          left: 0,
+          top: 0,
+          bottom: 0,
+        }}
+      >
+        <div
+          className={`h-[64px] border-b flex items-center ${
+            collapsed ? "justify-center" : "px-4 gap-3"
+          }`}
+        >
+          <Avatar
+            src={sellerAvatarUrl}
+            style={{
+              backgroundColor: "#f56a00",
+              flexShrink: 0,
+            }}
+            shape="square"
+            size={collapsed ? 32 : 36}
+          >
+            {storeDisplayName.slice(0, 1)}
+          </Avatar>
+          {!collapsed && (
+            <div className="overflow-hidden leading-tight">
+              <Text strong className="block truncate text-sm">
+                {storeDisplayName}
+              </Text>
+              <Text
+                type="secondary"
+                className="text-[10px] block uppercase tracking-wider font-bold opacity-60"
               >
-                Support
-              </Link>
+                Seller Portal
+              </Text>
             </div>
-          ) : (
-            <Tooltip title="Support">
-              <IconButton
-                size="small"
-                sx={{ bgcolor: "white", color: "#111" }}
-                href="/seller/support"
-                component={Link as any}
-              >
-                <HelpOutlineOutlinedIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
           )}
         </div>
-      </aside>
-
-      {/* Spacer so content doesn't sit under the fixed sidebar */}
-      <div
-        className={`${
-          sidebarOpen ? "w-68" : "w-18"
-        } hidden lg:block shrink-0 transition-all duration-200`}
-        aria-hidden="true"
-      />
-
-      <div className="flex-1 flex min-h-screen flex-col">
-        <header className="sticky top-0 z-30 flex items-center justify-between bg-[#f4f1e9]/90 backdrop-blur border-b border-[#e3ddcf] px-4 py-3">
-          <div className="flex items-center gap-2">
-            <IconButton
-              className="lg:flex hidden"
-              onClick={() => setSidebarOpen((v) => !v)}
-            >
-              <MenuOpenIcon />
-            </IconButton>
-            <div className="lg:block hidden">
-              <p className="text-sm text-slate-500">Seller</p>
-              <p className="text-lg font-semibold">{pageTitle}</p>
-            </div>
-            <div className="lg:hidden flex items-center gap-2">
-              <Avatar
-                src={storeAvatarUrl || sellerAvatarUrl || undefined}
-                sx={{
-                  width: 32,
-                  height: 32,
-                  bgcolor: "#fbbf24",
-                  color: "#111",
-                  fontSize: 12,
-                }}
-              >
-                {storeDisplayName.slice(0, 2).toUpperCase()}
-              </Avatar>
-              <span className="font-bold text-slate-900 text-sm truncate max-w-[120px]">
-                {storeDisplayName}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
-            <Tooltip title="Notifications">
-              <IconButton size="small">
-                <Badge color="error" variant="dot">
-                  <NotificationsNoneOutlinedIcon />
-                </Badge>
-              </IconButton>
-            </Tooltip>
-
-            <Divider flexItem orientation="vertical" />
-
-            <div>
-              <IconButton
-                onClick={(e) => setMenuAnchor(e.currentTarget)}
-                size="small"
-              >
-                <Avatar
-                  src={sellerAvatarUrl || undefined}
-                  sx={{
-                    bgcolor: "#2563eb",
-                    width: 36,
-                    height: 36,
-                    fontSize: 14,
-                  }}
-                >
-                  {initials}
-                </Avatar>
-              </IconButton>
-              <Menu
-                anchorEl={menuAnchor}
-                open={Boolean(menuAnchor)}
-                onClose={() => setMenuAnchor(null)}
-                anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                transformOrigin={{ vertical: "top", horizontal: "right" }}
-              >
-                <MenuItem
-                  onClick={() => {
-                    setMenuAnchor(null);
-                    router.push("/seller/profile");
-                  }}
-                >
-                  Profile
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    setMenuAnchor(null);
-                    router.push("/seller/settings");
-                  }}
-                >
-                  Store settings
-                </MenuItem>
-                {storeSlug && (
-                  <MenuItem
-                    onClick={() => {
-                      setMenuAnchor(null);
-                      router.push(`/stores/${storeSlug}`);
-                    }}
-                  >
-                    View storefront
-                  </MenuItem>
-                )}
-                <Divider />
-                <MenuItem onClick={handleLogout}>Logout</MenuItem>
-              </Menu>
-            </div>
-          </div>
-        </header>
-
-        <main className="flex-1 px-4 py-4 md:px-8 md:py-6 pb-24 lg:pb-6">
-          <div className="mx-auto w-full max-w-6xl">{children}</div>
-        </main>
-
-        {/* Mobile/Tablet Bottom Nav */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-2 py-1 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-          <div className="flex items-center justify-around">
-            {NAV_ITEMS.slice(0, 4).map((item) => {
-              const active = pathname?.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${
-                    active ? "text-[#fbbf24]" : "text-slate-500"
-                  }`}
-                >
-                  <span className={active ? "text-[#fbbf24]" : ""}>
-                    {item.icon}
-                  </span>
-                  <span className="text-[10px] font-bold truncate max-w-[64px]">
-                    {item.label}
-                  </span>
-                </Link>
-              );
-            })}
-
-            <button
-              type="button"
-              onClick={(e) => setMoreMenuAnchor(e.currentTarget)}
-              className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-slate-900"
-            >
-              <i className="fa-solid fa-bars text-lg" aria-hidden />
-              <span className="text-[10px] font-bold">More</span>
-            </button>
-
-            <Menu
-              anchorEl={moreMenuAnchor}
-              open={Boolean(moreMenuAnchor)}
-              onClose={() => setMoreMenuAnchor(null)}
-              anchorOrigin={{ vertical: "top", horizontal: "right" }}
-              transformOrigin={{ vertical: "bottom", horizontal: "right" }}
-              sx={{
-                "& .MuiPaper-root": {
-                  borderRadius: "16px",
-                  marginTop: "-12px",
-                  minWidth: 180,
-                  boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-                },
-              }}
-            >
-              <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 mb-2">
-                <i className="fa-solid fa-ellipsis text-slate-400 text-xs" />
-                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                  More Options
-                </span>
-              </div>
-              {NAV_ITEMS.slice(4).map((item) => {
-                const active = pathname?.startsWith(item.href);
-                return (
-                  <MenuItem
-                    key={item.href}
-                    onClick={() => {
-                      setMoreMenuAnchor(null);
-                      router.push(item.href);
-                    }}
-                    sx={{
-                      gap: 2,
-                      py: 1.5,
-                      color: active ? "#fbbf24" : "inherit",
-                      fontWeight: active ? 700 : 500,
-                    }}
-                  >
-                    <span
-                      className={active ? "text-[#fbbf24]" : "text-slate-400"}
-                    >
-                      {item.icon}
-                    </span>
-                    <span className="text-sm">{item.label}</span>
-                  </MenuItem>
-                );
-              })}
-            </Menu>
-          </div>
-        </nav>
-      </div>
-    </div>
-  );
-}
-
-function describeSellerDestination(path: string) {
-  if (path === "/auth/seller/pending") {
-    return "your seller approval status";
-  }
-  if (path.startsWith("/auth/seller/login")) {
-    return "the seller login page";
-  }
-  if (path.startsWith("/auth/admin/login")) {
-    return "the admin login";
-  }
-  if (path === "/") {
-    return "the storefront";
-  }
-  return "the previous page";
-}
-
-type AccessGateProps = {
-  title: string;
-  description: string;
-  actionLabel?: string;
-  onAction?: () => void;
-  loading?: boolean;
-  accentColor?: string;
-};
-
-function AccessGate({
-  title,
-  description,
-  actionLabel,
-  onAction,
-  loading,
-  accentColor = "#2563eb",
-}: AccessGateProps) {
-  const accent = accentColor;
-
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f4f1e9] px-4">
-      <div className="w-full max-w-md rounded-3xl border border-[#ece8de] bg-white p-8 text-center shadow-[0_20px_60px_rgba(17,24,39,0.12)]">
-        <div
-          className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full"
-          style={{ backgroundColor: `${accent}1A`, color: accent }}
+        <Menu
+          theme="light"
+          mode="inline"
+          selectedKeys={[activeKey]}
+          items={menuItems}
+          style={{ borderRight: 0 }}
+        />
+      </Sider>
+      <Layout
+        style={{
+          marginLeft: collapsed ? 80 : 260,
+          transition: "margin-left 0.2s",
+        }}
+      >
+        <Header
+          style={{
+            padding: "0 24px",
+            background: colorBgContainer,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
         >
-          <LockOutlinedIcon />
-        </div>
-        <h2 className="text-xl font-semibold text-slate-900">{title}</h2>
-        <p className="mt-2 text-sm text-slate-600">{description}</p>
-        {loading && (
-          <div className="mt-4 flex justify-center">
-            <CircularProgress size={24} sx={{ color: accent }} />
+          <Button
+            type="text"
+            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={() => setCollapsed(!collapsed)}
+            style={{
+              fontSize: "16px",
+              width: 64,
+              height: 64,
+            }}
+          />
+
+          <div className="flex items-center gap-4">
+            <Badge dot>
+              <BellOutlined style={{ fontSize: 20, cursor: "pointer" }} />
+            </Badge>
+            {/* @ts-expect-error Antd Dropdown menu prop */}
+            <Dropdown menu={userMenu} trigger={["click"]}>
+              <div className="cursor-pointer flex items-center gap-2 hover:bg-gray-50 px-3 py-1 rounded-full transition-colors">
+                <Avatar
+                  src={sellerAvatarUrl}
+                  style={{ backgroundColor: "#87d068" }}
+                >
+                  {profile?.name?.[0]}
+                </Avatar>
+              </div>
+            </Dropdown>
           </div>
-        )}
-        {actionLabel && onAction && (
-          <button
-            type="button"
-            onClick={onAction}
-            className="mt-6 w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
-          >
-            {actionLabel}
-          </button>
-        )}
-      </div>
-    </div>
+        </Header>
+        <Content
+          style={{
+            margin: "24px 16px",
+            padding: 24,
+            minHeight: 280,
+            background: colorBgContainer,
+            borderRadius: borderRadiusLG,
+          }}
+        >
+          {children}
+        </Content>
+      </Layout>
+    </Layout>
   );
 }

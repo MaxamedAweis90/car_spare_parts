@@ -1,6 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
 import { getImageUrl } from "@/lib/appwrite/storage";
 import { useSellerStore } from "@/lib/SellerStoreProvider";
 import Button from "@/components/Button";
@@ -54,7 +62,8 @@ function StoreSettingsSkeleton() {
 }
 
 export default function StoreSettingsPage() {
-  const { store, loading, error, saveStore, uploadAvatar, uploadBanner } = useSellerStore();
+  const { store, loading, error, saveStore, uploadAvatar, uploadBanner } =
+    useSellerStore();
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [form, setForm] = useState({
@@ -145,10 +154,12 @@ export default function StoreSettingsPage() {
     };
   }, [avatarPreview, bannerPreview]);
 
-  const handleFieldChange = (key: keyof typeof form) => (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const value = event.target.value;
-    setForm((prev) => ({ ...prev, [key]: value }));
-  };
+  const handleFieldChange =
+    (key: keyof typeof form) =>
+    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+      const value = event.target.value;
+      setForm((prev) => ({ ...prev, [key]: value }));
+    };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -191,7 +202,10 @@ export default function StoreSettingsPage() {
       }
       setFeedback({ type: "success", message: "Store settings saved" });
     } catch (err: any) {
-      setFeedback({ type: "error", message: err?.message || "Failed to save store" });
+      setFeedback({
+        type: "error",
+        message: err?.message || "Failed to save store",
+      });
     } finally {
       setSaving(false);
     }
@@ -219,7 +233,10 @@ export default function StoreSettingsPage() {
     event.target.value = "";
   };
 
-  const initials = useMemo(() => (store?.storeName || "Store").slice(0, 2).toUpperCase(), [store?.storeName]);
+  const initials = useMemo(
+    () => (store?.storeName || "Store").slice(0, 2).toUpperCase(),
+    [store?.storeName]
+  );
 
   const handleToggleVisibility = () => {
     setForm((prev) => ({ ...prev, isActive: !prev.isActive }));
@@ -241,8 +258,12 @@ export default function StoreSettingsPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#f4f1e9] px-4">
         <div className="max-w-sm rounded-3xl border border-[#ece8de] bg-white/90 p-6 text-center shadow-lg shadow-black/5">
-          <h2 className="text-lg font-bold text-slate-900">Unable to load store settings</h2>
-          <p className="mt-2 text-sm font-medium text-slate-600">{error || "Please refresh the page or try again shortly."}</p>
+          <h2 className="text-lg font-bold text-slate-900">
+            Unable to load store settings
+          </h2>
+          <p className="mt-2 text-sm font-medium text-slate-600">
+            {error || "Please refresh the page or try again shortly."}
+          </p>
         </div>
       </div>
     );
@@ -271,10 +292,15 @@ export default function StoreSettingsPage() {
         >
           <div className="flex flex-col gap-8">
             <header className="flex flex-col gap-3">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Seller profile</span>
-              <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">Store identity</h1>
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                Seller profile
+              </span>
+              <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">
+                Store identity
+              </h1>
               <p className="text-sm font-medium text-slate-600 sm:text-base">
-                Keep your store details polished so buyers immediately recognize your brand.
+                Keep your store details polished so buyers immediately recognize
+                your brand.
               </p>
             </header>
 
@@ -282,18 +308,29 @@ export default function StoreSettingsPage() {
               <div className="flex w-full items-start gap-4 md:w-auto">
                 <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-[#1f2937] text-xl font-bold text-white sm:h-24 sm:w-24 sm:text-2xl">
                   {avatarUrl ? (
-                    <img src={avatarUrl} alt={`${store.storeName} avatar`} className="h-full w-full object-cover" />
+                    <img
+                      src={avatarUrl}
+                      alt={`${store.storeName} avatar`}
+                      className="h-full w-full object-cover"
+                    />
                   ) : (
-                    <span className="flex h-full w-full items-center justify-center">{initials}</span>
+                    <span className="flex h-full w-full items-center justify-center">
+                      {initials}
+                    </span>
                   )}
                 </div>
                 <div className="flex flex-1 flex-col gap-3">
                   <div>
-                    <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">{storeSlug ? `stores/${storeSlug}` : "Store preview"}</p>
-                    <p className="text-xl font-extrabold text-slate-900">{store.storeName}</p>
+                    <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+                      {storeSlug ? `stores/${storeSlug}` : "Store preview"}
+                    </p>
+                    <p className="text-xl font-extrabold text-slate-900">
+                      {store.storeName}
+                    </p>
                   </div>
                   <p className="text-sm font-medium text-slate-600">
-                    Refresh your branding details to stay sharp and trustworthy across the marketplace.
+                    Refresh your branding details to stay sharp and trustworthy
+                    across the marketplace.
                   </p>
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
                     <Button
@@ -310,6 +347,7 @@ export default function StoreSettingsPage() {
                       size="sm"
                       variant="outline"
                       href={storeSlug ? `/stores/${storeSlug}` : undefined}
+                      target="_blank"
                       disabled={!storeSlug}
                       className="w-full sm:w-auto"
                     >
@@ -324,16 +362,22 @@ export default function StoreSettingsPage() {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <p className="text-xs font-medium uppercase tracking-widest text-slate-400">PNG or JPG up to 2MB</p>
+                    <p className="text-xs font-medium uppercase tracking-widest text-slate-400">
+                      PNG or JPG up to 2MB
+                    </p>
                     {pendingAvatarFile && (
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-600">New avatar applies after saving</span>
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-600">
+                        New avatar applies after saving
+                      </span>
                     )}
                   </div>
                 </div>
               </div>
 
               <div className="flex flex-col gap-2 rounded-2xl border border-[#ece8de] bg-slate-50/60 p-4">
-                <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">Visibility</span>
+                <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                  Visibility
+                </span>
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
@@ -350,8 +394,14 @@ export default function StoreSettingsPage() {
                     <span className="sr-only">Toggle store visibility</span>
                   </button>
                   <div className="flex flex-col">
-                    <p className="text-sm font-semibold text-slate-700">{form.isActive ? "Visible to customers" : "Hidden from customers"}</p>
-                    <p className="text-xs font-medium text-slate-500">Control whether your store appears on the storefront.</p>
+                    <p className="text-sm font-semibold text-slate-700">
+                      {form.isActive
+                        ? "Visible to customers"
+                        : "Hidden from customers"}
+                    </p>
+                    <p className="text-xs font-medium text-slate-500">
+                      Control whether your store appears on the storefront.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -360,10 +410,16 @@ export default function StoreSettingsPage() {
             <section className="flex flex-col gap-4 rounded-3xl border border-[#ece8de] bg-slate-50/40 p-6">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="space-y-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Store banner</span>
-                  <h2 className="text-lg font-black text-slate-900">Hero showcase image</h2>
+                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    Store banner
+                  </span>
+                  <h2 className="text-lg font-black text-slate-900">
+                    Hero showcase image
+                  </h2>
                   <p className="text-sm font-medium text-slate-600">
-                    Upload a wide banner that appears at the top of your public storefront. Aim for a 16:4 ratio so it looks crisp on every screen.
+                    Upload a wide banner that appears at the top of your public
+                    storefront. Aim for a 16:4 ratio so it looks crisp on every
+                    screen.
                   </p>
                 </div>
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
@@ -381,16 +437,24 @@ export default function StoreSettingsPage() {
               </div>
               <div className="overflow-hidden rounded-3xl border border-dashed border-[#d8d1c4] bg-white">
                 {bannerUrl ? (
-                  <img src={bannerUrl} alt="Store banner" className="h-48 w-full object-cover sm:h-60" />
+                  <img
+                    src={bannerUrl}
+                    alt="Store banner"
+                    className="h-48 w-full object-cover sm:h-60"
+                  />
                 ) : (
                   <div className="flex h-48 w-full flex-col items-center justify-center gap-1 text-center text-sm font-semibold text-slate-400 sm:h-60">
                     <span>Recommended size 1600 × 400</span>
-                    <span className="text-xs font-medium uppercase tracking-widest">PNG or JPG up to 4MB</span>
+                    <span className="text-xs font-medium uppercase tracking-widest">
+                      PNG or JPG up to 4MB
+                    </span>
                   </div>
                 )}
               </div>
               {pendingBannerFile && (
-                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-600">New banner applies after saving</span>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-600">
+                  New banner applies after saving
+                </span>
               )}
               <input
                 ref={bannerInputRef}
@@ -405,7 +469,9 @@ export default function StoreSettingsPage() {
 
             <section className="grid grid-cols-1 gap-6 md:grid-cols-2">
               <label className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-slate-700">Store name</span>
+                <span className="text-sm font-semibold text-slate-700">
+                  Store name
+                </span>
                 <input
                   type="text"
                   value={form.storeName}
@@ -417,7 +483,9 @@ export default function StoreSettingsPage() {
               </label>
 
               <label className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-slate-700">Contact email</span>
+                <span className="text-sm font-semibold text-slate-700">
+                  Contact email
+                </span>
                 <input
                   type="email"
                   value={form.contactEmail}
@@ -428,7 +496,9 @@ export default function StoreSettingsPage() {
               </label>
 
               <label className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-slate-700">Contact phone</span>
+                <span className="text-sm font-semibold text-slate-700">
+                  Contact phone
+                </span>
                 <input
                   type="tel"
                   value={form.contactPhone}
@@ -439,7 +509,9 @@ export default function StoreSettingsPage() {
               </label>
 
               <label className="md:col-span-2 flex flex-col gap-2">
-                <span className="text-sm font-semibold text-slate-700">Description</span>
+                <span className="text-sm font-semibold text-slate-700">
+                  Description
+                </span>
                 <textarea
                   value={form.storeDescription}
                   onChange={handleFieldChange("storeDescription")}
@@ -474,7 +546,10 @@ export default function StoreSettingsPage() {
             </div>
 
             <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-              Store URL: <span className="font-bold text-slate-800">/stores/{storeSlug}</span>
+              Store URL:{" "}
+              <span className="font-bold text-slate-800">
+                /stores/{storeSlug}
+              </span>
             </p>
           </div>
         </form>

@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSeller } from "@/lib/server/requireSeller";
 import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
-import { buildProductImageUrl, type ProductDocument } from "@/lib/server/productService";
-import { deleteProductImage, uploadProductImage } from "@/lib/server/productImageService";
+import {
+  buildProductImageUrl,
+  type ProductDocument,
+} from "@/lib/server/productService";
+import {
+  deleteProductImage,
+  uploadProductImage,
+} from "@/lib/server/productImageService";
 import { Query, type Models } from "node-appwrite";
 import {
   listCompatibilitiesForProduct,
@@ -31,7 +37,10 @@ function parseStringArrayJson(raw: unknown): string[] {
   if (typeof raw !== "string" || !raw.trim()) return [];
   const parsed = JSON.parse(raw);
   if (!Array.isArray(parsed)) return [];
-  return parsed.map((v) => String(v)).map((v) => v.trim()).filter(Boolean);
+  return parsed
+    .map((v) => String(v))
+    .map((v) => v.trim())
+    .filter(Boolean);
 }
 
 type CompatibilityOptionDocument = Models.Document & {
@@ -65,7 +74,10 @@ function buildCompatibilityLabel(doc: CompatibilityOptionDocument) {
   const model = String((doc as any).model ?? "").trim();
   const yearFrom = (doc as any).yearFrom;
   const yearTo = (doc as any).yearTo;
-  const years = typeof yearFrom === "number" && typeof yearTo === "number" ? `${yearFrom}-${yearTo}` : "";
+  const years =
+    typeof yearFrom === "number" && typeof yearTo === "number"
+      ? `${yearFrom}-${yearTo}`
+      : "";
   return [vehicleType, make, model, years].filter(Boolean).join(" ");
 }
 
@@ -77,7 +89,10 @@ async function resolveCompatibilityOptions(ids: string[]) {
     collectionId,
     [Query.equal("$id", ids), Query.limit(Math.min(ids.length, 200))]
   );
-  return list.documents.map((d) => ({ id: d.$id, label: buildCompatibilityLabel(d) }));
+  return list.documents.map((d) => ({
+    id: d.$id,
+    label: buildCompatibilityLabel(d),
+  }));
 }
 
 function compatibilityKey(value: {
@@ -87,14 +102,20 @@ function compatibilityKey(value: {
   yearFrom?: unknown;
   yearTo?: unknown;
 }) {
-  const vehicleType = String(value.vehicleType ?? "").trim().toLowerCase();
-  const make = String(value.make ?? "").trim().toLowerCase();
-  const model = String(value.model ?? "").trim().toLowerCase();
+  const vehicleType = String(value.vehicleType ?? "")
+    .trim()
+    .toLowerCase();
+  const make = String(value.make ?? "")
+    .trim()
+    .toLowerCase();
+  const model = String(value.model ?? "")
+    .trim()
+    .toLowerCase();
   const yearFrom = Number(value.yearFrom);
   const yearTo = Number(value.yearTo);
-  return `${vehicleType}|${make}|${model}|${Number.isFinite(yearFrom) ? yearFrom : ""}|${
-    Number.isFinite(yearTo) ? yearTo : ""
-  }`;
+  return `${vehicleType}|${make}|${model}|${
+    Number.isFinite(yearFrom) ? yearFrom : ""
+  }|${Number.isFinite(yearTo) ? yearTo : ""}`;
 }
 
 async function listAllCompatibilityOptions(limit = 200) {
@@ -102,15 +123,22 @@ async function listAllCompatibilityOptions(limit = 200) {
   const list = await databasesServer.listDocuments<CompatibilityOptionDocument>(
     appwriteConfig.databaseId,
     collectionId,
-    [Query.orderDesc("$createdAt"), Query.limit(Math.min(Math.max(limit, 1), 200))]
+    [
+      Query.orderDesc("$createdAt"),
+      Query.limit(Math.min(Math.max(limit, 1), 200)),
+    ]
   );
   return list.documents as CompatibilityOptionDocument[];
 }
 
-async function resolveOptionIdsFromCompatibilities(compatDocs: CompatibilityDocument[]) {
+async function resolveOptionIdsFromCompatibilities(
+  compatDocs: CompatibilityDocument[]
+) {
   if (!compatDocs.length) return [] as string[];
 
-  const options = await listAllCompatibilityOptions(200).catch(() => [] as CompatibilityOptionDocument[]);
+  const options = await listAllCompatibilityOptions(200).catch(
+    () => [] as CompatibilityOptionDocument[]
+  );
   const optionIdByKey = new Map<string, string>();
   for (const opt of options) {
     optionIdByKey.set(compatibilityKey(opt), opt.$id);
@@ -124,7 +152,9 @@ async function resolveOptionIdsFromCompatibilities(compatDocs: CompatibilityDocu
   return Array.from(new Set(ids));
 }
 
-function toCompatibilityInput(doc: CompatibilityOptionDocument): CompatibilityInput {
+function toCompatibilityInput(
+  doc: CompatibilityOptionDocument
+): CompatibilityInput {
   return {
     vehicleType: String((doc as any).vehicleType ?? "").trim(),
     make: String((doc as any).make ?? "").trim(),
@@ -159,24 +189,39 @@ async function getOwnedProduct(profileId: string, productId: string) {
   return doc;
 }
 
-export async function GET(req: NextRequest, ctx: { params: Promise<{ productId: string }> }) {
+export async function GET(
+  req: NextRequest,
+  ctx: { params: Promise<{ productId: string }> }
+) {
   try {
     const { profile } = await requireSeller(req);
     const { productId } = await ctx.params;
 
     const product = await getOwnedProduct(profile.$id, productId);
-    const imageIds = Array.isArray((product as any).imageIds) ? ((product as any).imageIds as string[]) : [];
-    const imageId = (product as any).imageId ?? (imageIds[0] ?? null);
+    const imageIds = Array.isArray((product as any).imageIds)
+      ? ((product as any).imageIds as string[])
+      : [];
+    const imageId = (product as any).imageId ?? imageIds[0] ?? null;
 
-    const compatDocs = await listCompatibilitiesForProduct({ sellerId: profile.$id, productId, limit: 200 }).catch(() => []);
-    const compatibilityOptionIds = await resolveOptionIdsFromCompatibilities(compatDocs).catch(() => []);
-    const compatibilityOptions = await resolveCompatibilityOptions(compatibilityOptionIds).catch(() => []);
+    const compatDocs = await listCompatibilitiesForProduct({
+      sellerId: profile.$id,
+      productId,
+      limit: 200,
+    }).catch(() => []);
+    const compatibilityOptionIds = await resolveOptionIdsFromCompatibilities(
+      compatDocs
+    ).catch(() => []);
+    const compatibilityOptions = await resolveCompatibilityOptions(
+      compatibilityOptionIds
+    ).catch(() => []);
 
     const response: SellerProductResponse = {
       ...(product as any),
       imageId,
       imageIds,
-      imageUrls: imageIds.map((id) => buildProductImageUrl(id) ?? "").filter(Boolean),
+      imageUrls: imageIds
+        .map((id) => buildProductImageUrl(id) ?? "")
+        .filter(Boolean),
       compatibilityOptionIds,
       compatibilityOptions,
     };
@@ -184,11 +229,17 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ productId: 
     return NextResponse.json({ product: response });
   } catch (error: any) {
     console.error("Seller product GET error", error);
-    return jsonError(error?.message || "Server error", error?.code || error?.status || 500);
+    return jsonError(
+      error?.message || "Server error",
+      error?.code || error?.status || 500
+    );
   }
 }
 
-export async function PATCH(req: NextRequest, ctx: { params: Promise<{ productId: string }> }) {
+export async function PATCH(
+  req: NextRequest,
+  ctx: { params: Promise<{ productId: string }> }
+) {
   try {
     const { profile, account } = await requireSeller(req);
     const { productId } = await ctx.params;
@@ -206,21 +257,28 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ productId
       updates.name = trimmed;
     }
 
-    if (typeof formData.get("description") === "string") updates.description = String(formData.get("description")).trim() || null;
-    if (typeof formData.get("brand") === "string") updates.brand = String(formData.get("brand")).trim() || null;
-    if (typeof formData.get("condition") === "string") updates.condition = String(formData.get("condition")).trim() || null;
-    if (typeof formData.get("partNumber") === "string") updates.partNumber = String(formData.get("partNumber")).trim() || null;
+    if (typeof formData.get("description") === "string")
+      updates.description = String(formData.get("description")).trim() || null;
+    if (typeof formData.get("brand") === "string")
+      updates.brand = String(formData.get("brand")).trim() || null;
+    if (typeof formData.get("condition") === "string")
+      updates.condition = String(formData.get("condition")).trim() || null;
+    if (typeof formData.get("partNumber") === "string")
+      updates.partNumber = String(formData.get("partNumber")).trim() || null;
 
     if (formData.has("price")) {
       const price = toNumber(formData.get("price"));
-      if (!Number.isFinite(price)) return jsonError("Price must be a valid number", 400);
+      if (!Number.isFinite(price))
+        return jsonError("Price must be a valid number", 400);
       updates.price = price;
     }
 
     if (formData.has("stock")) {
       const stock = toNumber(formData.get("stock"));
-      if (!Number.isFinite(stock)) return jsonError("Stock must be a valid number", 400);
+      if (!Number.isFinite(stock))
+        return jsonError("Stock must be a valid number", 400);
       updates.stock = stock;
+      updates.isActive = stock > 0;
     }
 
     if (formData.has("mainCategoryId")) {
@@ -230,10 +288,13 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ productId
     }
 
     // Optional: replace images.
-    const replaceImages = String(formData.get("replaceImages") ?? "false").toLowerCase() === "true";
+    const replaceImages =
+      String(formData.get("replaceImages") ?? "false").toLowerCase() === "true";
     const newImages = formData.getAll("images");
 
-    let imageIds: string[] = Array.isArray((existing as any).imageIds) ? ((existing as any).imageIds as string[]) : [];
+    let imageIds: string[] = Array.isArray((existing as any).imageIds)
+      ? ((existing as any).imageIds as string[])
+      : [];
 
     if (replaceImages && newImages.length) {
       // Upload new, then delete old.
@@ -262,9 +323,15 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ productId
     if (formData.has("compatibilityOptionIds")) {
       const ids = parseStringArrayJson(formData.get("compatibilityOptionIds"));
       const entries: CompatibilityInput[] = ids.length
-        ? (await loadCompatibilityOptionDocsByIds(ids)).map(toCompatibilityInput)
+        ? (await loadCompatibilityOptionDocsByIds(ids)).map(
+            toCompatibilityInput
+          )
         : [];
-      await replaceCompatibilitiesForProduct({ sellerId: profile.$id, productId, entries }).catch((e) => {
+      await replaceCompatibilitiesForProduct({
+        sellerId: profile.$id,
+        productId,
+        entries,
+      }).catch((e) => {
         console.error("Failed to save compatibilities for product", e);
       });
     }
@@ -276,18 +343,30 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ productId
       updates
     );
 
-    const finalImageIds = Array.isArray((updated as any).imageIds) ? ((updated as any).imageIds as string[]) : imageIds;
-    const imageId = (updated as any).imageId ?? (finalImageIds[0] ?? null);
+    const finalImageIds = Array.isArray((updated as any).imageIds)
+      ? ((updated as any).imageIds as string[])
+      : imageIds;
+    const imageId = (updated as any).imageId ?? finalImageIds[0] ?? null;
 
-    const compatDocs = await listCompatibilitiesForProduct({ sellerId: profile.$id, productId, limit: 200 }).catch(() => []);
-    const compatibilityOptionIds = await resolveOptionIdsFromCompatibilities(compatDocs).catch(() => []);
-    const compatibilityOptions = await resolveCompatibilityOptions(compatibilityOptionIds).catch(() => []);
+    const compatDocs = await listCompatibilitiesForProduct({
+      sellerId: profile.$id,
+      productId,
+      limit: 200,
+    }).catch(() => []);
+    const compatibilityOptionIds = await resolveOptionIdsFromCompatibilities(
+      compatDocs
+    ).catch(() => []);
+    const compatibilityOptions = await resolveCompatibilityOptions(
+      compatibilityOptionIds
+    ).catch(() => []);
 
     const response: SellerProductResponse = {
       ...(updated as any),
       imageId,
       imageIds: finalImageIds,
-      imageUrls: finalImageIds.map((id) => buildProductImageUrl(id) ?? "").filter(Boolean),
+      imageUrls: finalImageIds
+        .map((id) => buildProductImageUrl(id) ?? "")
+        .filter(Boolean),
       compatibilityOptionIds,
       compatibilityOptions,
     };
@@ -295,21 +374,33 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ productId
     return NextResponse.json({ product: response });
   } catch (error: any) {
     console.error("Seller product PATCH error", error);
-    return jsonError(error?.message || "Server error", error?.code || error?.status || 500);
+    return jsonError(
+      error?.message || "Server error",
+      error?.code || error?.status || 500
+    );
   }
 }
 
-export async function DELETE(req: NextRequest, ctx: { params: Promise<{ productId: string }> }) {
+export async function DELETE(
+  req: NextRequest,
+  ctx: { params: Promise<{ productId: string }> }
+) {
   try {
     const { profile } = await requireSeller(req);
     const { productId } = await ctx.params;
 
     const product = await getOwnedProduct(profile.$id, productId);
 
-    const imageIds: string[] = Array.isArray((product as any).imageIds) ? ((product as any).imageIds as string[]) : [];
+    const imageIds: string[] = Array.isArray((product as any).imageIds)
+      ? ((product as any).imageIds as string[])
+      : [];
 
     // Delete product document first.
-    await databasesServer.deleteDocument(appwriteConfig.databaseId, appwriteConfig.productsCollectionId, productId);
+    await databasesServer.deleteDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.productsCollectionId,
+      productId
+    );
 
     // Best-effort cleanup.
     for (const id of imageIds) {
@@ -319,6 +410,9 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ productI
     return NextResponse.json({ ok: true });
   } catch (error: any) {
     console.error("Seller product DELETE error", error);
-    return jsonError(error?.message || "Server error", error?.code || error?.status || 500);
+    return jsonError(
+      error?.message || "Server error",
+      error?.code || error?.status || 500
+    );
   }
 }

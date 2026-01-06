@@ -98,6 +98,10 @@ export default function Navbar() {
     minPrice: 0,
     maxPrice: 1000,
     onSale: false,
+    make: "",
+    model: "",
+    year: "",
+    category: "",
   });
 
   useEffect(() => {
@@ -168,14 +172,18 @@ export default function Navbar() {
 
     // Build search URL with filters
     const params = new URLSearchParams();
-    if (trimmed) params.set("q", trimmed);
+    if (trimmed) params.set("search", trimmed);
     if (filters.minPrice > 0)
       params.set("minPrice", filters.minPrice.toString());
     if (filters.maxPrice < 1000)
       params.set("maxPrice", filters.maxPrice.toString());
     if (filters.onSale) params.set("onSale", "true");
+    if (filters.make) params.set("make", filters.make);
+    if (filters.model) params.set("model", filters.model);
+    if (filters.year) params.set("year", filters.year);
+    if (filters.category) params.set("category", filters.category);
 
-    router.push(`/search${params.toString() ? `?${params.toString()}` : ""}`);
+    router.push(`/shop${params.toString() ? `?${params.toString()}` : ""}`);
   };
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -377,8 +385,8 @@ export default function Navbar() {
 
               <ClickAwaySurface
                 onClose={() => setMenuOpen(false)}
-                mouseEvent="onClick"
-                touchEvent="onTouchEnd"
+                mouseEvent="onMouseDown"
+                touchEvent="onTouchStart"
                 className="relative"
               >
                 <button
@@ -422,7 +430,7 @@ export default function Navbar() {
               <img
                 src="/spartpartslogo-02.png"
                 alt="Spare Parts Logo"
-                className="h-25 w-auto object-contain"
+                className="h-16 md:h-20 lg:h-25 w-auto object-contain transition-all"
               />
             </Link>
           </div>
@@ -473,13 +481,13 @@ export default function Navbar() {
                     <div className="absolute right-0 top-full z-50 mt-2">
                       <ClickAwaySurface
                         onClose={() => setShowFilters(false)}
-                        mouseEvent="onClick"
-                        touchEvent="onTouchEnd"
+                        mouseEvent="onMouseDown"
+                        touchEvent="onTouchStart"
                       >
                         <SearchFilters
                           filters={filters}
                           onFiltersChange={(newFilters) => {
-                            setFilters(newFilters);
+                            setFilters(newFilters as any);
                           }}
                           onClose={() => setShowFilters(false)}
                         />
@@ -506,8 +514,8 @@ export default function Navbar() {
                 <div className="absolute left-0 right-0 top-full z-40 mt-2">
                   <ClickAwaySurface
                     onClose={() => setShowSuggestions(false)}
-                    mouseEvent="onClick"
-                    touchEvent="onTouchEnd"
+                    mouseEvent="onMouseDown"
+                    touchEvent="onTouchStart"
                   >
                     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
                       <div className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-500">
@@ -540,7 +548,7 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={() => setLangOpen((prev) => !prev)}
-                className="inline-flex items-center gap-2 bg-transparent px-2 py-1 text-sm font-semibold text-white transition hover:opacity-70"
+                className="inline-flex items-center gap-2 bg-transparent px-2 py-1 text-sm font-semibold text-white transition hover:opacity-70 active:scale-95 touch-manipulation"
                 aria-haspopup="listbox"
                 aria-expanded={langOpen}
               >
@@ -564,8 +572,8 @@ export default function Navbar() {
               {langOpen && (
                 <ClickAwaySurface
                   onClose={() => setLangOpen(false)}
-                  mouseEvent="onClick"
-                  touchEvent="onTouchEnd"
+                  mouseEvent="onMouseDown"
+                  touchEvent="onTouchStart"
                   className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg"
                 >
                   {LANG_OPTIONS.map((option) => (
@@ -619,8 +627,8 @@ export default function Navbar() {
 
               <ClickAwaySurface
                 onClose={() => setMenuOpen(false)}
-                mouseEvent="onClick"
-                touchEvent="onTouchEnd"
+                mouseEvent="onMouseDown"
+                touchEvent="onTouchStart"
                 className="relative"
               >
                 <button
@@ -814,7 +822,7 @@ export default function Navbar() {
                 <SearchFilters
                   filters={filters}
                   onFiltersChange={(newFilters) => {
-                    setFilters(newFilters);
+                    setFilters(newFilters as any);
                   }}
                   onClose={() => setShowFilters(false)}
                 />

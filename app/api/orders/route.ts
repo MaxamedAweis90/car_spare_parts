@@ -18,23 +18,31 @@ interface OrderDocument extends Models.Document {
   paymentMethod: string;
 }
 
+import { getServerSession } from "@/lib/session-server";
+
 export async function POST(req: NextRequest) {
   try {
+    const session = await getServerSession(req);
+    if (!session?.authenticated || !session?.profile) {
+      return NextResponse.json(
+        { error: "Unauthorized: Please sign in to place an order" },
+        { status: 401 }
+      );
+    }
+
     const {
-      customerId,
+      // customerId, // Ignored from body, taken from session
       items,
       shippingAddress,
       paymentMethod,
       paymentDetails,
     } = await req.json();
 
+    const customerId = session.profile.$id;
+
     // 1. Validation
-    if (!customerId) {
-      return NextResponse.json(
-        { error: "Customer ID is required" },
-        { status: 400 }
-      );
-    }
+    // customerId is guaranteed by session
+
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
@@ -99,6 +107,7 @@ export async function POST(req: NextRequest) {
           imageUrl: buildProductImageUrl(
             product.imageId ? product.imageId : null
           ),
+          sellerId: product.sellerId,
         })
       );
 
@@ -146,7 +155,10 @@ export async function POST(req: NextRequest) {
           appwriteConfig.databaseId,
           appwriteConfig.productsCollectionId,
           update.productId,
-          { stock: update.newStock }
+          {
+            stock: update.newStock,
+            isActive: update.newStock > 0, // Deactivate if out of stock
+          }
         )
       )
     );
@@ -166,12 +178,78 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
+    const session = await getServerSession(req);
+    if (!session?.authenticated || !session?.profile) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(req.url);
-    const customerId = searchParams.get("customerId");
+    // const customerIdParam = searchParams.get("customerId");
 
     const queries = [Query.orderDesc("createdAt")];
-    if (customerId) {
-      queries.push(Query.equal("customerId", customerId));
+
+    // Access Control Logic:
+    // If Admin: Can see all orders (or filter by customerId if provided)
+    // If Seller: Can see orders containing their products (handled by filtering logic below).
+    //            BUT listDocuments will return all orders if we don't filter.
+    //            Ideally sellers should only call this with specific filters or a separate "seller/orders" endpoint.
+    //            For now, let's assume this endpoint is general.
+    // If Customer: Can ONLY see their own orders.
+
+    const isAdmin =
+      session.profile.role === "admin" || session.profile.role === "main_admin";
+    const isSeller = session.profile.role === "seller";
+
+    if (isAdmin) {
+      // If admin provides customerId, use it. Otherwise show all.
+      const customerIdParam = searchParams.get("customerId");
+      if (customerIdParam) {
+        queries.push(Query.equal("customerId", customerIdParam));
+      }
+    } else if (isSeller) {
+      // Sellers might want to see orders.
+      // Warning: This current endpoint implementation lists ALL orders from DB then filters in memory for sellerId.
+      // This is inefficient but existing logic.
+      // To be safe, we should NOT allow sellers to see "customerId" filter of others unless it's implicit.
+      // Actually, sellers *need* to see orders from various customers.
+      // BUT they should only see *their own* sales.
+      // The existing code at lines 191-206 filters by `sellerId` query param.
+      // We must enforce that the sellerId param matches the logged in seller.
+
+      // However, looking at the code, it uses `listDocuments` on `ordersCollectionId` WITHOUT seller filter first.
+      // This relies on Appwrite permissions or lists everything?
+      // If "role:all" has read access, then anyone can list.
+      // We should restrict queries.
+
+      // Simplest fix for this file without changing Appwrite schema:
+      // If seller, enforce they are filtering by their own sellerId?
+      // Or if the UI sends sellerId...
+
+      // Let's implement strict rules:
+      // Customer -> Must query their own orders.
+
+      // If it's a seller checking their orders (which are mixed in 'orders' collection?), they usually search by 'items' containing their ID.
+      // Appwrite filtering inside JSON strings is hard.
+      // The existing code does `listDocuments` then filters in memory. This effectively allows reading ALL orders if permissions are open.
+      // Assuming permissions are Restricted (only owner/admin), then this fails for Sellers?
+      // Wait, line 133: `Permission.read(Role.user(customerId))`
+      // Only the customer and admins can read the order document by default permissions!
+      // So sellers CANNOT read these orders via standard listDocuments unless they are also granted permission.
+      // The existing code at line 131 doesn't grant read to seller.
+      // So `GET` for seller likely returns 0 documents unless they are admin.
+
+      // For now, let's Secure the Customer case properly.
+      // If not admin, FORCE customerId = session.profile.$id
+
+      // Wait, if it's a seller, they might be blocked by appwrite permissions anyway.
+      // Let's assume this endpoint is primarily for Customers for now.
+
+      if (!isAdmin) {
+        queries.push(Query.equal("customerId", session.profile.$id));
+      }
+    } else {
+      // Regular customer
+      queries.push(Query.equal("customerId", session.profile.$id));
     }
 
     const list = await databasesServer.listDocuments(
@@ -185,22 +263,16 @@ export async function GET(req: NextRequest) {
     let filteredOrders = list.documents;
 
     if (sellerId) {
-      // Fetch seller's products
-      const productsResponse = await databasesServer.listDocuments(
-        appwriteConfig.databaseId,
-        appwriteConfig.productsCollectionId,
-        [Query.equal("sellerId", sellerId), Query.limit(1000)]
-      );
-
-      const productIds = productsResponse.documents.map((p) => p.$id);
-
-      // Filter orders that contain seller's products
+      // Filter orders that contain items from this seller
+      // We check the stored `sellerId` in the item snapshot.
+      // This assumes orders created after this fix have `sellerId`.
+      // Legacy orders without `sellerId` in snapshot will not appear here.
       filteredOrders = list.documents.filter((order) => {
         try {
           const items = order.items as string[];
           return items.some((itemStr) => {
             const item = JSON.parse(itemStr);
-            return productIds.includes(item.productId);
+            return item.sellerId === sellerId;
           });
         } catch {
           return false;

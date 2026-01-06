@@ -3,69 +3,65 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import CircularProgress from "@mui/material/CircularProgress";
 import {
-  Avatar,
+  Layout,
   Menu,
-  MenuItem,
-  IconButton,
-  Tooltip,
-  Divider,
-} from "@mui/material";
-import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
-import DashboardOutlinedIcon from "@mui/icons-material/DashboardOutlined";
-import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
-import AdminPanelSettingsOutlinedIcon from "@mui/icons-material/AdminPanelSettingsOutlined";
-import Inventory2OutlinedIcon from "@mui/icons-material/Inventory2Outlined";
-import SettingsOutlinedIcon from "@mui/icons-material/SettingsOutlined";
+  Button,
+  Avatar,
+  Dropdown,
+  Result,
+  Spin,
+  theme,
+  Typography,
+} from "antd";
+import {
+  DashboardOutlined,
+  SafetyCertificateOutlined,
+  UserOutlined,
+  ShopOutlined,
+  SettingOutlined,
+  LogoutOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined,
+  LockOutlined,
+} from "@ant-design/icons";
 import { useSession } from "@/lib/useSession";
 import { performLogout } from "@/lib/logout";
+import { useUIStore } from "@/stores/ui-store";
+
+const { Header, Sider, Content } = Layout;
+const { Title, Text } = Typography;
 
 const allowedRoles = new Set(["main_admin", "admin"]);
 
-type NavItem = {
-  label: string;
-  href: string;
-  icon: React.ReactNode;
-  mainAdminOnly?: boolean;
-};
-
 const NAV_ITEMS = [
   {
+    key: "/admin",
     label: "Dashboard",
-    href: "/admin",
-    icon: <DashboardOutlinedIcon fontSize="small" />,
+    icon: <DashboardOutlined />,
   },
   {
+    key: "/admin/approvals",
     label: "Seller approvals",
-    href: "/admin/approvals",
-    icon: <VerifiedUserOutlinedIcon fontSize="small" />,
+    icon: <SafetyCertificateOutlined />,
   },
   {
+    key: "/admin/admins",
     label: "Admin accounts",
-    href: "/admin/admins",
-    icon: <AdminPanelSettingsOutlinedIcon fontSize="small" />,
+    icon: <UserOutlined />,
     mainAdminOnly: true,
   },
   {
+    key: "/admin/catalog",
     label: "Catalog",
-    href: "/admin/catalog",
-    icon: <Inventory2OutlinedIcon fontSize="small" />,
+    icon: <ShopOutlined />,
   },
   {
+    key: "/admin/seller-settings",
     label: "Seller settings",
-    href: "/admin/seller-settings",
-    icon: <SettingsOutlinedIcon fontSize="small" />,
+    icon: <SettingOutlined />,
   },
-] satisfies readonly NavItem[];
-
-function getPageTitle(pathname: string) {
-  if (!pathname) return "Admin";
-  const match = NAV_ITEMS.find(
-    (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
-  );
-  return match?.label || "Admin";
-}
+];
 
 export default function AdminLayout({
   children,
@@ -75,9 +71,13 @@ export default function AdminLayout({
   const { authenticated, profile, loading } = useSession();
   const router = useRouter();
   const pathname = usePathname();
-  const [moreMenuAnchor, setMoreMenuAnchor] = useState<null | HTMLElement>(
-    null
-  );
+
+  // Use local state for collapse, or zustand if global
+  const [collapsed, setCollapsed] = useState(false);
+  const {
+    token: { colorBgContainer, borderRadiusLG },
+  } = theme.useToken();
+
   const isAllowed = authenticated && allowedRoles.has(profile?.role);
   const mainAdminId = (
     process.env.NEXT_PUBLIC_APPWRITE_MAIN_ADMIN_USER_ID || ""
@@ -112,313 +112,163 @@ export default function AdminLayout({
 
   if (loading) {
     return (
-      <AdminAccessGate
-        title="Verifying permissions"
-        description="Please wait while we confirm your admin access."
-        loading
-      />
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <Spin size="large" tip="Verifying access..." fullscreen />
+      </div>
     );
   }
 
   if (redirectTarget) {
     return (
-      <AdminAccessGate
-        title="Redirecting"
-        description={`Taking you to ${describeAdminDestination(
-          redirectTarget
-        )}...`}
-        loading
-        actionLabel="Open now"
-        onAction={() => router.replace(redirectTarget)}
-      />
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <Result
+          status="info"
+          title="Redirecting"
+          subTitle="Taking you to the appropriate page..."
+        />
+      </div>
     );
   }
 
-  const pageTitle = getPageTitle(pathname);
-  const initials =
+  const userInitials =
     profile?.name
       ?.split(" ")
       .map((n: string) => n[0])
       .join("")
       ?.slice(0, 2) || "AD";
 
+  const userMenu = {
+    items: [
+      {
+        key: "profile",
+        label: (
+          <div className="flex flex-col">
+            <Text strong>{profile?.name}</Text>
+            <Text type="secondary" className="text-xs">
+              {profile?.email}
+            </Text>
+          </div>
+        ),
+      },
+      {
+        type: "divider",
+      },
+      {
+        key: "logout",
+        label: "Logout",
+        icon: <LogoutOutlined />,
+        onClick: handleLogout,
+        danger: true,
+      },
+    ],
+  };
+
+  // Filter items
+  const menuItems = NAV_ITEMS.filter(
+    (item) => !item.mainAdminOnly || isMainAdmin
+  ).map((item) => ({
+    key: item.key,
+    icon: item.icon,
+    label: <Link href={item.key}>{item.label}</Link>,
+  }));
+
+  // Find active key
+  const activeKey =
+    NAV_ITEMS.filter(
+      (item) => pathname === item.key || pathname.startsWith(`${item.key}/`)
+    ).sort((a, b) => b.key.length - a.key.length)[0]?.key || "/admin";
+
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 flex">
-      {/* Fixed sidebar on large screens */}
-      <aside className="hidden lg:flex fixed left-0 top-0 h-screen w-72 flex-col bg-slate-950 text-white">
-        <div className="px-5 py-5 border-b border-white/10">
-          <div className="flex items-center gap-3">
+    <Layout style={{ minHeight: "100vh" }}>
+      <Sider
+        trigger={null}
+        collapsible
+        collapsed={collapsed}
+        theme="dark"
+        width={250}
+        collapsedWidth={80}
+        style={{
+          overflow: "auto",
+          height: "100vh",
+          position: "fixed",
+          left: 0,
+          top: 0,
+          bottom: 0,
+        }}
+      >
+        <div className="demo-logo-vertical p-4 flex items-center justify-center gap-2 border-b border-gray-700 mb-2">
+          <div className="bg-white/10 p-1 rounded">
             <Avatar
-              sx={{
-                width: 40,
-                height: 40,
-                bgcolor: "#ffffff",
-                color: "#0f172a",
-                fontWeight: 900,
-                borderRadius: 2,
-              }}
+              shape="square"
+              size="small"
+              style={{ backgroundColor: "#1890ff" }}
             >
-              {initials}
+              A
             </Avatar>
-            <div className="leading-tight">
-              <p className="text-sm font-semibold">Admin Console</p>
-              <p className="text-xs text-slate-300">Restricted access</p>
-            </div>
           </div>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-          {NAV_ITEMS.filter((item) => !item.mainAdminOnly || isMainAdmin).map(
-            (item) => {
-              const active =
-                pathname === item.href || pathname.startsWith(`${item.href}/`);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={
-                    "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition " +
-                    (active
-                      ? "bg-white/10 text-white"
-                      : "text-slate-200 hover:bg-white/5 hover:text-white")
-                  }
-                >
-                  <span
-                    className={
-                      "inline-flex h-8 w-8 items-center justify-center rounded-lg " +
-                      (active ? "bg-white/10" : "bg-white/5")
-                    }
-                  >
-                    {item.icon}
-                  </span>
-                  <span>{item.label}</span>
-                </Link>
-              );
-            }
+          {!collapsed && (
+            <span className="text-white font-bold text-lg">Admin</span>
           )}
-        </nav>
-
-        <div className="px-5 py-4 border-t border-white/10">
-          <Link
-            href="/"
-            className="text-sm font-semibold text-slate-200 hover:text-white"
-          >
-            Back home
-          </Link>
         </div>
-      </aside>
-
-      {/* Spacer so content doesn't sit under the fixed sidebar */}
-      <div className="hidden lg:block w-72 shrink-0" aria-hidden="true" />
-
-      <div className="flex-1 min-w-0 flex flex-col min-h-screen">
-        <header className="sticky top-0 z-20 border-b border-slate-200 bg-white">
-          <div className="px-4 py-3 flex items-center justify-between gap-3">
-            <div className="min-w-0 flex items-center gap-3">
-              <Avatar
-                className="lg:hidden flex"
-                sx={{
-                  width: 32,
-                  height: 32,
-                  bgcolor: "#0f172a",
-                  color: "#ffffff",
-                  fontWeight: 900,
-                  borderRadius: 1.5,
-                  fontSize: 12,
-                }}
-              >
-                {initials}
-              </Avatar>
-              <div className="min-w-0">
-                <p className="text-xs font-semibold tracking-widest text-slate-500">
-                  ADMIN
-                </p>
-                <p className="text-lg font-semibold text-slate-900 truncate">
-                  {pageTitle}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:block text-right">
-                <p className="text-sm font-semibold text-slate-900 truncate max-w-[16rem]">
-                  {profile?.name || "Admin"}
-                </p>
-                <p className="text-xs text-slate-500 truncate max-w-[16rem]">
-                  {profile?.email || profile?.role}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="rounded-xl bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-700 transition-colors"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <main className="p-4 lg:p-6 flex-1 pb-24 lg:pb-6">{children}</main>
-
-        {/* Mobile/Tablet Bottom Nav */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-2 py-1 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
-          <div className="flex items-center justify-around">
-            {NAV_ITEMS.filter((item) => !item.mainAdminOnly || isMainAdmin)
-              .slice(0, 4)
-              .map((item) => {
-                const active =
-                  pathname === item.href ||
-                  pathname.startsWith(`${item.href}/`);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-colors ${
-                      active ? "text-slate-900 bg-slate-100" : "text-slate-500"
-                    }`}
-                  >
-                    <span className={active ? "text-slate-900" : ""}>
-                      {item.icon}
-                    </span>
-                    <span className="text-[10px] font-bold truncate max-w-[64px]">
-                      {item.label}
-                    </span>
-                  </Link>
-                );
-              })}
-
-            {NAV_ITEMS.filter((item) => !item.mainAdminOnly || isMainAdmin)
-              .length > 4 && (
-              <>
-                <button
-                  type="button"
-                  onClick={(e) => setMoreMenuAnchor(e.currentTarget)}
-                  className="flex flex-col items-center gap-1 p-2 text-slate-500 hover:text-slate-900"
-                >
-                  <i className="fa-solid fa-bars text-lg" aria-hidden />
-                  <span className="text-[10px] font-bold">More</span>
-                </button>
-
-                <Menu
-                  anchorEl={moreMenuAnchor}
-                  open={Boolean(moreMenuAnchor)}
-                  onClose={() => setMoreMenuAnchor(null)}
-                  anchorOrigin={{ vertical: "top", horizontal: "right" }}
-                  transformOrigin={{ vertical: "bottom", horizontal: "right" }}
-                  sx={{
-                    "& .MuiPaper-root": {
-                      borderRadius: "16px",
-                      marginTop: "-12px",
-                      minWidth: 180,
-                      boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-                    },
-                  }}
-                >
-                  <div className="px-4 py-2 border-b border-slate-100 flex items-center gap-2 mb-2">
-                    <i className="fa-solid fa-ellipsis text-slate-400 text-xs" />
-                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
-                      More Options
-                    </span>
-                  </div>
-                  {NAV_ITEMS.filter(
-                    (item) => !item.mainAdminOnly || isMainAdmin
-                  )
-                    .slice(4)
-                    .map((item) => {
-                      const active =
-                        pathname === item.href ||
-                        pathname.startsWith(`${item.href}/`);
-                      return (
-                        <MenuItem
-                          key={item.href}
-                          onClick={() => {
-                            setMoreMenuAnchor(null);
-                            router.push(item.href);
-                          }}
-                          sx={{
-                            gap: 2,
-                            py: 1.5,
-                            color: active ? "#0f172a" : "inherit",
-                            fontWeight: active ? 700 : 500,
-                          }}
-                        >
-                          <span
-                            className={
-                              active ? "text-slate-900" : "text-slate-400"
-                            }
-                          >
-                            {item.icon}
-                          </span>
-                          <span className="text-sm">{item.label}</span>
-                        </MenuItem>
-                      );
-                    })}
-                </Menu>
-              </>
-            )}
-          </div>
-        </nav>
-      </div>
-    </div>
-  );
-}
-
-function describeAdminDestination(path: string) {
-  if (path.startsWith("/auth/admin/login")) {
-    return "the admin login page";
-  }
-  if (path.startsWith("/auth/seller/login")) {
-    return "the seller portal";
-  }
-  if (path === "/") {
-    return "the storefront";
-  }
-  return "the previous page";
-}
-
-type AdminAccessGateProps = {
-  title: string;
-  description: string;
-  actionLabel?: string;
-  onAction?: () => void;
-  loading?: boolean;
-};
-
-function AdminAccessGate({
-  title,
-  description,
-  actionLabel,
-  onAction,
-  loading,
-}: AdminAccessGateProps) {
-  const accent = "#2563eb";
-
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
-      <div className="w-full max-w-md rounded-3xl border border-blue-100 bg-white p-8 text-center shadow-[0_20px_60px_rgba(15,23,42,0.12)]">
-        <div
-          className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full"
-          style={{ backgroundColor: `${accent}1A`, color: accent }}
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[activeKey]}
+          items={menuItems}
+        />
+      </Sider>
+      <Layout
+        style={{
+          marginLeft: collapsed ? 80 : 250,
+          transition: "margin-left 0.2s",
+        }}
+      >
+        <Header
+          style={{
+            padding: "0 24px",
+            background: colorBgContainer,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
         >
-          <LockOutlinedIcon />
-        </div>
-        <h2 className="text-xl font-semibold text-slate-900">{title}</h2>
-        <p className="mt-2 text-sm text-slate-600">{description}</p>
-        {loading && (
-          <div className="mt-4 flex justify-center">
-            <CircularProgress size={24} sx={{ color: accent }} />
+          <Button
+            type="text"
+            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={() => setCollapsed(!collapsed)}
+            style={{
+              fontSize: "16px",
+              width: 64,
+              height: 64,
+            }}
+          />
+
+          <div className="flex items-center gap-4">
+            {/* @ts-expect-error Antd Dropdown menu prop type issue in some versions */}
+            <Dropdown menu={userMenu} trigger={["click"]}>
+              <div className="cursor-pointer flex items-center gap-2 hover:bg-gray-100 px-3 py-1 rounded-md transition-colors">
+                <Avatar style={{ backgroundColor: "#f56a00" }}>
+                  {userInitials}
+                </Avatar>
+                <span className="hidden sm:block font-medium">
+                  {profile?.name}
+                </span>
+              </div>
+            </Dropdown>
           </div>
-        )}
-        {actionLabel && onAction && (
-          <button
-            type="button"
-            onClick={onAction}
-            className="mt-6 w-full rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-700"
-          >
-            {actionLabel}
-          </button>
-        )}
-      </div>
-    </div>
+        </Header>
+        <Content
+          style={{
+            margin: "24px 16px",
+            padding: 24,
+            minHeight: 280,
+            background: colorBgContainer,
+            borderRadius: borderRadiusLG,
+          }}
+        >
+          {children}
+        </Content>
+      </Layout>
+    </Layout>
   );
 }

@@ -49,21 +49,17 @@ export function ClickAwaySurface({
       const target = event.target;
       if (!(target instanceof Node)) return;
 
-      const composedPath = (event as Event & { composedPath?: () => EventTarget[] }).composedPath?.();
-      if (composedPath && composedPath.includes(el)) return;
-
       // Only close when the click/touch is OUTSIDE the surface.
       if (el.contains(target)) return;
       onClose();
     };
 
-    // Capture phase makes this resilient even if children stop propagation.
-    if (mouseDomEvent) document.addEventListener(mouseDomEvent, handler, true);
-    if (touchDomEvent) document.addEventListener(touchDomEvent, handler, true);
+    if (mouseDomEvent) document.addEventListener(mouseDomEvent, handler);
+    if (touchDomEvent) document.addEventListener(touchDomEvent, handler);
 
     return () => {
-      if (mouseDomEvent) document.removeEventListener(mouseDomEvent, handler, true);
-      if (touchDomEvent) document.removeEventListener(touchDomEvent, handler, true);
+      if (mouseDomEvent) document.removeEventListener(mouseDomEvent, handler);
+      if (touchDomEvent) document.removeEventListener(touchDomEvent, handler);
     };
   }, [disabled, mouseDomEvent, touchDomEvent, onClose]);
 
