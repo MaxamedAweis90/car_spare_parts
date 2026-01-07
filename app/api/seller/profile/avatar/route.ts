@@ -30,10 +30,13 @@ export async function POST(req: NextRequest) {
     }
 
     const providedName = formData.get("filename");
-    const filename = typeof providedName === "string" && providedName ? providedName : (file as File).name || "user-avatar";
+    const filename =
+      typeof providedName === "string" && providedName
+        ? providedName
+        : (file as File).name || "user-avatar";
 
     const newFileId = await uploadUserAvatar(bytes, filename, account.$id);
-    await updateUserProfileDocument(profile.$id, { avatarId: newFileId, avatarSource: "user" });
+    await updateUserProfileDocument(profile.$id, { avatarId: newFileId });
 
     if (profile.avatarId && profile.avatarId !== newFileId) {
       await deleteUserAvatar(profile.avatarId);

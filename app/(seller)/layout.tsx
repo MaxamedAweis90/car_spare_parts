@@ -14,7 +14,10 @@ import {
   theme,
   Typography,
   Badge,
+  Drawer,
+  Grid,
 } from "antd";
+const { useBreakpoint } = Grid;
 import {
   DashboardOutlined,
   AppstoreOutlined,
@@ -112,6 +115,9 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const screens = useBreakpoint();
+  const isMobile = !screens.lg;
 
   const {
     token: { colorBgContainer, borderRadiusLG },
@@ -278,80 +284,76 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        theme="light"
-        width={260}
-        collapsedWidth={80}
-        className="shadow-md z-10"
-        style={{
-          overflow: "auto",
-          height: "100vh",
-          position: "fixed",
-          left: 0,
-          top: 0,
-          bottom: 0,
-        }}
-      >
-        <div
-          className={`h-[64px] border-b flex items-center ${
-            collapsed ? "justify-center" : "px-4 gap-3"
-          }`}
-        >
-          <Avatar
-            src={sellerAvatarUrl}
-            style={{
-              backgroundColor: "#f56a00",
-              flexShrink: 0,
-            }}
-            shape="square"
-            size={collapsed ? 32 : 36}
-          >
-            {storeDisplayName.slice(0, 1)}
-          </Avatar>
-          {!collapsed && (
-            <div className="overflow-hidden leading-tight">
-              <Text strong className="block truncate text-sm">
-                {storeDisplayName}
-              </Text>
-              <Text
-                type="secondary"
-                className="text-[10px] block uppercase tracking-wider font-bold opacity-60"
-              >
-                Seller Portal
-              </Text>
-            </div>
-          )}
-        </div>
-        <Menu
+      {/* Sidebar for Desktop */}
+      {!isMobile && (
+        <Sider
+          trigger={null}
+          collapsible
+          collapsed={collapsed}
           theme="light"
-          mode="inline"
-          selectedKeys={[activeKey]}
-          items={menuItems}
-          style={{ borderRight: 0 }}
-        />
-      </Sider>
+          width={260}
+          collapsedWidth={80}
+          className="shadow-md z-10"
+          style={{
+            overflow: "auto",
+            height: "100vh",
+            position: "fixed",
+            left: 0,
+            top: 0,
+            bottom: 0,
+          }}
+        >
+          {siderContent()}
+        </Sider>
+      )}
+
+      {/* Drawer for Mobile */}
+      {isMobile && (
+        <Drawer
+          placement="left"
+          onClose={() => setDrawerVisible(false)}
+          open={drawerVisible}
+          styles={{ body: { padding: 0 } }}
+          width={260}
+          closable={false}
+        >
+          {siderContent()}
+        </Drawer>
+      )}
+
       <Layout
         style={{
-          marginLeft: collapsed ? 80 : 260,
+          marginLeft: isMobile ? 0 : collapsed ? 80 : 260,
           transition: "margin-left 0.2s",
         }}
       >
         <Header
           style={{
-            padding: "0 24px",
+            padding: isMobile ? "0 12px" : "0 24px",
             background: colorBgContainer,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            position: "sticky",
+            top: 0,
+            zIndex: 1,
+            boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
           }}
         >
           <Button
             type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
+            icon={
+              isMobile ? (
+                <UnorderedListOutlined />
+              ) : collapsed ? (
+                <MenuUnfoldOutlined />
+              ) : (
+                <MenuFoldOutlined />
+              )
+            }
+            onClick={() =>
+              isMobile ? setDrawerVisible(true) : setCollapsed(!collapsed)
+            }
             style={{
               fontSize: "16px",
               width: 64,
@@ -372,14 +374,19 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
                 >
                   {profile?.name?.[0]}
                 </Avatar>
+                {!isMobile && (
+                  <Text strong className="hidden sm:inline">
+                    {profile?.name}
+                  </Text>
+                )}
               </div>
             </Dropdown>
           </div>
         </Header>
         <Content
           style={{
-            margin: "24px 16px",
-            padding: 24,
+            margin: isMobile ? "16px 8px" : "24px 16px",
+            padding: isMobile ? 12 : 24,
             minHeight: 280,
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
@@ -390,4 +397,49 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
       </Layout>
     </Layout>
   );
+
+  function siderContent() {
+    return (
+      <>
+        <div
+          className={`h-[64px] border-b flex items-center ${
+            collapsed && !isMobile ? "justify-center" : "px-4 gap-3"
+          }`}
+        >
+          <Avatar
+            src={sellerAvatarUrl}
+            style={{
+              backgroundColor: "#f56a00",
+              flexShrink: 0,
+            }}
+            shape="square"
+            size={collapsed && !isMobile ? 32 : 36}
+          >
+            {storeDisplayName.slice(0, 1)}
+          </Avatar>
+          {(!collapsed || isMobile) && (
+            <div className="overflow-hidden leading-tight">
+              <Text strong className="block truncate text-sm">
+                {storeDisplayName}
+              </Text>
+              <Text
+                type="secondary"
+                className="text-[10px] block uppercase tracking-wider font-bold opacity-60"
+              >
+                Seller Portal
+              </Text>
+            </div>
+          )}
+        </div>
+        <Menu
+          theme="light"
+          mode="inline"
+          selectedKeys={[activeKey]}
+          items={menuItems}
+          style={{ borderRight: 0 }}
+          onClick={() => isMobile && setDrawerVisible(false)}
+        />
+      </>
+    );
+  }
 }

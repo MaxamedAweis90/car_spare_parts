@@ -21,7 +21,10 @@ export default function AccountPage() {
   const initials = useMemo(() => {
     const name: string = profile?.name || "";
     const parts = name.trim().split(/\s+/).filter(Boolean);
-    const two = parts.slice(0, 2).map((p) => p[0]?.toUpperCase()).join("");
+    const two = parts
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase())
+      .join("");
     return two || "A";
   }, [profile?.name]);
 
@@ -30,7 +33,10 @@ export default function AccountPage() {
   const initialForm = useMemo(
     () => ({
       name: (profile?.name as string | undefined) || "",
-      phone: profile?.phone === null || profile?.phone === undefined ? "" : String(profile.phone),
+      phone:
+        profile?.phone === null || profile?.phone === undefined
+          ? ""
+          : String(profile.phone),
     }),
     [profile?.name, profile?.phone]
   );
@@ -52,8 +58,8 @@ export default function AccountPage() {
 
   const canEdit = authenticated && profile?.role === "customer";
   const profileDirty =
-    (name.trim() !== initialForm.name.trim()) ||
-    (phone.trim() !== initialForm.phone.trim());
+    name.trim() !== initialForm.name.trim() ||
+    phone.trim() !== initialForm.phone.trim();
 
   const onUpload = async () => {
     if (!file) return;
@@ -125,6 +131,60 @@ export default function AccountPage() {
     setPhone(initialForm.phone);
   };
 
+  // Password Update State
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  const onUpdatePassword = async () => {
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordMessage({ type: "error", text: "New passwords do not match" });
+      return;
+    }
+    setSavingPassword(true);
+    setPasswordMessage(null);
+
+    try {
+      const res = await fetch("/api/auth/update-password", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          currentPassword: passwordForm.currentPassword,
+          newPassword: passwordForm.newPassword,
+        }),
+      });
+
+      const body = await res.json();
+      if (!res.ok) {
+        throw new Error(body?.error || "Failed to update password");
+      }
+
+      setPasswordMessage({
+        type: "success",
+        text: "Password updated successfully",
+      });
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+    } catch (error: any) {
+      setPasswordMessage({
+        type: "error",
+        text: error?.message || "Failed to update password",
+      });
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="mx-auto w-full max-w-10/12 px-4 py-10">
@@ -137,10 +197,14 @@ export default function AccountPage() {
     return (
       <div className="mx-auto w-full max-w-10/12 px-4 py-10">
         <h1 className="text-xl font-extrabold text-slate-900">My Account</h1>
-        <p className="mt-2 text-sm text-slate-700">Please sign in to manage your account.</p>
+        <p className="mt-2 text-sm text-slate-700">
+          Please sign in to manage your account.
+        </p>
         <div className="mt-4">
           <Link href="/auth/login" className="inline-flex">
-            <Button variant="primary" rounded="full">Login</Button>
+            <Button variant="primary" rounded="full">
+              Login
+            </Button>
           </Link>
         </div>
       </div>
@@ -151,7 +215,9 @@ export default function AccountPage() {
     return (
       <div className="mx-auto w-full max-w-full sm:max-w-10/12 px-4 py-10">
         <h1 className="text-xl font-extrabold text-slate-900">My Account</h1>
-        <p className="mt-2 text-sm text-slate-700">This page is available for customer accounts.</p>
+        <p className="mt-2 text-sm text-slate-700">
+          This page is available for customer accounts.
+        </p>
       </div>
     );
   }
@@ -164,9 +230,17 @@ export default function AccountPage() {
         <div className="flex items-center gap-4">
           <div className="relative h-16 w-16 overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200">
             {previewUrl ? (
-              <img src={previewUrl} alt="Avatar preview" className="h-full w-full object-cover" />
+              <img
+                src={previewUrl}
+                alt="Avatar preview"
+                className="h-full w-full object-cover"
+              />
             ) : avatarUrl ? (
-              <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+              <img
+                src={avatarUrl}
+                alt="Avatar"
+                className="h-full w-full object-cover"
+              />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-lg font-extrabold text-slate-700">
                 {initials}
@@ -175,14 +249,20 @@ export default function AccountPage() {
           </div>
 
           <div className="min-w-0">
-            <div className="truncate text-sm font-bold text-slate-900">{profile?.name || "Account"}</div>
-            <div className="truncate text-xs font-semibold text-slate-600">{profile?.email}</div>
+            <div className="truncate text-sm font-bold text-slate-900">
+              {profile?.name || "Account"}
+            </div>
+            <div className="truncate text-xs font-semibold text-slate-600">
+              {profile?.email}
+            </div>
           </div>
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-bold text-slate-900">Full name</label>
+            <label className="block text-sm font-bold text-slate-900">
+              Full name
+            </label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -191,7 +271,9 @@ export default function AccountPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-bold text-slate-900">Phone / Contact</label>
+            <label className="block text-sm font-bold text-slate-900">
+              Phone / Contact
+            </label>
             <input
               inputMode="numeric"
               value={phone}
@@ -225,8 +307,12 @@ export default function AccountPage() {
         </div>
 
         <div className="mt-5">
-          <label className="block text-sm font-bold text-slate-900">Update avatar</label>
-          <p className="mt-1 text-xs font-semibold text-slate-600">Choose an image file to use as your account avatar.</p>
+          <label className="block text-sm font-bold text-slate-900">
+            Update avatar
+          </label>
+          <p className="mt-1 text-xs font-semibold text-slate-600">
+            Choose an image file to use as your account avatar.
+          </p>
 
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
             <input
@@ -248,11 +334,106 @@ export default function AccountPage() {
 
           {file && (
             <div className="mt-2 text-xs font-semibold text-slate-600">
-              Selected: <span className="font-bold text-slate-800">{file.name}</span>
+              Selected:{" "}
+              <span className="font-bold text-slate-800">{file.name}</span>
             </div>
           )}
 
-          {error && <div className="mt-3 text-sm font-semibold text-red-600">{error}</div>}
+          {error && (
+            <div className="mt-3 text-sm font-semibold text-red-600">
+              {error}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6">
+        <h2 className="text-lg font-bold text-slate-900">Security</h2>
+        <p className="mt-1 text-xs font-semibold text-slate-600">
+          Update your password to keep your account secure.
+        </p>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-bold text-slate-900">
+              Current Password
+            </label>
+            <input
+              type="password"
+              value={passwordForm.currentPassword}
+              onChange={(e) =>
+                setPasswordForm({
+                  ...passwordForm,
+                  currentPassword: e.target.value,
+                })
+              }
+              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none ring-black/10 focus:ring-2"
+              placeholder="••••••••"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-900">
+              New Password
+            </label>
+            <input
+              type="password"
+              value={passwordForm.newPassword}
+              onChange={(e) =>
+                setPasswordForm({
+                  ...passwordForm,
+                  newPassword: e.target.value,
+                })
+              }
+              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none ring-black/10 focus:ring-2"
+              placeholder="••••••••"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-bold text-slate-900">
+              Confirm New Password
+            </label>
+            <input
+              type="password"
+              value={passwordForm.confirmPassword}
+              onChange={(e) =>
+                setPasswordForm({
+                  ...passwordForm,
+                  confirmPassword: e.target.value,
+                })
+              }
+              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none ring-black/10 focus:ring-2"
+              placeholder="••••••••"
+            />
+          </div>
+        </div>
+
+        <div className="mt-6">
+          <Button
+            type="button"
+            variant="primary"
+            rounded="full"
+            disabled={
+              savingPassword ||
+              !passwordForm.currentPassword ||
+              !passwordForm.newPassword ||
+              !passwordForm.confirmPassword
+            }
+            onClick={onUpdatePassword}
+          >
+            {savingPassword ? "Updating…" : "Update Password"}
+          </Button>
+
+          {passwordMessage && (
+            <div
+              className={`mt-3 text-sm font-semibold ${
+                passwordMessage.type === "success"
+                  ? "text-green-600"
+                  : "text-red-600"
+              }`}
+            >
+              {passwordMessage.text}
+            </div>
+          )}
         </div>
       </div>
     </div>

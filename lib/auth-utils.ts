@@ -1,9 +1,14 @@
 import bcrypt from "bcryptjs";
 import { ID, Models, Query } from "node-appwrite";
-import { appwriteConfig, databasesServer, usersServer } from "@/lib/appwrite-server";
+import {
+  appwriteConfig,
+  databasesServer,
+  usersServer,
+} from "@/lib/appwrite-server";
 
 export type RoleType = "main_admin" | "admin" | "seller" | "customer";
 export type AvatarSource = "google" | "user";
+export type AdminStatus = "active" | "deactivated" | "terminated";
 
 export interface UserProfile extends Models.Document {
   name: string;
@@ -11,6 +16,7 @@ export interface UserProfile extends Models.Document {
   role: RoleType;
   createdAt: string;
   isActive: boolean;
+  status: AdminStatus;
   avatarId?: string;
   avatarSource?: AvatarSource;
   phone?: number | null;
@@ -53,8 +59,17 @@ export async function createUserProfile(params: {
   passwordHash?: string;
   appwriteUserId?: string;
   sellerApproved?: boolean;
+  status?: AdminStatus;
 }) {
-  const { name, email, role = DEFAULT_ROLE, passwordHash, appwriteUserId, sellerApproved } = params;
+  const {
+    name,
+    email,
+    role = DEFAULT_ROLE,
+    passwordHash,
+    appwriteUserId,
+    sellerApproved,
+    status = "deactivated",
+  } = params;
   const createdAt = new Date().toISOString();
 
   const profile = await databasesServer.createDocument<UserProfile>(
@@ -66,7 +81,8 @@ export async function createUserProfile(params: {
       email,
       role,
       createdAt,
-      isActive: true,
+      isActive: status === "active",
+      status,
       passwordHash,
       appwriteUserId,
       sellerApproved,

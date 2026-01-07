@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { OAuthProvider } from "appwrite";
 import { accountClient } from "@/lib/appwrite";
 import { useSession } from "@/lib/useSession";
+import BackToHome from "@/components/BackToHome";
 
 export default function LoginClient() {
   return (
@@ -18,13 +19,16 @@ function LoginClientContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const oauthError = searchParams.get("error");
+  const verified = searchParams.get("verified");
   const { authenticated, profile, loading } = useSession();
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(
+    verified ? "Verification successful! Please log in." : ""
+  );
   const shouldHide = loading || authenticated;
 
   useEffect(() => {
@@ -65,6 +69,10 @@ function LoginClientContent() {
 
       const body = await res.json();
       if (!res.ok) {
+        if (body.mustVerify) {
+          router.push(`/auth/verify-notice?email=${encodeURIComponent(email)}`);
+          return;
+        }
         setMessage(body?.error || "Login failed");
         return;
       }
@@ -98,6 +106,7 @@ function LoginClientContent() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_35%)] bg-[#f7f9fc] flex items-center justify-center px-4 py-10">
+      <BackToHome />
       <div className="w-full max-w-xl rounded-3xl bg-white p-8 shadow-[0_30px_80px_rgba(15,23,42,0.08)]">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-extrabold text-slate-900">Sign In</h1>
@@ -195,7 +204,7 @@ function LoginClientContent() {
             </label>
             <a
               className="font-semibold text-[#1d4ed8] hover:underline"
-              href="/auth/login"
+              href="/auth/forgot-password"
             >
               Forgot password?
             </a>

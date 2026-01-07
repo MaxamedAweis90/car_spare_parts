@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/useSession";
+import BackToHome from "@/components/BackToHome";
 
 export default function SellerLoginClient() {
   const router = useRouter();
@@ -50,6 +51,10 @@ export default function SellerLoginClient() {
 
       const body = await res.json();
       if (!res.ok) {
+        if (body.mustVerify) {
+          router.push(`/auth/verify-notice?email=${encodeURIComponent(email)}`);
+          return;
+        }
         setMessage(body?.error || "Login failed");
         return;
       }
@@ -77,6 +82,7 @@ export default function SellerLoginClient() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_45%)] bg-[#f2f5fb] flex items-center justify-center px-4 py-10">
+      <BackToHome />
       <div className="w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)] md:grid md:grid-cols-2">
         <div className="px-8 py-10 sm:px-12 flex flex-col gap-6">
           <div className="text-left">
@@ -158,7 +164,7 @@ export default function SellerLoginClient() {
               </label>
               <a
                 className="font-semibold text-[#1d4ed8] hover:underline"
-                href="/auth/seller/login"
+                href="/auth/forgot-password"
               >
                 Forgot password?
               </a>

@@ -3,6 +3,7 @@
 import { FormEvent, Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "@/lib/useSession";
+import BackToHome from "@/components/BackToHome";
 
 export default function SellerRegisterClient() {
   return (
@@ -21,6 +22,7 @@ function SellerRegisterContent() {
   const [name, setName] = useState(nameParam);
   const [email, setEmail] = useState(emailParam);
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
@@ -67,6 +69,12 @@ function SellerRegisterContent() {
     setSubmitting(true);
     setMessage("");
 
+    if (password !== confirmPassword) {
+      setMessage("Passwords do not match");
+      setSubmitting(false);
+      return;
+    }
+
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
@@ -95,6 +103,7 @@ function SellerRegisterContent() {
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_45%)] bg-[#f2f5fb] flex items-center justify-center px-4 py-10">
+      <BackToHome />
       <div className="w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)] md:grid md:grid-cols-2">
         <div className="px-8 py-10 sm:px-12 flex flex-col gap-6">
           <div className="text-left">
@@ -182,6 +191,24 @@ function SellerRegisterContent() {
                     aria-hidden
                   ></i>
                 </button>
+              </div>
+            </label>
+
+            <label className="block text-sm font-semibold text-slate-700">
+              Confirm Password
+              <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-[#1d4ed8] focus-within:ring-2 focus-within:ring-[#1d4ed8]/20">
+                <i
+                  className="fa-regular fa-lock text-slate-500"
+                  aria-hidden
+                ></i>
+                <input
+                  className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                />
               </div>
             </label>
 

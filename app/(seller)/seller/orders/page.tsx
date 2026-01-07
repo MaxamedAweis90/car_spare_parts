@@ -252,6 +252,7 @@ export default function SellerOrdersPage() {
           columns={columns}
           dataSource={filteredOrders}
           loading={isLoading}
+          scroll={{ x: "max-content" }}
           pagination={{ pageSize: 10 }}
           expandable={{
             expandedRowRender: (record) => (

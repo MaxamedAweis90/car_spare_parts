@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/useSession";
+import BackToHome from "@/components/BackToHome";
 
 export default function AdminLoginClient() {
   const router = useRouter();
@@ -50,6 +51,10 @@ export default function AdminLoginClient() {
 
       const body = await res.json();
       if (!res.ok) {
+        if (body.mustVerify) {
+          router.push(`/auth/verify-notice?email=${encodeURIComponent(email)}`);
+          return;
+        }
         setMessage(body?.error || "Login failed");
         return;
       }
@@ -72,6 +77,7 @@ export default function AdminLoginClient() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-10">
+      <BackToHome />
       <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-extrabold text-slate-900 mb-4">
           Admin Login
@@ -113,6 +119,22 @@ export default function AdminLoginClient() {
               </button>
             </div>
           </label>
+
+          <div className="flex items-center justify-between text-sm text-slate-600 mb-2">
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
+              />
+              <span>Remember me</span>
+            </label>
+            <a
+              className="font-semibold text-slate-900 hover:underline"
+              href="/auth/forgot-password"
+            >
+              Forgot password?
+            </a>
+          </div>
 
           <button
             type="submit"

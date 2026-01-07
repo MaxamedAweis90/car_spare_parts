@@ -290,6 +290,7 @@ export default function SellerDashboardPage() {
           rowKey="$id"
           pagination={false}
           loading={ordersLoading}
+          scroll={{ x: "max-content" }}
         />
       </Card>
     </div>

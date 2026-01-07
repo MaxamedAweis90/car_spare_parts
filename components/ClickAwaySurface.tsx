@@ -49,6 +49,9 @@ export function ClickAwaySurface({
       const target = event.target;
       if (!(target instanceof Node)) return;
 
+      // Ignore if the event was already handled or if the target is no longer in DOM
+      if (event.defaultPrevented) return;
+
       // Only close when the click/touch is OUTSIDE the surface.
       if (el.contains(target)) return;
       onClose();

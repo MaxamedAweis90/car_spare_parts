@@ -15,8 +15,22 @@ export async function requireAdmin(req: NextRequest): Promise<AdminContext> {
   }
 
   const { account, profile } = session;
+
   if (!allowedRoles.has(profile.role)) {
     throw Object.assign(new Error("Forbidden"), { status: 403 });
+  }
+
+  // Mandatory verification for ALL admins
+  if (!account.emailVerification) {
+    throw Object.assign(new Error("Admin email must be verified"), {
+      status: 403,
+    });
+  }
+
+  if (profile.status !== "active") {
+    throw Object.assign(new Error("Your admin account is not active"), {
+      status: 403,
+    });
   }
 
   return { account, profile };

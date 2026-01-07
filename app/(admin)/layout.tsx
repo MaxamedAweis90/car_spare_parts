@@ -13,7 +13,10 @@ import {
   Spin,
   theme,
   Typography,
+  Drawer,
+  Grid,
 } from "antd";
+const { useBreakpoint } = Grid;
 import {
   DashboardOutlined,
   SafetyCertificateOutlined,
@@ -74,6 +77,10 @@ export default function AdminLayout({
 
   // Use local state for collapse, or zustand if global
   const [collapsed, setCollapsed] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
+  const screens = useBreakpoint();
+  const isMobile = !screens.lg;
+
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
@@ -180,62 +187,76 @@ export default function AdminLayout({
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
-      <Sider
-        trigger={null}
-        collapsible
-        collapsed={collapsed}
-        theme="dark"
-        width={250}
-        collapsedWidth={80}
-        style={{
-          overflow: "auto",
-          height: "100vh",
-          position: "fixed",
-          left: 0,
-          top: 0,
-          bottom: 0,
-        }}
-      >
-        <div className="demo-logo-vertical p-4 flex items-center justify-center gap-2 border-b border-gray-700 mb-2">
-          <div className="bg-white/10 p-1 rounded">
-            <Avatar
-              shape="square"
-              size="small"
-              style={{ backgroundColor: "#1890ff" }}
-            >
-              A
-            </Avatar>
-          </div>
-          {!collapsed && (
-            <span className="text-white font-bold text-lg">Admin</span>
-          )}
-        </div>
-        <Menu
+      {/* Sidebar for Desktop */}
+      {!isMobile && (
+        <Sider
+          trigger={null}
+          collapsible
+          collapsed={collapsed}
           theme="dark"
-          mode="inline"
-          selectedKeys={[activeKey]}
-          items={menuItems}
-        />
-      </Sider>
+          width={250}
+          collapsedWidth={80}
+          style={{
+            overflow: "auto",
+            height: "100vh",
+            position: "fixed",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            zIndex: 20,
+          }}
+        >
+          {siderContent()}
+        </Sider>
+      )}
+
+      {/* Drawer for Mobile */}
+      {isMobile && (
+        <Drawer
+          placement="left"
+          onClose={() => setDrawerVisible(false)}
+          open={drawerVisible}
+          styles={{ body: { padding: 0 } }}
+          width={250}
+          closable={false}
+        >
+          <div className="bg-[#001529] h-full text-white">{siderContent()}</div>
+        </Drawer>
+      )}
+
       <Layout
         style={{
-          marginLeft: collapsed ? 80 : 250,
+          marginLeft: isMobile ? 0 : collapsed ? 80 : 250,
           transition: "margin-left 0.2s",
         }}
       >
         <Header
           style={{
-            padding: "0 24px",
+            padding: isMobile ? "0 12px" : "0 24px",
             background: colorBgContainer,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
+            boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
           }}
         >
           <Button
             type="text"
-            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-            onClick={() => setCollapsed(!collapsed)}
+            icon={
+              isMobile ? (
+                <MenuUnfoldOutlined />
+              ) : collapsed ? (
+                <MenuUnfoldOutlined />
+              ) : (
+                <MenuFoldOutlined />
+              )
+            }
+            onClick={() =>
+              isMobile ? setDrawerVisible(true) : setCollapsed(!collapsed)
+            }
             style={{
               fontSize: "16px",
               width: 64,
@@ -250,17 +271,19 @@ export default function AdminLayout({
                 <Avatar style={{ backgroundColor: "#f56a00" }}>
                   {userInitials}
                 </Avatar>
-                <span className="hidden sm:block font-medium">
-                  {profile?.name}
-                </span>
+                {!isMobile && (
+                  <span className="hidden sm:block font-medium">
+                    {profile?.name}
+                  </span>
+                )}
               </div>
             </Dropdown>
           </div>
         </Header>
         <Content
           style={{
-            margin: "24px 16px",
-            padding: 24,
+            margin: isMobile ? "16px 8px" : "24px 16px",
+            padding: isMobile ? 12 : 24,
             minHeight: 280,
             background: colorBgContainer,
             borderRadius: borderRadiusLG,
@@ -271,4 +294,32 @@ export default function AdminLayout({
       </Layout>
     </Layout>
   );
+
+  function siderContent() {
+    return (
+      <>
+        <div className="demo-logo-vertical p-4 flex items-center justify-center gap-2 border-b border-gray-700 mb-2">
+          <div className="bg-white/10 p-1 rounded">
+            <Avatar
+              shape="square"
+              size="small"
+              style={{ backgroundColor: "#1890ff" }}
+            >
+              A
+            </Avatar>
+          </div>
+          {(!collapsed || isMobile) && (
+            <span className="text-white font-bold text-lg">Admin</span>
+          )}
+        </div>
+        <Menu
+          theme="dark"
+          mode="inline"
+          selectedKeys={[activeKey]}
+          items={menuItems}
+          onClick={() => isMobile && setDrawerVisible(false)}
+        />
+      </>
+    );
+  }
 }

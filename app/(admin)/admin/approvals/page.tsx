@@ -102,6 +102,7 @@ export default function AdminApprovalsPage() {
           dataSource={sellers}
           rowKey="$id"
           loading={isLoading}
+          scroll={{ x: "max-content" }}
           pagination={{ pageSize: 10 }}
           locale={{ emptyText: "No pending sellers found" }}
         />

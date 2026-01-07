@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
         : (file as File).name || "user-avatar";
 
     const newFileId = await uploadUserAvatar(bytes, filename, account.$id);
-    await updateUserProfileDocument(profile.$id, { avatarId: newFileId, avatarSource: "user" });
+    await updateUserProfileDocument(profile.$id, { avatarId: newFileId });
 
     if (profile.avatarId && profile.avatarId !== newFileId) {
       await deleteUserAvatar(profile.avatarId);
@@ -51,14 +51,15 @@ export async function POST(req: NextRequest) {
     console.error("POST /api/customer/profile/avatar error", error);
 
     const status =
-      typeof error === "object" && error && "status" in error && typeof (error as { status?: unknown }).status === "number"
+      typeof error === "object" &&
+      error &&
+      "status" in error &&
+      typeof (error as { status?: unknown }).status === "number"
         ? (error as { status: number }).status
         : 500;
 
     const message =
-      error instanceof Error
-        ? error.message
-        : "Failed to update avatar";
+      error instanceof Error ? error.message : "Failed to update avatar";
 
     return jsonError(message, status);
   }

@@ -327,6 +327,7 @@ export default function SellerProductsPage() {
           }
           rowKey="$id"
           loading={isLoading}
+          scroll={{ x: "max-content" }}
           pagination={{
             current: currentPage,
             pageSize: pageSize,

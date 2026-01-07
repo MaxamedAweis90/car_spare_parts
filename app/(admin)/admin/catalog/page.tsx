@@ -104,6 +104,7 @@ function ProductsTab() {
       dataSource={products}
       rowKey="$id"
       loading={isLoading}
+      scroll={{ x: "max-content" }}
       pagination={{ pageSize: 10 }}
     />
   );
@@ -360,6 +361,7 @@ function CategoriesTab() {
                 dataSource={sellableTree}
                 rowKey="$id"
                 loading={isLoading}
+                scroll={{ x: "max-content" }}
                 pagination={{ pageSize: 20 }}
                 size="middle"
                 expandable={{ defaultExpandAllRows: true }}
@@ -492,6 +494,7 @@ function CompatibilitiesTab() {
         dataSource={compatibilities}
         rowKey="$id"
         loading={isLoading}
+        scroll={{ x: "max-content" }}
       />
     </Space>
   );

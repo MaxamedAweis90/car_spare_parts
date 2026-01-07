@@ -8,7 +8,7 @@ import { performLogout } from "@/lib/logout";
 import Button from "./Button";
 import NavLinks from "./NavLinks";
 import { CartDrawer } from "./CartDrawer";
-import { ClickAwaySurface } from "./ClickAwaySurface";
+import { Dropdown } from "antd";
 import { useCart } from "@/lib/cart";
 import { SearchFilters } from "./SearchFilters";
 
@@ -88,8 +88,6 @@ export default function Navbar() {
   const searchRef = useRef<HTMLDivElement | null>(null);
   const [query, setQuery] = useState("");
   const [language, setLanguage] = useState<(typeof LANG_OPTIONS)[number]>("EN");
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [langOpen, setLangOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -129,20 +127,6 @@ export default function Navbar() {
     }
   }, [language]);
 
-  useEffect(() => {
-    if (!menuOpen) return;
-    if (typeof document === "undefined") return;
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMenuOpen(false);
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [menuOpen]);
-
   // Debounced autocomplete - triggers 3 seconds after user stops typing
   useEffect(() => {
     if (!query.trim()) {
@@ -166,7 +150,7 @@ export default function Navbar() {
     e.preventDefault();
     const trimmed = query.trim();
     setMobileSearchOpen(false);
-    setMenuOpen(false);
+
     setShowSuggestions(false);
     setShowFilters(false);
 
@@ -211,7 +195,6 @@ export default function Navbar() {
   })();
 
   const handleSignOut = async () => {
-    setMenuOpen(false);
     await performLogout();
     if (typeof window !== "undefined") {
       window.location.assign("/");
@@ -221,121 +204,121 @@ export default function Navbar() {
     router.refresh();
   };
 
-  const renderMenuDropdown = (panelClassName: string) =>
-    menuOpen ? (
-      <div className={panelClassName} role="menu">
-        <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3">
-          <div className="relative h-10 w-10 overflow-hidden rounded-full bg-white ring-1 ring-black/10">
-            {showAsAuthenticated && avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt="Avatar"
-                className="h-full w-full object-cover"
-              />
-            ) : showAsAuthenticated ? (
-              <div className="flex h-full w-full items-center justify-center text-xs font-extrabold text-slate-700">
-                {initials}
-              </div>
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-slate-700">
-                <i className="fa-regular fa-user" aria-hidden />
-              </div>
-            )}
-          </div>
-          <div className="min-w-0">
-            <div className="truncate text-sm font-extrabold text-slate-900">
-              {loading ? "Loading..." : userName}
+  const renderMenuContent = () => (
+    <div
+      className="w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+      role="menu"
+    >
+      <div className="flex items-center gap-3 border-b border-slate-100 bg-slate-50 px-4 py-3">
+        <div className="relative h-10 w-10 overflow-hidden rounded-full bg-white ring-1 ring-black/10">
+          {showAsAuthenticated && avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt="Avatar"
+              className="h-full w-full object-cover"
+            />
+          ) : showAsAuthenticated ? (
+            <div className="flex h-full w-full items-center justify-center text-xs font-extrabold text-slate-700">
+              {initials}
             </div>
-            {showAsAuthenticated && profile?.email && (
-              <div className="truncate text-xs font-semibold text-slate-600">
-                {profile.email}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="py-1 text-sm font-semibold text-slate-700">
-          {showAsAuthenticated ? (
-            <>
-              <Link
-                href="/account"
-                className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
-              >
-                <i
-                  className="fa-regular fa-id-card text-sm text-slate-600"
-                  aria-hidden
-                />
-                <span>My Account</span>
-              </Link>
-
-              <Link
-                href="/orders"
-                className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
-              >
-                <i
-                  className="fa-solid fa-box text-sm text-slate-600"
-                  aria-hidden
-                />
-                <span>Orders</span>
-              </Link>
-
-              {isSellerPending && (
-                <Link
-                  href="/auth/seller/pending"
-                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
-                >
-                  <i
-                    className="fa-solid fa-clock-rotate-left text-sm text-slate-600"
-                    aria-hidden
-                  />
-                  <span>Seller Pending</span>
-                </Link>
-              )}
-
-              <div className="my-1 border-t border-slate-100" />
-
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-red-700 hover:bg-red-50"
-              >
-                <i
-                  className="fa-solid fa-arrow-right-from-bracket text-sm"
-                  aria-hidden
-                />
-                <span>Logout</span>
-              </button>
-            </>
           ) : (
-            <>
-              <Link
-                href="/auth/login"
-                onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
-              >
-                <i
-                  className="fa-solid fa-right-to-bracket text-sm text-slate-600"
-                  aria-hidden
-                />
-                <span>Login</span>
-              </Link>
-
-              <Link
-                href="/auth/register"
-                onClick={() => setMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
-              >
-                <i
-                  className="fa-solid fa-user-plus text-sm text-slate-600"
-                  aria-hidden
-                />
-                <span>Register</span>
-              </Link>
-            </>
+            <div className="flex h-full w-full items-center justify-center text-slate-700">
+              <i className="fa-regular fa-user" aria-hidden />
+            </div>
+          )}
+        </div>
+        <div className="min-w-0">
+          <div className="truncate text-sm font-extrabold text-slate-900">
+            {loading ? "Loading..." : userName}
+          </div>
+          {showAsAuthenticated && profile?.email && (
+            <div className="truncate text-xs font-semibold text-slate-600">
+              {profile.email}
+            </div>
           )}
         </div>
       </div>
-    ) : null;
+
+      <div className="py-1 text-sm font-semibold text-slate-700">
+        {showAsAuthenticated ? (
+          <>
+            <Link
+              href="/account"
+              className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
+            >
+              <i
+                className="fa-regular fa-id-card text-sm text-slate-600"
+                aria-hidden
+              />
+              <span>My Account</span>
+            </Link>
+
+            <Link
+              href="/orders"
+              className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
+            >
+              <i
+                className="fa-solid fa-box text-sm text-slate-600"
+                aria-hidden
+              />
+              <span>Orders</span>
+            </Link>
+
+            {isSellerPending && (
+              <Link
+                href="/auth/seller/pending"
+                className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
+              >
+                <i
+                  className="fa-solid fa-clock-rotate-left text-sm text-slate-600"
+                  aria-hidden
+                />
+                <span>Seller Pending</span>
+              </Link>
+            )}
+
+            <div className="my-1 border-t border-slate-100" />
+
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-red-700 hover:bg-red-50"
+            >
+              <i
+                className="fa-solid fa-arrow-right-from-bracket text-sm"
+                aria-hidden
+              />
+              <span>Logout</span>
+            </button>
+          </>
+        ) : (
+          <>
+            <Link
+              href="/auth/login"
+              className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
+            >
+              <i
+                className="fa-solid fa-right-to-bracket text-sm text-slate-600"
+                aria-hidden
+              />
+              <span>Login</span>
+            </Link>
+
+            <Link
+              href="/auth/register"
+              className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
+            >
+              <i
+                className="fa-solid fa-user-plus text-sm text-slate-600"
+                aria-hidden
+              />
+              <span>Register</span>
+            </Link>
+          </>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -356,7 +339,6 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={() => {
-                  setMenuOpen(false);
                   setMobileSearchOpen(true);
                 }}
                 className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-slate-900 ring-1 ring-black/10"
@@ -371,7 +353,6 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={() => {
-                  setMenuOpen(false);
                   openCart();
                 }}
                 className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-slate-900 ring-1 ring-black/10"
@@ -383,21 +364,16 @@ export default function Navbar() {
                 </span>
               </button>
 
-              <ClickAwaySurface
-                onClose={() => setMenuOpen(false)}
-                mouseEvent="onMouseDown"
-                touchEvent="onTouchStart"
-                className="relative"
+              <Dropdown
+                popupRender={renderMenuContent}
+                trigger={["click"]}
+                placement="bottomRight"
+                classNames={{ root: "z-[1001]" }}
               >
                 <button
                   type="button"
-                  onClick={() => {
-                    setMobileSearchOpen(false);
-                    setMenuOpen((prev) => !prev);
-                  }}
-                  className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-white/90 text-slate-900 ring-1 ring-black/10"
-                  aria-haspopup="menu"
-                  aria-expanded={menuOpen}
+                  onClick={() => setMobileSearchOpen(false)}
+                  className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-white/90 text-slate-900 ring-1 ring-black/10 transition-transform active:scale-95"
                   aria-label={showAsAuthenticated ? "Account menu" : "Sign in"}
                 >
                   {showAsAuthenticated ? (
@@ -416,11 +392,7 @@ export default function Navbar() {
                     <i className="fa-regular fa-user text-lg" aria-hidden />
                   )}
                 </button>
-
-                {renderMenuDropdown(
-                  "absolute right-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg"
-                )}
-              </ClickAwaySurface>
+              </Dropdown>
             </div>
           </div>
 
@@ -458,32 +430,13 @@ export default function Navbar() {
 
                 {/* Filter Button */}
                 <div className="relative mr-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowFilters(!showFilters);
-                      setShowSuggestions(false);
-                    }}
-                    className={`flex h-9 w-9 items-center justify-center rounded-full transition ${
-                      showFilters ||
-                      filters.minPrice > 0 ||
-                      filters.maxPrice < 1000 ||
-                      filters.onSale
-                        ? "bg-orange-500 text-white"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
-                    aria-label="Filters"
-                  >
-                    <i className="fa-solid fa-sliders text-sm" aria-hidden />
-                  </button>
-
-                  {showFilters && (
-                    <div className="absolute right-0 top-full z-50 mt-2">
-                      <ClickAwaySurface
-                        onClose={() => setShowFilters(false)}
-                        mouseEvent="onMouseDown"
-                        touchEvent="onTouchStart"
-                      >
+                  <Dropdown
+                    open={showFilters}
+                    onOpenChange={setShowFilters}
+                    trigger={["click"]}
+                    placement="bottomRight"
+                    popupRender={() => (
+                      <div className="z-[1001] mt-2">
                         <SearchFilters
                           filters={filters}
                           onFiltersChange={(newFilters) => {
@@ -491,9 +444,27 @@ export default function Navbar() {
                           }}
                           onClose={() => setShowFilters(false)}
                         />
-                      </ClickAwaySurface>
-                    </div>
-                  )}
+                      </div>
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSuggestions(false);
+                      }}
+                      className={`flex h-9 w-9 items-center justify-center rounded-full transition active:scale-95 ${
+                        showFilters ||
+                        filters.minPrice > 0 ||
+                        filters.maxPrice < 1000 ||
+                        filters.onSale
+                          ? "bg-orange-500 text-white"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                      aria-label="Filters"
+                    >
+                      <i className="fa-solid fa-sliders text-sm" aria-hidden />
+                    </button>
+                  </Dropdown>
                 </div>
 
                 <div className="m-1">
@@ -510,47 +481,76 @@ export default function Navbar() {
               </form>
 
               {/* Autocomplete Dropdown */}
-              {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute left-0 right-0 top-full z-40 mt-2">
-                  <ClickAwaySurface
-                    onClose={() => setShowSuggestions(false)}
-                    mouseEvent="onMouseDown"
-                    touchEvent="onTouchStart"
-                  >
-                    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
-                      <div className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-                        Suggestions
-                      </div>
-                      {suggestions.map((suggestion, idx) => (
-                        <button
-                          key={idx}
-                          type="button"
-                          onClick={() => handleSuggestionClick(suggestion)}
-                          className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                        >
-                          <i
-                            className="fa-solid fa-magnifying-glass text-xs text-slate-400"
-                            aria-hidden
-                          />
-                          {suggestion}
-                        </button>
-                      ))}
+              <Dropdown
+                open={showSuggestions && suggestions.length > 0}
+                onOpenChange={setShowSuggestions}
+                trigger={[]}
+                placement="bottomLeft"
+                popupRender={() => (
+                  <div className="z-[1001] mt-2 w-[calc(100vw-2rem)] sm:w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                    <div className="px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                      Suggestions
                     </div>
-                  </ClickAwaySurface>
-                </div>
-              )}
+                    {suggestions.map((suggestion, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          handleSuggestionClick(suggestion);
+                          setShowSuggestions(false);
+                        }}
+                        className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        <i
+                          className="fa-solid fa-magnifying-glass text-xs text-slate-400"
+                          aria-hidden
+                        />
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              >
+                <div />
+              </Dropdown>
             </div>
           </div>
 
           {/* Desktop: Lang + Cart + Avatar */}
           <div className="hidden items-center gap-3 sm:flex sm:gap-6">
-            <div className="relative hidden items-center gap-2 sm:flex">
+            <Dropdown
+              trigger={["click"]}
+              placement="bottomRight"
+              popupRender={() => (
+                <div className="w-40 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                  {LANG_OPTIONS.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => {
+                        setLanguage(option);
+                      }}
+                      className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                      role="option"
+                      aria-selected={language === option}
+                    >
+                      <img
+                        src={LANG_META[option].flag}
+                        alt={LANG_META[option].label}
+                        className="h-5 w-5 object-contain"
+                      />
+                      <span className="font-semibold tracking-wide">
+                        {LANG_META[option].label}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            >
               <button
                 type="button"
-                onClick={() => setLangOpen((prev) => !prev)}
                 className="inline-flex items-center gap-2 bg-transparent px-2 py-1 text-sm font-semibold text-white transition hover:opacity-70 active:scale-95 touch-manipulation"
-                aria-haspopup="listbox"
-                aria-expanded={langOpen}
+                aria-label="Select Language"
               >
                 <img
                   src={LANG_META[language].flag}
@@ -568,39 +568,7 @@ export default function Navbar() {
                   aria-hidden
                 />
               </button>
-
-              {langOpen && (
-                <ClickAwaySurface
-                  onClose={() => setLangOpen(false)}
-                  mouseEvent="onMouseDown"
-                  touchEvent="onTouchStart"
-                  className="absolute right-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg"
-                >
-                  {LANG_OPTIONS.map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => {
-                        setLanguage(option);
-                        setLangOpen(false);
-                      }}
-                      className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                      role="option"
-                      aria-selected={language === option}
-                    >
-                      <img
-                        src={LANG_META[option].flag}
-                        alt={LANG_META[option].label}
-                        className="h-5 w-5 object-contain"
-                      />
-                      <span className="font-semibold tracking-wide">
-                        {LANG_META[option].label}
-                      </span>
-                    </button>
-                  ))}
-                </ClickAwaySurface>
-              )}
-            </div>
+            </Dropdown>
 
             {/* Right: Cart + Avatar */}
             <div className="flex items-center gap-4">
@@ -625,18 +593,15 @@ export default function Navbar() {
                 </span>
               </button>
 
-              <ClickAwaySurface
-                onClose={() => setMenuOpen(false)}
-                mouseEvent="onMouseDown"
-                touchEvent="onTouchStart"
-                className="relative"
+              <Dropdown
+                popupRender={renderMenuContent}
+                trigger={["click"]}
+                placement="bottomRight"
+                classNames={{ root: "z-[1001]" }}
               >
                 <button
                   type="button"
-                  onClick={() => setMenuOpen((prev) => !prev)}
-                  className="flex items-center gap-2 text-white transition hover:opacity-70"
-                  aria-haspopup="menu"
-                  aria-expanded={menuOpen}
+                  className="flex items-center gap-2 text-white transition hover:opacity-70 active:scale-95"
                   aria-label={showAsAuthenticated ? "Account menu" : "Sign in"}
                 >
                   {showAsAuthenticated ? (
@@ -656,18 +621,13 @@ export default function Navbar() {
                   ) : (
                     <i className="fa-regular fa-user text-2xl" aria-hidden />
                   )}
-                  {/* Customer: avatar-only (no name). Others: keep label. */}
                   {!showAsAuthenticated && (
                     <span className="hidden text-sm font-semibold sm:inline">
                       Sign in account
                     </span>
                   )}
                 </button>
-
-                {renderMenuDropdown(
-                  "absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg"
-                )}
-              </ClickAwaySurface>
+              </Dropdown>
             </div>
           </div>
         </nav>

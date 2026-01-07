@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { findUserByEmail, sanitizeUser } from "@/lib/auth-utils";
+import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
 import { buildUserAvatarUrl } from "@/lib/server/userProfileService";
 
 const endpoint = process.env.APPWRITE_ENDPOINT!;
 const projectId = process.env.APPWRITE_PROJECT_ID!;
-const mainAdminId = (process.env.APPWRITE_MAIN_ADMIN_USER_ID || process.env.NEXT_PUBLIC_APPWRITE_MAIN_ADMIN_USER_ID || "").trim();
+const mainAdminId = (
+  process.env.APPWRITE_MAIN_ADMIN_USER_ID ||
+  process.env.NEXT_PUBLIC_APPWRITE_MAIN_ADMIN_USER_ID ||
+  ""
+).trim();
 
 export async function GET(req: NextRequest) {
   const cookieHeader = req.headers.get("cookie");
@@ -32,12 +37,31 @@ export async function GET(req: NextRequest) {
     }
 
     const account = await accountRes.json();
-    const profile = account?.email ? await findUserByEmail(account.email) : undefined;
+    let profile = account?.email
+      ? await findUserByEmail(account.email)
+      : undefined;
+
+    // Dynamic Sync: If verified by Appwrite but still deactivated in our DB, activate them now.
+    if (
+      account?.emailVerification &&
+      profile &&
+      profile.status === "deactivated"
+    ) {
+      await databasesServer.updateDocument(
+        appwriteConfig.databaseId,
+        appwriteConfig.usersCollectionId,
+        profile.$id,
+        { status: "active", isActive: true }
+      );
+      // Fetch fresh profile after update
+      profile = await findUserByEmail(account.email);
+    }
 
     const safeProfile = profile ? sanitizeUser(profile) : null;
     const avatarUrl = profile ? buildUserAvatarUrl(profile.avatarId) : null;
 
-    const isMainAdminAccount = Boolean(mainAdminId) && account?.$id === mainAdminId;
+    const isMainAdminAccount =
+      Boolean(mainAdminId) && account?.$id === mainAdminId;
     const hydratedProfile =
       safeProfile && isMainAdminAccount
         ? { ...safeProfile, role: "main_admin" as const }
