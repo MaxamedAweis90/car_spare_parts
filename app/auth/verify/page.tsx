@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { accountClient } from "@/lib/appwrite";
 import BackToHome from "@/components/BackToHome";
+import { Steps } from "antd";
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -68,8 +69,8 @@ function VerifyEmailContent() {
                   )}`
                 );
               }
-            }, 1500);
-          }, 2000);
+            }, 1000);
+          }, 1500);
         })
         .catch((err) => {
           console.error(err);
@@ -80,6 +81,14 @@ function VerifyEmailContent() {
       setError("Missing verification parameters.");
     }
   }, [userId, secret, router]);
+
+  // Map stage to numeric step
+  // 0: Verifying
+  // 1: Success (Verification Complete)
+  // 2: Entering (Redirecting)
+  let currentStep = 0;
+  if (stage === "success") currentStep = 1;
+  if (stage === "entering") currentStep = 2;
 
   if (error) {
     return (
@@ -104,130 +113,92 @@ function VerifyEmailContent() {
   }
 
   return (
-    <div className="flex flex-col items-center text-center px-4 relative overflow-hidden">
-      <style jsx>{`
-        @keyframes pulse-ring {
-          0% {
-            transform: scale(0.33);
-            opacity: 0;
-          }
-          40%,
-          50% {
-            opacity: 0.5;
-          }
-          100% {
-            transform: scale(1.2);
-            opacity: 0;
-          }
-        }
-        @keyframes draw-check {
-          to {
-            stroke-dashoffset: 0;
-          }
-        }
-        @keyframes slide-up {
-          from {
-            transform: translateY(20px);
-            opacity: 0;
-          }
-          to {
-            transform: translateY(0);
-            opacity: 1;
-          }
-        }
-        @keyframes loading {
-          0% {
-            transform: translateX(-100%);
-          }
-          50% {
-            transform: translateX(0%);
-          }
-          100% {
-            transform: translateX(100%);
-          }
-        }
-      `}</style>
+    <div className="w-full max-w-md mx-auto py-6">
+      <div className="mb-10 text-center">
+        <h2 className="text-2xl font-bold text-slate-900 mb-2">
+          Account Verification
+        </h2>
+        <p className="text-slate-500 text-sm">
+          Please wait while we secure your account
+        </p>
+      </div>
 
-      {stage === "verifying" && (
-        <div className="animate-in fade-in duration-500">
-          <div className="relative h-32 w-32 mb-10 mx-auto">
-            <div className="absolute inset-0 rounded-full border-4 border-blue-50/50"></div>
-            <div className="absolute inset-0 rounded-full border-4 border-t-[#1d4ed8] animate-spin"></div>
-            <div className="absolute inset-4 rounded-full bg-blue-50 flex items-center justify-center">
-              <i className="fa-solid fa-user-shield text-[#1d4ed8] text-3xl animate-pulse"></i>
-            </div>
-          </div>
-          <h2 className="text-3xl font-black text-slate-900 mb-3 tracking-tighter">
-            Authenticating Link
-          </h2>
-          <p className="text-slate-500 font-bold tracking-tight uppercase text-xs opacity-60">
-            Validating security credentials...
-          </p>
-        </div>
-      )}
-
-      {stage === "success" && (
-        <div className="animate-in zoom-in-95 duration-700">
-          <div className="relative h-32 w-32 mb-10 mx-auto">
-            <div className="absolute inset-0 bg-green-400 rounded-full opacity-10 animate-[pulse-ring_2s_infinite]"></div>
-            <div className="relative h-32 w-32 bg-green-50 text-green-600 rounded-full flex items-center justify-center shadow-[0_20px_40px_rgba(34,197,94,0.15)]">
-              <svg
-                className="w-16 h-16"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth="3"
+      <Steps
+        data-tour="verification-steps"
+        current={currentStep}
+        direction="vertical"
+        items={[
+          {
+            title: "Verifying Link",
+            description: "Validating your security token...",
+            icon: (
+              <span
+                className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                  currentStep === 0
+                    ? "bg-blue-100 text-blue-600 animate-pulse"
+                    : currentStep > 0
+                    ? "bg-green-100 text-green-600"
+                    : "bg-gray-100 text-gray-400"
+                }`}
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5 13l4 4L19 7"
-                  style={{
-                    strokeDasharray: 50,
-                    strokeDashoffset: 50,
-                    animation: "draw-check 0.6s ease-out forwards",
-                  }}
-                />
-              </svg>
-            </div>
-          </div>
-          <h2 className="text-4xl font-black text-slate-900 mb-3 tracking-tighter">
-            Success!
-          </h2>
-          <p className="text-slate-600 font-semibold leading-relaxed max-w-[280px]">
-            Your profile has been secured and activated successfully.
-          </p>
-        </div>
-      )}
+                {currentStep > 0 ? (
+                  <i className="fa-solid fa-check text-sm" />
+                ) : (
+                  <i className="fa-solid fa-cloud-arrow-down text-sm" />
+                )}
+              </span>
+            ),
+          },
+          {
+            title: "Securing Account",
+            description: "Activating profile and permissions...",
+            icon: (
+              <span
+                className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                  currentStep === 1
+                    ? "bg-blue-100 text-blue-600 animate-pulse"
+                    : currentStep > 1
+                    ? "bg-green-100 text-green-600"
+                    : "bg-gray-100 text-gray-400"
+                }`}
+              >
+                {currentStep > 1 ? (
+                  <i className="fa-solid fa-check text-sm" />
+                ) : (
+                  <i className="fa-solid fa-shield-halved text-sm" />
+                )}
+              </span>
+            ),
+          },
+          {
+            title: "Redirecting",
+            description: "Taking you to your dashboard...",
+            icon: (
+              <span
+                className={`flex items-center justify-center w-8 h-8 rounded-full ${
+                  currentStep === 2
+                    ? "bg-blue-100 text-blue-600 animate-pulse"
+                    : "bg-gray-100 text-gray-400"
+                }`}
+              >
+                <i className="fa-solid fa-house text-sm" />
+              </span>
+            ),
+          },
+        ]}
+      />
 
-      {stage === "entering" && (
-        <div className="flex flex-col items-center">
-          <div className="h-16 w-16 mb-10 relative">
-            <div className="absolute inset-0 border-4 border-slate-100 rounded-2xl rotate-45"></div>
-            <div className="absolute inset-0 border-4 border-t-[#1d4ed8] rounded-2xl rotate-45 animate-spin"></div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <i className="fa-solid fa-house-chimney text-[#1d4ed8] text-xl"></i>
-            </div>
-          </div>
-
-          <h2 className="text-3xl font-black text-slate-900 mb-6 tracking-tighter animate-[slide-up_0.5s_ease-out]">
-            Welcome Home
-          </h2>
-
-          <div className="w-64 h-1.5 bg-slate-100 rounded-full overflow-hidden relative shadow-inner">
-            <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#1d4ed8] via-[#4f46e5] to-[#1d4ed8] w-full -translate-x-full animate-[loading_1.5s_infinite_ease-in-out]"></div>
-          </div>
-
-          <p className="mt-6 text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-            Initializing your dashboard
-            <span className="flex gap-1.5">
-              <span className="h-1.5 w-1.5 bg-blue-500 rounded-full animate-bounce"></span>
-              <span className="h-1.5 w-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]"></span>
-              <span className="h-1.5 w-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:0.4s]"></span>
-            </span>
-          </p>
-        </div>
-      )}
+      <div className="mt-8 flex justify-center">
+        {currentStep === 0 && (
+          <i className="fa-solid fa-circle-notch fa-spin text-blue-500 text-2xl opacity-50"></i>
+        )}
+        {currentStep === 1 && (
+          <i className="fa-solid fa-circle-check text-green-500 text-2xl animate-bounce"></i>
+        )}
+        {currentStep === 2 && (
+          <i className="fa-solid fa-arrow-right-to-bracket text-blue-600 text-2xl animate-pulse"></i>
+        )}
+      </div>
     </div>
   );
 }
