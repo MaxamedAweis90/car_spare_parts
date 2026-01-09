@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
           bounceRate: 0,
           returningUsers: 0,
           revenueData: [],
+          lastWeekRevenue: [],
           customerStats: {
             newCustomers: 0,
             returningCustomers: 0,

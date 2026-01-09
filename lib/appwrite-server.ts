@@ -1,5 +1,5 @@
 // lib/appwriteServer.ts
-import { Client, Databases, Users, Storage } from "node-appwrite";
+import { Client, Databases, Users, Storage, Messaging } from "node-appwrite";
 
 const client = new Client()
   .setEndpoint(process.env.APPWRITE_ENDPOINT!) // e.g., "https://fra.cloud.appwrite.io/v1"
@@ -9,6 +9,7 @@ const client = new Client()
 export const databasesServer = new Databases(client);
 export const usersServer = new Users(client);
 export const storageServer = new Storage(client);
+export const messagingServer = new Messaging(client);
 
 export const appwriteConfig = {
   databaseId: process.env.APPWRITE_DATABASE_ID!,
@@ -18,8 +19,12 @@ export const appwriteConfig = {
   mainAdminId: process.env.APPWRITE_MAIN_ADMIN_USER_ID!,
   storeCollectionId: process.env.APPWRITE_STORE_COLLECTION_ID!,
   storeAvatarBucketId: process.env.APPWRITE_STORE_AVATAR_BUCKET_ID!,
-  storeBannerBucketId: process.env.APPWRITE_STORE_BANNER_BUCKET_ID || process.env.APPWRITE_STORE_AVATAR_BUCKET_ID!,
-  avatarBucketId: process.env.APPWRITE_AVATAR_BUCKET_ID || process.env.NEXT_PUBLIC_APPWRITE_AVATAR_BUCKET_ID!,
+  storeBannerBucketId:
+    process.env.APPWRITE_STORE_BANNER_BUCKET_ID ||
+    process.env.APPWRITE_STORE_AVATAR_BUCKET_ID!,
+  avatarBucketId:
+    process.env.APPWRITE_AVATAR_BUCKET_ID ||
+    process.env.NEXT_PUBLIC_APPWRITE_AVATAR_BUCKET_ID!,
   endpoint: process.env.APPWRITE_ENDPOINT!,
   projectId: process.env.APPWRITE_PROJECT_ID!,
   apiKey: process.env.APPWRITE_API_KEY!,

@@ -121,7 +121,7 @@ export function SearchFilters({
   };
 
   return (
-    <div className="w-[calc(100vw-2rem)] max-w-80 rounded-[2rem] border border-(--color-border-strong) bg-(--color-surface) p-6 shadow-2xl backdrop-blur-xl sm:w-80">
+    <div className="w-full max-w-[22rem] rounded-[2.5rem] border border-(--color-border-strong) bg-(--color-surface) p-8 shadow-2xl backdrop-blur-xl sm:w-80 sm:p-6 transition-all">
       <div className="mb-6 flex items-center justify-between">
         <h3 className="text-lg font-black uppercase tracking-widest text-(--color-text)">
           Filters
@@ -129,10 +129,10 @@ export function SearchFilters({
         <button
           type="button"
           onClick={onClose}
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-(--color-bg) text-(--color-muted) hover:text-(--color-primary) transition-colors"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-(--color-bg) text-(--color-muted) hover:text-(--color-primary) transition-colors sm:h-8 sm:w-8"
           aria-label="Close filters"
         >
-          <i className="fa-solid fa-xmark" aria-hidden />
+          <i className="fa-solid fa-xmark text-lg sm:text-base" aria-hidden />
         </button>
       </div>
 
@@ -182,7 +182,7 @@ export function SearchFilters({
                     minPrice: Number(e.target.value),
                   })
                 }
-                className="w-full rounded-xl border border-(--color-border-strong) bg-(--color-bg) py-2.5 pl-7 pr-3 text-sm font-bold text-(--color-text) focus:border-(--color-primary) focus:outline-none focus:ring-4 focus:ring-(--color-primary-light)"
+                className="w-full rounded-xl border border-(--color-border-strong) bg-(--color-bg) py-3 pl-7 pr-3 text-sm font-bold text-(--color-text) focus:border-(--color-primary) focus:outline-none focus:ring-4 focus:ring-(--color-primary-light)"
                 placeholder="From"
               />
             </div>
@@ -201,7 +201,7 @@ export function SearchFilters({
                     maxPrice: Number(e.target.value),
                   })
                 }
-                className="w-full rounded-xl border border-(--color-border-strong) bg-(--color-bg) py-2.5 pl-7 pr-3 text-sm font-bold text-(--color-text) focus:border-(--color-primary) focus:outline-none focus:ring-4 focus:ring-(--color-primary-light)"
+                className="w-full rounded-xl border border-(--color-border-strong) bg-(--color-bg) py-3 pl-7 pr-3 text-sm font-bold text-(--color-text) focus:border-(--color-primary) focus:outline-none focus:ring-4 focus:ring-(--color-primary-light)"
                 placeholder="To"
               />
             </div>
@@ -300,18 +300,18 @@ export function SearchFilters({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-3 pt-2">
+      <div className="flex gap-4 pt-2">
         <button
           type="button"
           onClick={handleReset}
-          className="flex-1 rounded-xl border border-(--color-border-strong) bg-(--color-bg) py-3 text-xs font-black uppercase tracking-[0.2em] text-(--color-muted) hover:bg-(--color-surface) transition-all"
+          className="flex-1 rounded-2xl border border-(--color-border-strong) bg-(--color-bg) py-4 text-xs font-black uppercase tracking-[0.2em] text-(--color-muted) hover:bg-(--color-surface) transition-all sm:py-3"
         >
           Reset
         </button>
         <button
           type="button"
           onClick={handleApply}
-          className="flex-1 rounded-xl bg-(--color-primary) py-3 text-xs font-black uppercase tracking-[0.2em] text-white hover:brightness-110 shadow-lg shadow-(--color-primary-light) transition-all active:scale-95"
+          className="flex-1 rounded-2xl bg-(--color-primary) py-4 text-xs font-black uppercase tracking-[0.2em] text-white hover:brightness-110 shadow-lg shadow-(--color-primary-light) transition-all active:scale-95 sm:py-3"
         >
           Apply
         </button>
@@ -319,26 +319,32 @@ export function SearchFilters({
 
       <style jsx global>{`
         .custom-antd-select .ant-select-selector {
-          border-radius: 12px !important;
+          border-radius: 14px !important;
           border-color: var(--color-border-strong) !important;
           background-color: var(--color-bg) !important;
-          height: 44px !important;
+          height: 48px !important;
           display: flex !important;
           align-items: center !important;
           font-weight: 700 !important;
           color: var(--color-text) !important;
-          padding-left: 12px !important;
+          padding-left: 14px !important;
+        }
+        @media (min-width: 640px) {
+          .custom-antd-select .ant-select-selector {
+            border-radius: 12px !important;
+            height: 44px !important;
+          }
         }
         .custom-antd-select .ant-select-selection-placeholder {
           color: var(--color-muted) !important;
           font-weight: 600 !important;
         }
         .custom-antd-select .ant-select-item-option-content {
-          font-size: 13px !important;
+          font-size: 14px !important;
           font-weight: 500 !important;
         }
         .custom-antd-select .ant-select-selection-item {
-          font-size: 13px !important;
+          font-size: 14px !important;
           font-weight: 700 !important;
         }
       `}</style>

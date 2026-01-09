@@ -32,7 +32,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    if (user.isActive === false) {
+    // Allow pending sellers to login (they'll be redirected to pending page by client)
+    // But block truly inactive users (admin-deactivated)
+    if (user.isActive === false && user.sellerApproved !== false) {
       return NextResponse.json({ error: "User is inactive" }, { status: 403 });
     }
 

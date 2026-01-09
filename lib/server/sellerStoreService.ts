@@ -1,15 +1,32 @@
 import { AppwriteException, ID, Permission, Query, Role } from "node-appwrite";
 import { randomUUID } from "crypto";
-import { appwriteConfig, databasesServer, storageServer } from "@/lib/appwrite-server";
+import {
+  appwriteConfig,
+  databasesServer,
+  storageServer,
+} from "@/lib/appwrite-server";
 import { slugify } from "@/lib/utils/slugify";
-import type { SellerStoreDocument, SellerStorePayload } from "@/lib/types/seller-store";
+import type {
+  SellerStoreDocument,
+  SellerStorePayload,
+} from "@/lib/types/seller-store";
 import { serializeStore } from "@/lib/types/seller-store";
 
-const { databaseId, storeCollectionId, storeAvatarBucketId, storeBannerBucketId, endpoint, projectId, apiKey } = appwriteConfig;
+const {
+  databaseId,
+  storeCollectionId,
+  storeAvatarBucketId,
+  storeBannerBucketId,
+  endpoint,
+  projectId,
+  apiKey,
+} = appwriteConfig;
 
 function ensureUploadBasics() {
   if (!endpoint || !projectId || !apiKey) {
-    throw new Error("Missing Appwrite endpoint, project id, or API key for uploads");
+    throw new Error(
+      "Missing Appwrite endpoint, project id, or API key for uploads"
+    );
   }
   return { endpoint, projectId, apiKey } as const;
 }
@@ -24,11 +41,19 @@ function ensureStoreCollectionId() {
 export async function findStoreBySellerId(sellerId: string) {
   const collectionId = ensureStoreCollectionId();
   try {
-    const document = await databasesServer.getDocument<SellerStoreDocument>(databaseId, collectionId, sellerId);
+    const document = await databasesServer.getDocument<SellerStoreDocument>(
+      databaseId,
+      collectionId,
+      sellerId
+    );
     return document as SellerStoreDocument;
   } catch (error) {
     if (error instanceof AppwriteException && error.code === 404) {
-      const list = await databasesServer.listDocuments<SellerStoreDocument>(databaseId, collectionId, [Query.equal("sellerId", sellerId)]);
+      const list = await databasesServer.listDocuments<SellerStoreDocument>(
+        databaseId,
+        collectionId,
+        [Query.equal("sellerId", sellerId)]
+      );
       return list.total > 0 ? (list.documents[0] as SellerStoreDocument) : null;
     }
     throw error;
@@ -37,8 +62,22 @@ export async function findStoreBySellerId(sellerId: string) {
 
 export async function findStoreBySlug(storeSlug: string) {
   const collectionId = ensureStoreCollectionId();
-  const list = await databasesServer.listDocuments<SellerStoreDocument>(databaseId, collectionId, [Query.equal("storeSlug", storeSlug)]);
+  const list = await databasesServer.listDocuments<SellerStoreDocument>(
+    databaseId,
+    collectionId,
+    [Query.equal("storeSlug", storeSlug)]
+  );
   return list.total > 0 ? (list.documents[0] as SellerStoreDocument) : null;
+}
+
+export async function listActiveStores() {
+  const collectionId = ensureStoreCollectionId();
+  const list = await databasesServer.listDocuments<SellerStoreDocument>(
+    databaseId,
+    collectionId,
+    [Query.equal("isActive", true), Query.equal("isOnboarded", true)]
+  );
+  return list.documents.map(serializeStore);
 }
 
 export async function createStoreForSeller({
@@ -73,6 +112,7 @@ export async function createStoreForSeller({
         contactPhone: null,
         contactEmail: sellerEmail ?? null,
         isActive: true,
+        isOnboarded: false,
       },
       [
         Permission.read(Role.user(accountId)),
@@ -93,10 +133,20 @@ export async function createStoreForSeller({
   }
 }
 
-export async function updateStoreDocument(documentId: string, payload: SellerStorePayload) {
-  const delta: Partial<SellerStoreDocument> = { ...payload } as Partial<SellerStoreDocument>;
+export async function updateStoreDocument(
+  documentId: string,
+  payload: SellerStorePayload
+) {
+  const delta: Partial<SellerStoreDocument> = {
+    ...payload,
+  } as Partial<SellerStoreDocument>;
   const collectionId = ensureStoreCollectionId();
-  const updated = await databasesServer.updateDocument<SellerStoreDocument>(databaseId, collectionId, documentId, delta);
+  const updated = await databasesServer.updateDocument<SellerStoreDocument>(
+    databaseId,
+    collectionId,
+    documentId,
+    delta
+  );
   return serializeStore(updated as SellerStoreDocument);
 }
 
@@ -134,9 +184,17 @@ export async function deleteStoreBanner(fileId: string) {
   }
 }
 
-export async function uploadStoreAvatar(fileBuffer: Buffer, filename: string, accountId: string) {
+export async function uploadStoreAvatar(
+  fileBuffer: Buffer,
+  filename: string,
+  accountId: string
+) {
   const bucketId = ensureStoreAvatarBucketId();
-  const { endpoint: apiEndpoint, projectId: project, apiKey: key } = ensureUploadBasics();
+  const {
+    endpoint: apiEndpoint,
+    projectId: project,
+    apiKey: key,
+  } = ensureUploadBasics();
   const uploadUrl = `${apiEndpoint}/storage/buckets/${bucketId}/files`;
   const form = new FormData();
   const bytes = Uint8Array.from(fileBuffer);
@@ -164,15 +222,25 @@ export async function uploadStoreAvatar(fileBuffer: Buffer, filename: string, ac
 
   const uploadedId: unknown = payload?.$id ?? payload?.fileId ?? payload?.id;
   if (typeof uploadedId !== "string" || !uploadedId) {
-    throw new Error("Appwrite upload succeeded but returned an invalid file id");
+    throw new Error(
+      "Appwrite upload succeeded but returned an invalid file id"
+    );
   }
 
   return uploadedId;
 }
 
-export async function uploadStoreBanner(fileBuffer: Buffer, filename: string, accountId: string) {
+export async function uploadStoreBanner(
+  fileBuffer: Buffer,
+  filename: string,
+  accountId: string
+) {
   const bucketId = ensureStoreBannerBucketId();
-  const { endpoint: apiEndpoint, projectId: project, apiKey: key } = ensureUploadBasics();
+  const {
+    endpoint: apiEndpoint,
+    projectId: project,
+    apiKey: key,
+  } = ensureUploadBasics();
   const uploadUrl = `${apiEndpoint}/storage/buckets/${bucketId}/files`;
   const form = new FormData();
   const bytes = Uint8Array.from(fileBuffer);
@@ -200,7 +268,9 @@ export async function uploadStoreBanner(fileBuffer: Buffer, filename: string, ac
 
   const uploadedId: unknown = payload?.$id ?? payload?.fileId ?? payload?.id;
   if (typeof uploadedId !== "string" || !uploadedId) {
-    throw new Error("Appwrite upload succeeded but returned an invalid file id");
+    throw new Error(
+      "Appwrite upload succeeded but returned an invalid file id"
+    );
   }
 
   return uploadedId;

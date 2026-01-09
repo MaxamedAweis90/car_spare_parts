@@ -23,17 +23,13 @@ export default function AdminLoginClient() {
       return;
     }
     if (profile?.role === "seller") {
-      if (profile?.sellerApproved === false) {
-        router.replace("/auth/seller/pending");
-      } else {
-        router.replace("/seller");
-      }
+      router.replace("/seller");
       return;
     }
     if (profile?.role === "customer") {
       router.replace("/");
     }
-  }, [authenticated, profile?.role, profile?.sellerApproved, loading, router]);
+  }, [authenticated, profile?.role, loading, router]);
 
   if (shouldHide) return null;
 
@@ -51,22 +47,18 @@ export default function AdminLoginClient() {
 
       const body = await res.json();
       if (!res.ok) {
-        if (body.mustVerify) {
-          router.push(`/auth/verify-notice?email=${encodeURIComponent(email)}`);
-          return;
-        }
         setMessage(body?.error || "Login failed");
         return;
       }
 
       const role = body?.user?.role;
-      if (role === "main_admin" || role === "admin") {
-        router.push("/admin");
-        setMessage("Logged in as admin");
-      } else {
+      if (role !== "admin" && role !== "main_admin") {
         await fetch("/api/auth/logout", { method: "POST" });
         setMessage("User not found for this portal.");
+        return;
       }
+      setMessage("Logged in as admin");
+      router.push("/admin");
     } catch (error) {
       console.error(error);
       setMessage("Server error");
@@ -76,78 +68,106 @@ export default function AdminLoginClient() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_45%)] bg-[#f2f5fb] flex items-center justify-center px-4 py-10">
       <BackToHome />
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-2xl font-extrabold text-slate-900 mb-4">
-          Admin Login
-        </h1>
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <label className="block text-sm font-semibold text-slate-700">
-            Email
-            <input
-              className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-slate-900"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-          </label>
-
-          <label className="block text-sm font-semibold text-slate-700">
-            Password
-            <div className="relative mt-2">
-              <input
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none focus:border-slate-900 pr-10"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute inset-y-0 right-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none"
-                aria-label={showPassword ? "Hide password" : "Show password"}
-              >
-                <i
-                  className={`fa-regular ${
-                    showPassword ? "fa-eye-slash" : "fa-eye"
-                  }`}
-                  aria-hidden
-                ></i>
-              </button>
+      <div className="w-full max-w-[500px] overflow-hidden rounded-3xl bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)] ">
+        <div className="px-8 py-10 sm:px-12 flex flex-col gap-6">
+          <div className="text-left">
+            <div className="inline-flex items-center gap-2 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">
+              <span className="h-2 w-2 rounded-full bg-red-700"></span>
+              Admin Portal
             </div>
-          </label>
-
-          <div className="flex items-center justify-between text-sm text-slate-600 mb-2">
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-900"
-              />
-              <span>Remember me</span>
-            </label>
-            <a
-              className="font-semibold text-slate-900 hover:underline"
-              href="/auth/forgot-password"
-            >
-              Forgot password?
-            </a>
+            <h1 className="mt-4 text-3xl font-extrabold text-slate-900">
+              Admin Sign In
+            </h1>
+            <p className="text-sm text-slate-600">
+              Access the admin dashboard to manage the platform.
+            </p>
           </div>
 
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-bold text-white disabled:opacity-60"
-          >
-            {submitting ? "Logging in..." : "Login"}
-          </button>
-        </form>
+          {message && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+              {message}
+            </div>
+          )}
 
-        {message && (
-          <p className="mt-3 text-sm font-semibold text-slate-700">{message}</p>
-        )}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <label className="block text-sm font-semibold text-slate-700">
+              Email
+              <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-red-600 focus-within:ring-2 focus-within:ring-red-600/20">
+                <i
+                  className="fa-regular fa-envelope text-slate-500"
+                  aria-hidden
+                ></i>
+                <input
+                  className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="admin@platform.com"
+                />
+              </div>
+            </label>
+
+            <label className="block text-sm font-semibold text-slate-700">
+              Password
+              <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-red-600 focus-within:ring-2 focus-within:ring-red-600/20">
+                <i
+                  className="fa-regular fa-lock text-slate-500"
+                  aria-hidden
+                ></i>
+                <input
+                  className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-slate-400 hover:text-slate-600 focus:outline-none"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  <i
+                    className={`fa-regular ${
+                      showPassword ? "fa-eye-slash" : "fa-eye"
+                    }`}
+                    aria-hidden
+                  ></i>
+                </button>
+              </div>
+            </label>
+
+            <button
+              type="submit"
+              disabled={submitting}
+              className="mt-2 w-full rounded-xl bg-red-600 px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-red-700 disabled:opacity-60"
+            >
+              {submitting ? "Logging in..." : "Sign In"}
+            </button>
+          </form>
+        </div>
+
+        {/* <div className="relative hidden md:block bg-gradient-to-br from-red-600 to-red-800">
+          <div className="absolute inset-0 bg-linear-to-b from-white/10 to-transparent" />
+          <div className="relative flex h-full flex-col items-center justify-center gap-6 px-8 py-12 text-white">
+            <div className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
+              Admin Access
+            </div>
+            <h2 className="text-2xl font-extrabold">
+              Manage the entire platform.
+            </h2>
+            <p className="max-w-sm text-sm text-white/85">
+              Control users, sellers, products, and monitor platform activity.
+            </p>
+            <div className="h-44 w-full max-w-xs rounded-2xl bg-white/10 backdrop-blur flex items-center justify-center">
+              <div className="h-28 w-40 rounded-xl bg-white/90 shadow-lg" />
+            </div>
+          </div>
+        </div> */}
       </div>
     </div>
   );

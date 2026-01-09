@@ -64,6 +64,11 @@ const NAV_ITEMS = [
     label: "Seller settings",
     icon: <SettingOutlined />,
   },
+  {
+    key: "/admin/settings",
+    label: "Settings",
+    icon: <SettingOutlined />,
+  },
 ];
 
 export default function AdminLayout({

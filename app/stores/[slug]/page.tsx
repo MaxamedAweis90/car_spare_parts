@@ -7,6 +7,7 @@ import {
   buildProductImageUrl,
   findProductsBySellerId,
 } from "@/lib/server/productService";
+import Breadcrumbs from "@/components/Breadcrumbs";
 
 function buildStoreAssetUrl(fileId: string | null, kind: "avatar" | "banner") {
   if (!fileId) return null;
@@ -86,9 +87,15 @@ export default async function StorePage({ params }: StorePageProps) {
   };
 
   return (
-    <div className="bg-white min-h-screen">
-      <div className="mx-auto w-full max-w-10/12 px-4 sm:px-6 lg:px-8">
-        <section className="overflow-hidden rounded-b-4xl">
+    <div className="bg-[#f4f1e9] min-h-screen">
+      <div className="mx-auto w-full max-w-10/12 px-4 py-6 sm:px-6 lg:px-8">
+        <Breadcrumbs
+          items={[
+            { title: "Stores", href: "/stores" },
+            { title: store.storeName },
+          ]}
+        />
+        <section className="overflow-hidden rounded-4xl bg-white shadow-xl shadow-black/5">
           <div className="relative h-60 sm:h-72">
             <img
               src={bannerImage}

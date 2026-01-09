@@ -32,6 +32,7 @@ import {
   MenuUnfoldOutlined,
   LogoutOutlined,
   BellOutlined,
+  InfoCircleOutlined,
 } from "@ant-design/icons";
 
 import { useSession } from "@/lib/useSession";
@@ -185,6 +186,16 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
     }
   }, [sellerProfile?.avatarId, sellerProfile?.avatarUrl]);
 
+  const storeAvatarUrl = useMemo(() => {
+    if (!store?.storeAvatarId) return null;
+    try {
+      return getImageUrl("storeAvatars", store.storeAvatarId);
+    } catch (error) {
+      console.error("Failed to resolve store avatar", error);
+      return null;
+    }
+  }, [store?.storeAvatarId]);
+
   const handleLogout = async () => {
     await performLogout();
     router.replace("/auth/seller/login");
@@ -267,6 +278,38 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
         danger: true,
       },
     ],
+  };
+
+  const notificationsMenu = {
+    items: [
+      !store?.isOnboarded && {
+        key: "onboarding",
+        label: (
+          <Link href="/seller/settings" className="flex flex-col py-1">
+            <Text strong className="block text-sm">
+              Complete Store Setup
+            </Text>
+            <Text type="secondary" className="block text-xs">
+              Set up your shop to start selling
+            </Text>
+          </Link>
+        ),
+        icon: <InfoCircleOutlined className="text-blue-500" />,
+      },
+      store?.isOnboarded && {
+        key: "welcome",
+        label: (
+          <div className="flex flex-col py-1">
+            <Text strong className="block text-sm">
+              Welcome back!
+            </Text>
+            <Text type="secondary" className="block text-xs">
+              Your store is live and ready.
+            </Text>
+          </div>
+        ),
+      },
+    ].filter(Boolean),
   };
 
   // Menu items config
@@ -362,10 +405,15 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
           />
 
           <div className="flex items-center gap-4">
-            <Badge dot>
-              <BellOutlined style={{ fontSize: 20, cursor: "pointer" }} />
-            </Badge>
-            {/* @ts-expect-error Antd Dropdown menu prop */}
+            <Dropdown
+              menu={notificationsMenu}
+              trigger={["click"]}
+              placement="bottomRight"
+            >
+              <Badge dot={!store?.isOnboarded}>
+                <BellOutlined style={{ fontSize: 20, cursor: "pointer" }} />
+              </Badge>
+            </Dropdown>
             <Dropdown menu={userMenu} trigger={["click"]}>
               <div className="cursor-pointer flex items-center gap-2 hover:bg-gray-50 px-3 py-1 rounded-full transition-colors">
                 <Avatar
@@ -407,7 +455,7 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
           }`}
         >
           <Avatar
-            src={sellerAvatarUrl}
+            src={storeAvatarUrl}
             style={{
               backgroundColor: "#f56a00",
               flexShrink: 0,

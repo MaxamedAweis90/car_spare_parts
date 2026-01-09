@@ -330,7 +330,7 @@ export default function Navbar() {
             <Link href="/" className="block">
               <img
                 src="/spartpartslogo-02.png"
-                alt="Spare Parts Logo"
+                alt="SomaParts Logo"
                 className="h-12 w-auto object-contain"
               />
             </Link>
@@ -401,7 +401,7 @@ export default function Navbar() {
             <Link href="/" className="block">
               <img
                 src="/spartpartslogo-02.png"
-                alt="Spare Parts Logo"
+                alt="SomaParts Logo"
                 className="h-16 md:h-20 lg:h-25 w-auto object-contain transition-all"
               />
             </Link>
@@ -641,36 +641,74 @@ export default function Navbar() {
 
       {/* Mobile bottom navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-40 sm:hidden">
-        <div className="mx-auto w-full max-w-full rounded-t-2xl border border-slate-200 bg-white px-4 py-2">
+        <div className="mx-auto w-full max-w-full rounded-t-2xl border border-slate-200 bg-white px-4 py-2 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
           <div className="grid grid-cols-4">
             <Link
               href="/"
-              className="flex flex-col items-center justify-center gap-1 py-1 text-xs font-semibold text-slate-700"
+              className="flex flex-col items-center justify-center gap-1 py-1 text-xs font-bold text-slate-700 active:text-(--color-primary-strong)"
             >
-              <i className="fa-solid fa-house text-base" aria-hidden />
-              Home
+              <i className="fa-solid fa-house text-lg" aria-hidden />
+              <span>Home</span>
             </Link>
             <Link
               href="/shop"
-              className="flex flex-col items-center justify-center gap-1 py-1 text-xs font-semibold text-slate-700"
+              className="flex flex-col items-center justify-center gap-1 py-1 text-xs font-bold text-slate-700 active:text-(--color-primary-strong)"
             >
-              <i className="fa-solid fa-store text-base" aria-hidden />
-              Shop
+              <i className="fa-solid fa-store text-lg" aria-hidden />
+              <span>Shop</span>
             </Link>
             <Link
-              href="/deals"
-              className="flex flex-col items-center justify-center gap-1 py-1 text-xs font-semibold text-slate-700"
+              href="/stores"
+              className="flex flex-col items-center justify-center gap-1 py-1 text-xs font-bold text-slate-700 active:text-(--color-primary-strong)"
             >
-              <i className="fa-solid fa-tags text-base" aria-hidden />
-              Deals
+              <i className="fa-solid fa-shop text-lg" aria-hidden />
+              <span>Stores</span>
             </Link>
-            <Link
-              href="/support"
-              className="flex flex-col items-center justify-center gap-1 py-1 text-xs font-semibold text-slate-700"
+
+            <Dropdown
+              trigger={["click"]}
+              placement="topRight"
+              popupRender={() => (
+                <div className="mb-4 w-48 overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl">
+                  <div className="px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-400 border-b border-slate-50">
+                    Menu
+                  </div>
+                  <div className="flex flex-col py-1">
+                    <Link
+                      href="/deals"
+                      className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 active:bg-slate-100"
+                    >
+                      <i className="fa-solid fa-tags text-slate-400" />
+                      Hot Deals
+                    </Link>
+                    <Link
+                      href="/support"
+                      className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 active:bg-slate-100"
+                    >
+                      <i className="fa-solid fa-headset text-slate-400" />
+                      Support
+                    </Link>
+                    {!authenticated && (
+                      <Link
+                        href="/auth/seller/register"
+                        className="flex items-center gap-3 px-4 py-3 text-sm font-bold text-(--color-primary-strong) hover:bg-orange-50 active:bg-orange-100"
+                      >
+                        <i className="fa-solid fa-briefcase" />
+                        Sell on Soma
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              )}
             >
-              <i className="fa-solid fa-headset text-base" aria-hidden />
-              Support
-            </Link>
+              <button
+                type="button"
+                className="flex flex-col items-center justify-center gap-1 py-1 text-xs font-bold text-slate-700 active:text-(--color-primary-strong)"
+              >
+                <i className="fa-solid fa-ellipsis text-lg" aria-hidden />
+                <span>More</span>
+              </button>
+            </Dropdown>
           </div>
         </div>
       </nav>

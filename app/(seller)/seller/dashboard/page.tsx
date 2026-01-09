@@ -60,7 +60,7 @@ export default function SellerDashboardPage() {
       if (revenueChartRef.current) {
         const ctx = revenueChartRef.current.getContext("2d");
         if (ctx) {
-          const labels = stats.revenueData.map((d) => {
+          const labels = (stats?.revenueData || []).map((d) => {
             const date = new Date(d.date);
             return date.toLocaleDateString("en-US", { weekday: "short" });
           });
@@ -72,7 +72,7 @@ export default function SellerDashboardPage() {
               datasets: [
                 {
                   label: "This Week",
-                  data: stats.revenueData.map((d) => d.revenue),
+                  data: (stats?.revenueData || []).map((d) => d.revenue),
                   borderColor: "#52c41a",
                   backgroundColor: "rgba(82, 196, 26, 0.1)",
                   fill: true,
@@ -80,7 +80,7 @@ export default function SellerDashboardPage() {
                 },
                 {
                   label: "Last Week",
-                  data: stats.lastWeekRevenue.map((d) => d.revenue),
+                  data: (stats?.lastWeekRevenue || []).map((d) => d.revenue),
                   borderColor: "#faad14",
                   backgroundColor: "rgba(250, 173, 20, 0.1)",
                   fill: true,
@@ -114,8 +114,8 @@ export default function SellerDashboardPage() {
               datasets: [
                 {
                   data: [
-                    stats.customerStats.returningCustomers,
-                    stats.customerStats.newCustomers,
+                    stats?.customerStats?.returningCustomers || 0,
+                    stats?.customerStats?.newCustomers || 0,
                   ],
                   backgroundColor: ["#52c41a", "#f0f0f0"],
                   borderWidth: 0,
@@ -217,7 +217,10 @@ export default function SellerDashboardPage() {
             <Skeleton loading={statsLoading} active paragraph={{ rows: 1 }}>
               <Statistic
                 title="Revenue (This Week)"
-                value={stats?.revenueData.reduce((a, b) => a + b.revenue, 0)}
+                value={(stats?.revenueData || []).reduce(
+                  (a, b) => a + b.revenue,
+                  0
+                )}
                 precision={2}
                 styles={{ content: { color: "#cf1322" } }}
                 prefix={<DollarOutlined />}

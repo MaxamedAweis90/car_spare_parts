@@ -12,6 +12,7 @@ export default function NavLinks() {
   const links = [
     { label: "Home", href: "/" },
     { label: "Shop", href: "/shop" },
+    { label: "Stores", href: "/stores" },
     { label: "Top Deals", href: "/deals" },
     { label: "Customer Service", href: "/support" },
   ];

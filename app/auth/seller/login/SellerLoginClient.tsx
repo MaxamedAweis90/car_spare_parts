@@ -67,7 +67,8 @@ export default function SellerLoginClient() {
         return;
       }
       if (approved === false) {
-        setMessage("Logged in. Seller access is pending admin approval.");
+        // Redirect to pending page instead of just showing message
+        router.replace("/auth/seller/pending");
         return;
       }
       setMessage("Logged in as seller");

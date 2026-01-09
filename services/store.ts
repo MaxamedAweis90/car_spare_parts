@@ -1,4 +1,7 @@
-import type { SellerStorePayload, SellerStoreResponse } from "@/lib/types/seller-store";
+import type {
+  SellerStorePayload,
+  SellerStoreResponse,
+} from "@/lib/types/seller-store";
 
 async function handleJson<T>(res: Response) {
   const body = await res.json();
@@ -58,4 +61,9 @@ export async function updateSellerStoreBanner(file: File) {
 export async function getPublicStore(slug: string) {
   const res = await fetch(`/api/stores/${slug}`, { cache: "no-store" });
   return handleJson<{ store: SellerStoreResponse }>(res);
+}
+
+export async function getStores() {
+  const res = await fetch("/api/stores", { cache: "no-store" });
+  return handleJson<{ stores: SellerStoreResponse[] }>(res);
 }

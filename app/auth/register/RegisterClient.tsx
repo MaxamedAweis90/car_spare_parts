@@ -1,55 +1,56 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { OAuthProvider } from "appwrite";
-import { accountClient } from "@/lib/appwrite";
+import { FormEvent, Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "@/lib/useSession";
 import BackToHome from "@/components/BackToHome";
-import VerificationNoticeContent from "@/components/auth/VerificationNoticeContent";
 
 export default function RegisterClient() {
+  return (
+    <Suspense fallback={null}>
+      <RegisterContent />
+    </Suspense>
+  );
+}
+
+function RegisterContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { authenticated, profile, loading: sessionLoading } = useSession();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const nameParam = searchParams.get("name") || "";
+  const emailParam = searchParams.get("email") || "";
+  const [name, setName] = useState(nameParam);
+  const [email, setEmail] = useState(emailParam);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
-  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
-  // Only hide if authenticated AND active (or not customer needing verification)
-  const shouldHide =
-    sessionLoading || (authenticated && profile?.status === "active");
+  const shouldHide = sessionLoading || authenticated;
+
+  useEffect(() => {
+    setName(nameParam);
+  }, [nameParam]);
+
+  useEffect(() => {
+    setEmail(emailParam);
+  }, [emailParam]);
 
   useEffect(() => {
     if (sessionLoading) return;
     if (!authenticated) return;
     if (profile?.role === "customer") {
-      if (profile?.status === "active") {
-        router.replace("/");
-      }
+      router.replace("/");
       return;
     }
     if (profile?.role === "seller") {
-      if (profile?.sellerApproved === false) {
-        router.replace("/auth/seller/pending");
-      } else {
-        router.replace("/seller");
-      }
+      router.replace("/seller");
       return;
     }
     if (profile?.role === "admin" || profile?.role === "main_admin") {
       router.replace("/admin");
     }
-  }, [
-    authenticated,
-    profile?.role,
-    profile?.sellerApproved,
-    sessionLoading,
-    router,
-  ]);
+  }, [authenticated, profile?.role, sessionLoading, router]);
 
   if (shouldHide) return null;
 
@@ -68,7 +69,7 @@ export default function RegisterClient() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, becomeSeller: false }),
       });
 
       const body = await res.json();
@@ -77,20 +78,11 @@ export default function RegisterClient() {
         return;
       }
 
-      // Always try auto-login immediately to establish session
-      await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      // If API says verification is required, show notice immediately
       if (body.mustVerify) {
-        setRegisteredEmail(email);
+        router.push(`/auth/verify-notice?email=${encodeURIComponent(email)}`);
         return;
       }
 
-      setMessage("Registered and logged in");
       router.push("/");
     } catch (error) {
       console.error(error);
@@ -102,188 +94,222 @@ export default function RegisterClient() {
 
   const handleGoogleSignup = async () => {
     try {
-      const origin =
-        typeof window !== "undefined" ? window.location.origin : "";
-      const success = `${origin}/auth/callback`;
-      const failure = `${origin}/auth/register?error=oauth`;
-      await accountClient.createOAuth2Session(
-        OAuthProvider.Google,
-        success,
-        failure
+      const { Account } = await import("appwrite");
+      const { Client } = await import("appwrite");
+
+      const client = new Client()
+        .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
+        .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!);
+
+      const account = new Account(client);
+
+      const origin = window.location.origin;
+      await account.createOAuth2Session(
+        "google" as any,
+        `${origin}/auth/callback`,
+        `${origin}/auth/register`
       );
-    } catch (err) {
-      console.error(err);
-      setMessage("Google sign-up failed. Try email instead.");
+    } catch (error) {
+      console.error("Google signup error:", error);
+      setMessage("Failed to initiate Google signup");
     }
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_35%)] bg-[#f7f9fc] flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_45%)] bg-[#f2f5fb] flex items-center justify-center px-4 py-10">
       <BackToHome />
-      <div className="w-full max-w-xl rounded-3xl bg-white p-8 shadow-[0_30px_80px_rgba(15,23,42,0.08)]">
-        {registeredEmail ? (
-          <VerificationNoticeContent email={registeredEmail} />
-        ) : (
-          <>
-            <div className="text-center mb-6">
-              <h1 className="text-2xl font-extrabold text-slate-900">
-                Create Account
-              </h1>
-              <p className="text-sm text-slate-600 mt-1">
-                Join us to manage orders and save your cart.
-              </p>
+      <div className="w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)] md:grid md:grid-cols-2">
+        <div className="px-8 py-10 sm:px-12 flex flex-col gap-6">
+          <div className="text-left">
+            <div className="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
+              <span className="h-2 w-2 rounded-full bg-green-700"></span>
+              Create Account
             </div>
+            <h1 className="mt-4 text-3xl font-extrabold text-slate-900">
+              Join Us Today
+            </h1>
+            <p className="text-sm text-slate-600">
+              Create your account to start shopping for car parts.
+            </p>
+          </div>
 
-            {message && (
-              <div className="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
-                {message}
-              </div>
-            )}
+          {message && (
+            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+              {message}
+            </div>
+          )}
 
-            <div className="grid gap-3 sm:grid-cols-1">
-              <button
-                type="button"
-                onClick={handleGoogleSignup}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 transition hover:-translate-y-0.5 hover:shadow-lg"
-              >
-                <img
-                  src="https://cdnjs.cloudflare.com/ajax/libs/simple-icons/13.16.0/google.svg"
-                  alt="Google"
-                  className="h-5 w-5"
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <label className="block text-sm font-semibold text-slate-700">
+              Name
+              <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-green-600 focus-within:ring-2 focus-within:ring-green-600/20">
+                <i
+                  className="fa-regular fa-user text-slate-500"
+                  aria-hidden
+                ></i>
+                <input
+                  className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  placeholder="Your full name"
                 />
-                Sign up with Google
-              </button>
-            </div>
+              </div>
+            </label>
 
-            <div className="my-6 flex items-center gap-4 text-xs font-semibold uppercase text-slate-400">
-              <div className="h-px flex-1 bg-slate-200" />
-              <span>Or</span>
-              <div className="h-px flex-1 bg-slate-200" />
-            </div>
+            <label className="block text-sm font-semibold text-slate-700">
+              Email
+              <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-green-600 focus-within:ring-2 focus-within:ring-green-600/20">
+                <i
+                  className="fa-regular fa-envelope text-slate-500"
+                  aria-hidden
+                ></i>
+                <input
+                  className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="you@example.com"
+                />
+              </div>
+            </label>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <label className="block text-sm font-semibold text-slate-700">
-                Name
-                <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-[#1d4ed8] focus-within:ring-2 focus-within:ring-[#1d4ed8]/20">
+            <label className="block text-sm font-semibold text-slate-700">
+              Password
+              <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-green-600 focus-within:ring-2 focus-within:ring-green-600/20">
+                <i
+                  className="fa-regular fa-lock text-slate-500"
+                  aria-hidden
+                ></i>
+                <input
+                  className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="text-slate-400 hover:text-slate-600 focus:outline-none"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
                   <i
-                    className="fa-regular fa-user text-slate-500"
+                    className={`fa-regular ${
+                      showPassword ? "fa-eye-slash" : "fa-eye"
+                    }`}
                     aria-hidden
                   ></i>
-                  <input
-                    className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                    placeholder="Ahmed Cali"
-                  />
-                </div>
-              </label>
+                </button>
+              </div>
+            </label>
 
-              <label className="block text-sm font-semibold text-slate-700">
-                Email
-                <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-[#1d4ed8] focus-within:ring-2 focus-within:ring-[#1d4ed8]/20">
-                  <i
-                    className="fa-regular fa-envelope text-slate-500"
-                    aria-hidden
-                  ></i>
-                  <input
-                    className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    placeholder="you@example.com"
-                  />
-                </div>
-              </label>
+            <label className="block text-sm font-semibold text-slate-700">
+              Confirm Password
+              <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-green-600 focus-within:ring-2 focus-within:ring-green-600/20">
+                <i
+                  className="fa-regular fa-lock text-slate-500"
+                  aria-hidden
+                ></i>
+                <input
+                  className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                />
+              </div>
+            </label>
 
-              <label className="block text-sm font-semibold text-slate-700">
-                Password
-                <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-[#1d4ed8] focus-within:ring-2 focus-within:ring-[#1d4ed8]/20">
-                  <i
-                    className="fa-regular fa-lock text-slate-500"
-                    aria-hidden
-                  ></i>
-                  <input
-                    className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    minLength={8}
-                    placeholder="••••••••"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="text-slate-400 hover:text-slate-600 focus:outline-none"
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
-                    }
-                  >
-                    <i
-                      className={`fa-regular ${
-                        showPassword ? "fa-eye-slash" : "fa-eye"
-                      }`}
-                      aria-hidden
-                    ></i>
-                  </button>
-                </div>
-                <p className="mt-1 text-xs text-slate-500">
-                  Must be at least 8 characters
-                </p>
-              </label>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="mt-2 w-full rounded-xl bg-green-600 px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-green-700 disabled:opacity-60"
+            >
+              {submitting ? "Creating account..." : "Create Account"}
+            </button>
+          </form>
 
-              <label className="block text-sm font-semibold text-slate-700">
-                Confirm Password
-                <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-[#1d4ed8] focus-within:ring-2 focus-within:ring-[#1d4ed8]/20">
-                  <i
-                    className="fa-regular fa-lock text-slate-500"
-                    aria-hidden
-                  ></i>
-                  <input
-                    className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
-                    type={showPassword ? "text" : "password"}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    required
-                    placeholder="••••••••"
-                  />
-                </div>
-              </label>
-
-              <button
-                type="submit"
-                disabled={submitting}
-                className="mt-2 w-full rounded-xl bg-[#1d4ed8] px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-[#153ea8] disabled:opacity-60"
-              >
-                {submitting ? "Registering..." : "Sign Up"}
-              </button>
-            </form>
-
-            <div className="mt-6 text-center text-sm text-slate-600">
-              Already have an account?{" "}
-              <a
-                className="font-semibold text-[#1d4ed8] hover:underline"
-                href="/auth/login"
-              >
-                Sign In
-              </a>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200"></div>
             </div>
-
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 text-center">
-              Selling with us?{" "}
-              <button
-                type="button"
-                onClick={() => router.push("/auth/seller/register")}
-                className="font-semibold text-[#1d4ed8] hover:underline"
-              >
-                Become a seller
-              </button>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-[#f2f5fb] px-2 text-slate-500">
+                Or continue with
+              </span>
             </div>
-          </>
-        )}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleGoogleSignup}
+            className="w-full flex items-center justify-center gap-3 rounded-xl border-2 border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:border-slate-300"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+              />
+            </svg>
+            Sign up with Google
+          </button>
+
+          <div className="text-sm text-slate-600">
+            Already have an account?{" "}
+            <a
+              className="font-semibold text-green-700 hover:underline"
+              href="/auth/login"
+            >
+              Sign in
+            </a>
+          </div>
+
+          <div className="text-sm text-slate-600">
+            Want to sell?{" "}
+            <a
+              className="font-semibold text-blue-700 hover:underline"
+              href="/auth/seller/register"
+            >
+              Apply as seller
+            </a>
+          </div>
+        </div>
+
+        <div className="relative hidden md:block bg-gradient-to-br from-green-600 to-green-800">
+          <div className="absolute inset-0 bg-linear-to-b from-white/10 to-transparent" />
+          <div className="relative flex h-full flex-col items-center justify-center gap-6 px-8 py-12 text-white">
+            <div className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
+              Get Started
+            </div>
+            <h2 className="text-2xl font-extrabold">
+              Your journey starts here.
+            </h2>
+            <p className="max-w-sm text-sm text-white/85">
+              Join thousands of customers finding quality car parts from trusted
+              sellers.
+            </p>
+            <div className="h-44 w-full max-w-xs rounded-2xl bg-white/10 backdrop-blur flex items-center justify-center">
+              <div className="h-28 w-40 rounded-xl bg-white/90 shadow-lg" />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

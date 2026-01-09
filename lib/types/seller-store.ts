@@ -10,6 +10,7 @@ export type SellerStoreDocument = Models.Document & {
   contactPhone?: string | number | null;
   contactEmail?: string | null;
   isActive: boolean;
+  isOnboarded: boolean;
 };
 
 export type SellerStorePayload = {
@@ -21,6 +22,7 @@ export type SellerStorePayload = {
   storeAvatarId?: string | null;
   storeBannerId?: string | null;
   isActive?: boolean;
+  isOnboarded?: boolean;
 };
 
 export type SellerStoreResponse = {
@@ -34,6 +36,7 @@ export type SellerStoreResponse = {
   contactPhone: string | null;
   contactEmail: string | null;
   isActive: boolean;
+  isOnboarded: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -53,6 +56,7 @@ export function serializeStore(doc: SellerStoreDocument): SellerStoreResponse {
         : String(doc.contactPhone),
     contactEmail: doc.contactEmail ?? null,
     isActive: Boolean(doc.isActive),
+    isOnboarded: Boolean(doc.isOnboarded),
     createdAt: doc.$createdAt,
     updatedAt: doc.$updatedAt,
   };

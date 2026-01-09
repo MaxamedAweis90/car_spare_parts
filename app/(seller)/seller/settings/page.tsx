@@ -13,7 +13,10 @@ import { getImageUrl } from "@/lib/appwrite/storage";
 import { useSellerStore } from "@/lib/SellerStoreProvider";
 import Button from "@/components/Button";
 
+import { slugify } from "@/lib/utils/slugify";
+
 type FeedbackState = { type: "success" | "error"; message: string } | null;
+type SlugStatus = "idle" | "checking" | "available" | "taken";
 
 function StoreSettingsSkeleton() {
   return (
@@ -68,11 +71,13 @@ export default function StoreSettingsPage() {
   const [feedback, setFeedback] = useState<FeedbackState>(null);
   const [form, setForm] = useState({
     storeName: "",
+    storeSlug: "",
     storeDescription: "",
     contactEmail: "",
     contactPhone: "",
     isActive: true,
   });
+  const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
@@ -80,16 +85,45 @@ export default function StoreSettingsPage() {
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [pendingBannerFile, setPendingBannerFile] = useState<File | null>(null);
 
+  // Onboarding state
+  const [currentStep, setCurrentStep] = useState(1);
+  const isOnboarding = store && !store.isOnboarded;
+
   useEffect(() => {
     if (!store) return;
     setForm({
       storeName: store.storeName,
+      storeSlug: store.storeSlug,
       storeDescription: store.storeDescription,
       contactEmail: store.contactEmail || "",
       contactPhone: store.contactPhone || "",
       isActive: store.isActive,
     });
   }, [store]);
+
+  // Slug selection/generation effect
+  useEffect(() => {
+    if (!form.storeSlug || form.storeSlug === store?.storeSlug) {
+      setSlugStatus("idle");
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setSlugStatus("checking");
+      try {
+        const res = await fetch(
+          `/api/seller/store/exists?slug=${form.storeSlug}&excludeStoreId=${store?.id}`
+        );
+        const data = await res.json();
+        setSlugStatus(data.exists ? "taken" : "available");
+      } catch (err) {
+        console.error("Failed to check slug availability", err);
+        setSlugStatus("idle");
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [form.storeSlug, store?.id, store?.storeSlug]);
 
   useEffect(() => {
     if (error) {
@@ -101,6 +135,7 @@ export default function StoreSettingsPage() {
     if (!store) return;
     setForm({
       storeName: store.storeName,
+      storeSlug: store.storeSlug,
       storeDescription: store.storeDescription,
       contactEmail: store.contactEmail || "",
       contactPhone: store.contactPhone || "",
@@ -117,6 +152,7 @@ export default function StoreSettingsPage() {
     setPendingAvatarFile(null);
     setPendingBannerFile(null);
     setFeedback(null);
+    setSlugStatus("idle");
   }, [store]);
 
   const avatarUrl = useMemo(() => {
@@ -158,12 +194,40 @@ export default function StoreSettingsPage() {
     (key: keyof typeof form) =>
     (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       const value = event.target.value;
-      setForm((prev) => ({ ...prev, [key]: value }));
+      setForm((prev) => {
+        const next = { ...prev, [key]: value };
+        // If name changes, auto-suggest a slug
+        if (key === "storeName") {
+          next.storeSlug = slugify(value);
+        }
+        return next;
+      });
     };
+
+  const handleNext = () => {
+    if (currentStep < 3) setCurrentStep(currentStep + 1);
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) setCurrentStep(currentStep - 1);
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!store) return;
+
+    if (isOnboarding && currentStep < 3) {
+      handleNext();
+      return;
+    }
+
+    if (slugStatus === "taken") {
+      setFeedback({
+        type: "error",
+        message: "This store slug is already taken",
+      });
+      return;
+    }
 
     setSaving(true);
     setFeedback(null);
@@ -171,10 +235,12 @@ export default function StoreSettingsPage() {
     try {
       await saveStore({
         storeName: form.storeName,
+        storeSlug: form.storeSlug,
         storeDescription: form.storeDescription,
         contactEmail: form.contactEmail || null,
         contactPhone: form.contactPhone || null,
         isActive: form.isActive,
+        isOnboarded: true, // Mark as onboarded on save (or final step)
       });
       if (pendingAvatarFile) {
         try {
@@ -200,7 +266,10 @@ export default function StoreSettingsPage() {
         setPendingBannerFile(null);
         setBannerPreview(null);
       }
-      setFeedback({ type: "success", message: "Store settings saved" });
+      setFeedback({
+        type: "success",
+        message: "Store settings saved successfully!",
+      });
     } catch (err: any) {
       setFeedback({
         type: "error",
@@ -269,14 +338,12 @@ export default function StoreSettingsPage() {
     );
   }
 
-  const storeSlug = store.storeSlug;
-
   return (
-    <div className="min-h-screen bg-[#f4f1e9] py-6 sm:py-8">
+    <div className="min-h-screen bg-[#f4f1e9] py-6 sm:py-8 lg:py-12">
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 sm:px-6 lg:px-8">
         {feedback && (
           <div
-            className={`rounded-2xl border px-4 py-3 text-sm font-semibold shadow-sm ${
+            className={`rounded-2xl border px-4 py-3 text-sm font-semibold shadow-sm transition-all animate-in fade-in slide-in-from-top-2 ${
               feedback.type === "success"
                 ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                 : "border-rose-200 bg-rose-50 text-rose-800"
@@ -286,271 +353,325 @@ export default function StoreSettingsPage() {
           </div>
         )}
 
+        {isOnboarding && (
+          <div className="mb-4 flex items-center justify-between px-2">
+            <div className="flex gap-2">
+              {[1, 2, 3].map((step) => (
+                <div
+                  key={step}
+                  className={`h-2 w-12 rounded-full transition-all duration-500 ${
+                    step <= currentStep ? "bg-slate-900" : "bg-slate-200"
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-xs font-bold uppercase tracking-widest text-slate-400">
+              Step {currentStep} of 3
+            </span>
+          </div>
+        )}
+
         <form
           onSubmit={handleSubmit}
-          className="rounded-3xl border border-[#ece8de] bg-white/85 p-6 shadow-lg shadow-black/5 backdrop-blur-sm sm:p-8"
+          className="rounded-3xl border border-[#ece8de] bg-white/85 p-6 shadow-xl shadow-black/5 backdrop-blur-sm sm:p-8"
         >
           <div className="flex flex-col gap-8">
             <header className="flex flex-col gap-3">
               <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                Seller profile
+                {isOnboarding ? "First-time setup" : "Store Management"}
               </span>
-              <h1 className="text-2xl font-black text-slate-900 sm:text-3xl">
-                Store identity
+              <h1 className="text-2xl font-black text-slate-900 sm:text-4xl">
+                {isOnboarding
+                  ? currentStep === 1
+                    ? "Let's name your store"
+                    : currentStep === 2
+                    ? "Add some personality"
+                    : "Final details"
+                  : "Store settings"}
               </h1>
-              <p className="text-sm font-medium text-slate-600 sm:text-base">
-                Keep your store details polished so buyers immediately recognize
-                your brand.
+              <p className="text-sm font-medium text-slate-600 sm:text-lg">
+                {isOnboarding
+                  ? "Follow these quick steps to get your shop ready for customers."
+                  : "Keep your store details polished so buyers immediately recognize your brand."}
               </p>
             </header>
 
-            <section className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-              <div className="flex w-full items-start gap-4 md:w-auto">
-                <div className="relative h-20 w-20 overflow-hidden rounded-2xl bg-[#1f2937] text-xl font-bold text-white sm:h-24 sm:w-24 sm:text-2xl">
-                  {avatarUrl ? (
-                    <img
-                      src={avatarUrl}
-                      alt={`${store.storeName} avatar`}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span className="flex h-full w-full items-center justify-center">
-                      {initials}
+            {/* STEP 1: IDENTITY */}
+            {(!isOnboarding || currentStep === 1) && (
+              <section className="flex flex-col gap-8 transition-all animate-in fade-in slide-in-from-bottom-4">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <label className="flex flex-col gap-2">
+                    <span className="text-sm font-bold text-slate-700">
+                      Store name
                     </span>
-                  )}
-                </div>
-                <div className="flex flex-1 flex-col gap-3">
-                  <div>
-                    <p className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                      {storeSlug ? `stores/${storeSlug}` : "Store preview"}
-                    </p>
-                    <p className="text-xl font-extrabold text-slate-900">
-                      {store.storeName}
-                    </p>
-                  </div>
-                  <p className="text-sm font-medium text-slate-600">
-                    Refresh your branding details to stay sharp and trustworthy
-                    across the marketplace.
-                  </p>
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      onClick={handleAvatarButtonClick}
-                      disabled={saving}
-                      className="w-full sm:w-auto"
-                    >
-                      Change avatar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      href={storeSlug ? `/stores/${storeSlug}` : undefined}
-                      target="_blank"
-                      disabled={!storeSlug}
-                      className="w-full sm:w-auto"
-                    >
-                      View store
-                    </Button>
                     <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarChange}
-                      className="hidden"
+                      type="text"
+                      value={form.storeName}
+                      onChange={handleFieldChange("storeName")}
+                      required
+                      placeholder="AutoPro Parts"
+                      className="h-14 rounded-2xl border border-[#e4ddcf] bg-white px-5 text-base font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1f2937] focus:outline-none focus:ring-4 focus:ring-[#1f2937]/5"
                     />
+                  </label>
+
+                  <div className="flex flex-col gap-2">
+                    <span className="text-sm font-bold text-slate-700">
+                      Store slug
+                    </span>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={form.storeSlug}
+                        onChange={handleFieldChange("storeSlug")}
+                        placeholder="your-store-slug"
+                        className={`h-14 w-full rounded-2xl border bg-white pl-22 pr-5 text-base font-medium placeholder:text-slate-400 focus:outline-none focus:ring-4 ${
+                          slugStatus === "taken"
+                            ? "border-rose-300 focus:border-rose-400 focus:ring-rose-400/5 text-rose-900"
+                            : slugStatus === "available"
+                            ? "border-emerald-300 focus:border-emerald-400 focus:ring-emerald-400/5 text-emerald-900"
+                            : "border-[#e4ddcf] focus:border-[#1f2937] focus:ring-[#1f2937]/5 text-slate-900"
+                        }`}
+                      />
+                      <div className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
+                        /stores/
+                      </div>
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+                        {slugStatus === "checking" && (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600" />
+                        )}
+                        {slugStatus === "available" && (
+                          <span className="text-emerald-500 text-xs font-bold uppercase tracking-wider bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100">
+                            Available
+                          </span>
+                        )}
+                        {slugStatus === "taken" && (
+                          <span className="text-rose-500 text-xs font-bold uppercase tracking-wider bg-rose-50 px-2 py-0.5 rounded-md border border-rose-100">
+                            Taken
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {slugStatus === "taken" && (
+                      <p className="text-[10px] font-bold text-rose-500 uppercase tracking-tight px-1">
+                        Please try a different name or edit the slug manually.
+                      </p>
+                    )}
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <p className="text-xs font-medium uppercase tracking-widest text-slate-400">
-                      PNG or JPG up to 2MB
-                    </p>
-                    {pendingAvatarFile && (
-                      <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-600">
-                        New avatar applies after saving
+
+                  <label className="md:col-span-2 flex flex-col gap-2">
+                    <span className="text-sm font-bold text-slate-700">
+                      Description
+                    </span>
+                    <textarea
+                      value={form.storeDescription}
+                      onChange={handleFieldChange("storeDescription")}
+                      placeholder="Tell shoppers what you specialize in, shipping guarantees, or warranties."
+                      rows={4}
+                      className="min-h-32 rounded-2xl border border-[#e4ddcf] bg-white px-5 py-4 text-base font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1f2937] focus:outline-none focus:ring-4 focus:ring-[#1f2937]/5"
+                    />
+                  </label>
+                </div>
+              </section>
+            )}
+
+            {/* STEP 2: VISUALS */}
+            {(!isOnboarding || currentStep === 2) && (
+              <section className="flex flex-col gap-8 transition-all animate-in fade-in slide-in-from-bottom-4">
+                <div className="flex flex-col gap-6 md:flex-row md:items-center">
+                  <div className="relative h-28 w-28 overflow-hidden rounded-3xl bg-[#1f2937] text-2xl font-bold text-white shadow-inner sm:h-32 sm:w-32 sm:text-3xl">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt="Store avatar"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="flex h-full w-full items-center justify-center">
+                        {initials}
                       </span>
                     )}
                   </div>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2 rounded-2xl border border-[#ece8de] bg-slate-50/60 p-4">
-                <span className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-                  Visibility
-                </span>
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={handleToggleVisibility}
-                    className={`relative inline-flex h-9 w-16 items-center rounded-full transition-all duration-200 ${
-                      form.isActive ? "bg-[#1f2937]" : "bg-slate-300"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-7 w-7 transform rounded-full bg-white shadow-sm transition-all duration-200 ${
-                        form.isActive ? "translate-x-8" : "translate-x-1"
-                      }`}
-                    />
-                    <span className="sr-only">Toggle store visibility</span>
-                  </button>
-                  <div className="flex flex-col">
-                    <p className="text-sm font-semibold text-slate-700">
-                      {form.isActive
-                        ? "Visible to customers"
-                        : "Hidden from customers"}
+                  <div className="flex flex-1 flex-col gap-3">
+                    <h3 className="text-lg font-bold text-slate-900">
+                      Store Logo
+                    </h3>
+                    <p className="text-sm font-medium text-slate-600">
+                      This appears on search results and your product pages.
                     </p>
-                    <p className="text-xs font-medium text-slate-500">
-                      Control whether your store appears on the storefront.
-                    </p>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={handleAvatarButtonClick}
+                        disabled={saving}
+                      >
+                        Upload logo
+                      </Button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarChange}
+                        className="hidden"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            </section>
 
-            <section className="flex flex-col gap-4 rounded-3xl border border-[#ece8de] bg-slate-50/40 p-6">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-2">
-                  <span className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                    Store banner
-                  </span>
-                  <h2 className="text-lg font-black text-slate-900">
-                    Hero showcase image
-                  </h2>
-                  <p className="text-sm font-medium text-slate-600">
-                    Upload a wide banner that appears at the top of your public
-                    storefront. Aim for a 16:4 ratio so it looks crisp on every
-                    screen.
-                  </p>
+                <div className="flex flex-col gap-4 rounded-3xl border border-[#ece8de] bg-slate-50/40 p-6">
+                  <div className="mb-2 space-y-1">
+                    <h3 className="text-lg font-bold text-slate-900">
+                      Store banner
+                    </h3>
+                    <p className="text-sm font-medium text-slate-600">
+                      Upload a wide banner that appears at the top of your
+                      public storefront.
+                    </p>
+                  </div>
+                  <div
+                    className="relative overflow-hidden rounded-2xl border-2 border-dashed border-[#d8d1c4] bg-white group cursor-pointer"
+                    onClick={handleBannerButtonClick}
+                  >
+                    {bannerUrl ? (
+                      <img
+                        src={bannerUrl}
+                        alt="Store banner"
+                        className="h-40 w-full object-cover sm:h-52"
+                      />
+                    ) : (
+                      <div className="flex h-40 w-full flex-col items-center justify-center gap-1 text-center text-sm font-semibold text-slate-400 sm:h-52">
+                        <span className="text-2xl">🖼️</span>
+                        <span>Click to upload banner</span>
+                      </div>
+                    )}
+                    <input
+                      ref={bannerInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBannerChange}
+                      className="hidden"
+                    />
+                  </div>
                 </div>
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+              </section>
+            )}
+
+            {/* STEP 3: CONTACT & VISIBILITY */}
+            {(!isOnboarding || currentStep === 3) && (
+              <section className="flex flex-col gap-8 transition-all animate-in fade-in slide-in-from-bottom-4">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <label className="flex flex-col gap-2">
+                    <span className="text-sm font-bold text-slate-700">
+                      Contact email
+                    </span>
+                    <input
+                      type="email"
+                      value={form.contactEmail}
+                      onChange={handleFieldChange("contactEmail")}
+                      placeholder="seller@store.com"
+                      className="h-14 rounded-2xl border border-[#e4ddcf] bg-white px-5 text-base font-medium text-slate-900 focus:border-[#1f2937] focus:outline-none focus:ring-4 focus:ring-[#1f2937]/5"
+                    />
+                  </label>
+
+                  <label className="flex flex-col gap-2">
+                    <span className="text-sm font-bold text-slate-700">
+                      Contact phone
+                    </span>
+                    <input
+                      type="tel"
+                      value={form.contactPhone}
+                      onChange={handleFieldChange("contactPhone")}
+                      placeholder="+1 555 123 4567"
+                      className="h-14 rounded-2xl border border-[#e4ddcf] bg-white px-5 text-base font-medium text-slate-900 focus:border-[#1f2937] focus:outline-none focus:ring-4 focus:ring-[#1f2937]/5"
+                    />
+                  </label>
+                </div>
+
+                <div className="flex flex-col gap-2 rounded-2xl border border-[#ece8de] bg-slate-50/60 p-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <p className="text-base font-bold text-slate-800">
+                        {form.isActive ? "Store is Active" : "Store is Hidden"}
+                      </p>
+                      <p className="text-sm font-medium text-slate-500">
+                        {form.isActive
+                          ? "Customers can find your store and products."
+                          : "Your store will be hidden from search results."}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleToggleVisibility}
+                      className={`relative inline-flex h-10 w-18 items-center rounded-full transition-all duration-300 ${
+                        form.isActive ? "bg-emerald-600" : "bg-slate-300"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-8 w-8 transform rounded-full bg-white shadow-lg transition-all duration-300 ${
+                          form.isActive ? "translate-x-9" : "translate-x-1"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-[#ece8de] pt-8">
+              {!isOnboarding ? (
+                <>
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-400">
+                    Live at:{" "}
+                    <span className="text-slate-900">
+                      /stores/{form.storeSlug}
+                    </span>
+                  </p>
+                  <div className="flex gap-3">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleReset}
+                      className="w-full sm:w-auto"
+                    >
+                      Reset
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="sm"
+                      isLoading={saving}
+                      className="w-full sm:w-auto"
+                    >
+                      Save changes
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
                   <Button
                     type="button"
+                    variant="outline"
                     size="sm"
-                    variant="secondary"
-                    onClick={handleBannerButtonClick}
-                    disabled={saving}
+                    onClick={handleBack}
+                    disabled={currentStep === 1 || saving}
                     className="w-full sm:w-auto"
                   >
-                    Change banner
+                    Back
                   </Button>
-                </div>
-              </div>
-              <div className="overflow-hidden rounded-3xl border border-dashed border-[#d8d1c4] bg-white">
-                {bannerUrl ? (
-                  <img
-                    src={bannerUrl}
-                    alt="Store banner"
-                    className="h-48 w-full object-cover sm:h-60"
-                  />
-                ) : (
-                  <div className="flex h-48 w-full flex-col items-center justify-center gap-1 text-center text-sm font-semibold text-slate-400 sm:h-60">
-                    <span>Recommended size 1600 × 400</span>
-                    <span className="text-xs font-medium uppercase tracking-widest">
-                      PNG or JPG up to 4MB
-                    </span>
-                  </div>
-                )}
-              </div>
-              {pendingBannerFile && (
-                <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-600">
-                  New banner applies after saving
-                </span>
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    size="sm"
+                    isLoading={saving}
+                    className="w-full sm:w-auto"
+                  >
+                    {currentStep === 3 ? "Complete setup" : "Next step"}
+                  </Button>
+                </>
               )}
-              <input
-                ref={bannerInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleBannerChange}
-                className="hidden"
-              />
-            </section>
-
-            <hr className="border-t border-[#ece8de]" />
-
-            <section className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <label className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-slate-700">
-                  Store name
-                </span>
-                <input
-                  type="text"
-                  value={form.storeName}
-                  onChange={handleFieldChange("storeName")}
-                  required
-                  placeholder="AutoPro Parts"
-                  className="h-12 rounded-xl border border-[#e4ddcf] bg-white px-4 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1f2937] focus:outline-none focus:ring-2 focus:ring-[#1f2937]/10"
-                />
-              </label>
-
-              <label className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-slate-700">
-                  Contact email
-                </span>
-                <input
-                  type="email"
-                  value={form.contactEmail}
-                  onChange={handleFieldChange("contactEmail")}
-                  placeholder="seller@store.com"
-                  className="h-12 rounded-xl border border-[#e4ddcf] bg-white px-4 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1f2937] focus:outline-none focus:ring-2 focus:ring-[#1f2937]/10"
-                />
-              </label>
-
-              <label className="flex flex-col gap-2">
-                <span className="text-sm font-semibold text-slate-700">
-                  Contact phone
-                </span>
-                <input
-                  type="tel"
-                  value={form.contactPhone}
-                  onChange={handleFieldChange("contactPhone")}
-                  placeholder="+1 555 123 4567"
-                  className="h-12 rounded-xl border border-[#e4ddcf] bg-white px-4 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1f2937] focus:outline-none focus:ring-2 focus:ring-[#1f2937]/10"
-                />
-              </label>
-
-              <label className="md:col-span-2 flex flex-col gap-2">
-                <span className="text-sm font-semibold text-slate-700">
-                  Description
-                </span>
-                <textarea
-                  value={form.storeDescription}
-                  onChange={handleFieldChange("storeDescription")}
-                  placeholder="Tell shoppers what you specialize in, shipping guarantees, or warranties."
-                  rows={5}
-                  className="min-h-35 rounded-2xl border border-[#e4ddcf] bg-white px-4 py-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:border-[#1f2937] focus:outline-none focus:ring-2 focus:ring-[#1f2937]/10"
-                />
-              </label>
-            </section>
-
-            <hr className="border-t border-[#ece8de]" />
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleReset}
-                className="w-full sm:w-auto"
-              >
-                Reset
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                size="sm"
-                isLoading={saving}
-                className="w-full sm:w-auto"
-              >
-                Save changes
-              </Button>
             </div>
-
-            <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
-              Store URL:{" "}
-              <span className="font-bold text-slate-800">
-                /stores/{storeSlug}
-              </span>
-            </p>
           </div>
         </form>
       </div>

@@ -19,8 +19,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Spare Parts",
-  description: "Spare parts marketplace",
+  title: "SomaParts",
+  description: "Premium car parts marketplace",
 };
 
 export default function RootLayout({

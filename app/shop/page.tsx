@@ -7,6 +7,8 @@ import Skeleton from "@mui/material/Skeleton";
 import Link from "next/link";
 import { SearchFilters } from "@/components/SearchFilters";
 import { useCategories } from "@/hooks/queries/useCategories";
+import { Drawer, Button as AntButton } from "antd";
+import { FilterOutlined } from "@ant-design/icons";
 
 type Product = {
   $id: string;
@@ -30,6 +32,7 @@ function ShopPageContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   const searchParams = useSearchParams();
   const categoryFilter = searchParams.get("category");
@@ -195,8 +198,8 @@ function ShopPageContent() {
     <div className="bg-(--color-bg) min-h-screen py-10">
       <div className="mx-auto w-full max-w-full sm:max-w-10/12 px-4 sm:px-6">
         <div className="flex flex-col gap-8 lg:flex-row">
-          {/* Sidebar */}
-          <aside className="lg:w-80 lg:shrink-0">
+          {/* Desktop Sidebar */}
+          <aside className="hidden lg:block lg:w-80 lg:shrink-0">
             <div className="sticky top-24">
               <SearchFilters
                 filters={{
@@ -216,6 +219,57 @@ function ShopPageContent() {
 
           {/* Main Content */}
           <div className="flex-1">
+            {/* Mobile Filter Trigger */}
+            <div className="flex items-center justify-between lg:hidden mb-6 p-4 rounded-3xl bg-white shadow-sm border border-(--color-border)">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase tracking-widest text-(--color-muted)">
+                  Refine by
+                </span>
+                <span className="text-sm font-bold text-(--color-text)">
+                  Categories & Fitment
+                </span>
+              </div>
+              <AntButton
+                type="primary"
+                icon={<FilterOutlined />}
+                onClick={() => setIsMobileFilterOpen(true)}
+                className="h-12 px-6 rounded-2xl bg-(--color-primary) border-none font-bold shadow-lg shadow-(--color-primary-light) text-slate-900"
+              >
+                Filters
+              </AntButton>
+            </div>
+
+            {/* Mobile Filter Drawer */}
+            <Drawer
+              title={null}
+              placement="right"
+              onClose={() => setIsMobileFilterOpen(false)}
+              open={isMobileFilterOpen}
+              width="100%"
+              styles={{
+                body: { padding: "2rem 1rem", backgroundColor: "#f4f1e9" },
+              }}
+              closeIcon={null}
+            >
+              <div className="flex flex-col items-center">
+                <SearchFilters
+                  filters={{
+                    minPrice: Number(minPriceFilter || 0),
+                    maxPrice: Number(maxPriceFilter || 1000),
+                    onSale: onSaleFilter === "true",
+                    make: makeFilter || "",
+                    model: modelFilter || "",
+                    year: yearFilter || "",
+                    category: categoryFilter || "",
+                  }}
+                  onFiltersChange={(f) => {
+                    handleFiltersChange(f);
+                    setIsMobileFilterOpen(false);
+                  }}
+                  onClose={() => setIsMobileFilterOpen(false)}
+                />
+              </div>
+            </Drawer>
             <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">

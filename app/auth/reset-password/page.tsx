@@ -1,14 +1,20 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-import Link from "next/link";
+import { Suspense, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import BackToHome from "@/components/BackToHome";
 
-function ResetPasswordForm() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={null}>
+      <ResetPasswordContent />
+    </Suspense>
+  );
+}
 
+function ResetPasswordContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const userId = searchParams.get("userId");
   const secret = searchParams.get("secret");
 
@@ -20,14 +26,8 @@ function ResetPasswordForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+      setError("Passwords do not match.");
       return;
     }
 
@@ -43,18 +43,16 @@ function ResetPasswordForm() {
       });
 
       const body = await res.json();
-      if (!res.ok) {
-        setError(body?.error || "Failed to reset password");
-      } else {
+      if (res.ok) {
         setMessage(
-          "Password has been reset successfully. Redirecting to login..."
+          "Password has been reset successfully! Redirecting to login..."
         );
-        setTimeout(() => {
-          router.push("/auth/login");
-        }, 2000);
+        setTimeout(() => router.push("/auth/login"), 3000);
+      } else {
+        setError(body.error || "Failed to reset password.");
       }
     } catch (err) {
-      setError("An unexpected error occurred.");
+      setError("Server error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -62,95 +60,92 @@ function ResetPasswordForm() {
 
   if (!userId || !secret) {
     return (
-      <div className="text-center">
-        <p className="text-red-500 font-semibold">
-          Invalid or expired reset link.
-        </p>
-        <Link
-          href="/auth/forgot-password"
-          title="Return to forgot password"
-          className="mt-4 inline-block text-[#1d4ed8] hover:underline"
-        >
-          Request a new link
-        </Link>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-600">Invalid Link</h1>
+          <p className="text-slate-600">
+            The password reset link is invalid or has expired.
+          </p>
+          <button
+            onClick={() => router.push("/auth/forgot-password")}
+            className="mt-4 text-blue-600 font-bold hover:underline"
+          >
+            Request a new link
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <label className="block text-sm font-semibold text-slate-700">
-        New Password
-        <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-[#1d4ed8] focus-within:ring-2 focus-within:ring-[#1d4ed8]/20">
-          <i className="fa-regular fa-lock text-slate-500" aria-hidden></i>
-          <input
-            className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            placeholder="••••••••"
-          />
-        </div>
-      </label>
-
-      <label className="block text-sm font-semibold text-slate-700">
-        Confirm New Password
-        <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-[#1d4ed8] focus-within:ring-2 focus-within:ring-[#1d4ed8]/20">
-          <i className="fa-regular fa-lock text-slate-500" aria-hidden></i>
-          <input
-            className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            required
-            placeholder="••••••••"
-          />
-        </div>
-      </label>
-
-      {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
-      {message && (
-        <p className="text-xs text-green-600 font-medium">{message}</p>
-      )}
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-xl bg-[#1d4ed8] px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-[#153ea8] disabled:opacity-60"
-      >
-        {loading ? "Resetting..." : "Reset Password"}
-      </button>
-    </form>
-  );
-}
-
-export default function ResetPasswordPage() {
-  return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_35%)] bg-[#f7f9fc] flex items-center justify-center px-4 py-10">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_45%)] bg-[#f2f5fb] flex items-center justify-center px-4 py-10">
       <BackToHome />
-      <div className="w-full max-w-xl rounded-3xl bg-white p-8 shadow-[0_30px_80px_rgba(15,23,42,0.08)]">
-        <div className="text-center mb-6">
-          <h1 className="text-2xl font-extrabold text-slate-900">
-            Set New Password
+      <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)] p-8 sm:p-12">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center h-16 w-16 bg-blue-50 text-blue-600 rounded-2xl mb-4">
+            <i className="fa-solid fa-lock-open text-2xl"></i>
+          </div>
+          <h1 className="text-3xl font-extrabold text-slate-900 mb-2">
+            Reset Password
           </h1>
-          <p className="text-sm text-slate-600 mt-1">
-            Ensure your new password is at least 8 characters long.
+          <p className="text-sm text-slate-600">
+            Choose a strong new password for your account.
           </p>
         </div>
 
-        <Suspense fallback={<div>Loading reset form...</div>}>
-          <ResetPasswordForm />
-        </Suspense>
+        {message && (
+          <div className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
+            {message}
+          </div>
+        )}
 
-        <div className="mt-6 text-center text-sm text-slate-600">
-          <Link
-            href="/auth/login"
-            className="font-semibold text-[#1d4ed8] hover:underline"
-          >
-            Back to Login
-          </Link>
-        </div>
+        {error && (
+          <div className="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+            {error}
+          </div>
+        )}
+
+        {!message && (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <label className="block text-sm font-semibold text-slate-700">
+              New Password
+              <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-600/20">
+                <i className="fa-regular fa-lock text-slate-500"></i>
+                <input
+                  className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                />
+              </div>
+            </label>
+
+            <label className="block text-sm font-semibold text-slate-700">
+              Confirm New Password
+              <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-blue-600 focus-within:ring-2 focus-within:ring-blue-600/20">
+                <i className="fa-regular fa-lock text-slate-500"></i>
+                <input
+                  className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  placeholder="••••••••"
+                />
+              </div>
+            </label>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-blue-700 disabled:opacity-60"
+            >
+              {loading ? "Resetting..." : "Reset Password"}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
