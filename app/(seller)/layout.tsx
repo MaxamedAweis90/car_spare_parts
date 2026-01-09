@@ -17,6 +17,7 @@ import {
   Drawer,
   Grid,
 } from "antd";
+import type { MenuProps } from "antd";
 const { useBreakpoint } = Grid;
 import {
   DashboardOutlined,
@@ -250,7 +251,7 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const userMenu = {
+  const userMenu: MenuProps = {
     items: [
       {
         key: "profile",
@@ -280,7 +281,7 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
     ],
   };
 
-  const notificationsMenu = {
+  const notificationsMenu: MenuProps = {
     items: [
       !store?.isOnboarded && {
         key: "onboarding",
@@ -309,7 +310,7 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
           </div>
         ),
       },
-    ].filter(Boolean),
+    ].filter(Boolean) as MenuProps["items"],
   };
 
   // Menu items config

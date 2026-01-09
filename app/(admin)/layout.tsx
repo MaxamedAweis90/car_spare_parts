@@ -16,6 +16,7 @@ import {
   Drawer,
   Grid,
 } from "antd";
+import type { MenuProps } from "antd";
 const { useBreakpoint } = Grid;
 import {
   DashboardOutlined,
@@ -149,7 +150,7 @@ export default function AdminLayout({
       .join("")
       ?.slice(0, 2) || "AD";
 
-  const userMenu = {
+  const userMenu: MenuProps = {
     items: [
       {
         key: "profile",
@@ -270,7 +271,6 @@ export default function AdminLayout({
           />
 
           <div className="flex items-center gap-4">
-            {/* @ts-expect-error Antd Dropdown menu prop type issue in some versions */}
             <Dropdown menu={userMenu} trigger={["click"]}>
               <div className="cursor-pointer flex items-center gap-2 hover:bg-gray-100 px-3 py-1 rounded-md transition-colors">
                 <Avatar style={{ backgroundColor: "#f56a00" }}>
