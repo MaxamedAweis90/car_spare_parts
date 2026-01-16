@@ -11,15 +11,23 @@ interface UIState {
   toggleMobileSidebar: () => void;
 }
 
-export const useUIStore = create<UIState>((set) => ({
-  sidebarOpen: true,
-  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
-  setSidebarOpen: (isOpen) => set({ sidebarOpen: isOpen }),
+export const useUIStore = create<UIState>()(
+  persist(
+    (set) => ({
+      sidebarOpen: true,
+      toggleSidebar: () =>
+        set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+      setSidebarOpen: (isOpen) => set({ sidebarOpen: isOpen }),
 
-  mobileSidebarOpen: false,
-  toggleMobileSidebar: () =>
-    set((state) => ({ mobileSidebarOpen: !state.mobileSidebarOpen })),
-}));
+      mobileSidebarOpen: false,
+      toggleMobileSidebar: () =>
+        set((state) => ({ mobileSidebarOpen: !state.mobileSidebarOpen })),
+    }),
+    {
+      name: "ui-storage",
+    }
+  )
+);
 
 interface FilterState {
   searchTerm: string;

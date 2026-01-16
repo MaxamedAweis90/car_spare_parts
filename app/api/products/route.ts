@@ -9,6 +9,8 @@ import {
 type ProductResponse = ProductDocument & { imageUrl: string | null };
 
 import { getServerSession } from "@/lib/session-server";
+import { notifyFollowers } from "@/lib/server/notificationService";
+import { findStoreBySellerId } from "@/lib/server/sellerStoreService";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -122,6 +124,32 @@ export async function POST(req: NextRequest) {
       ...created,
       imageUrl: buildProductImageUrl(created.imageId ?? null),
     };
+
+    // --- TRIGGER NOTIFICATIONS ---
+    try {
+      const store = await findStoreBySellerId(targetSellerId);
+      if (store) {
+        const type = onSale ? "new_deal" : "new_product";
+        const title = onSale ? "🔥 New Deal Alert!" : "🆕 New Product Added!";
+        const messageText = onSale
+          ? `${store.storeName} just added a new deal: ${rawName}! Check it out now.`
+          : `${store.storeName} just added a new product: ${rawName}.`;
+        const link = `/products/${created.$id}`; // Assuming product detail page exists
+
+        // Run in background (don't await to avoid blocking response)
+        notifyFollowers({
+          storeId: store.$id,
+          storeName: store.storeName,
+          type,
+          title,
+          message: messageText,
+          link,
+        });
+      }
+    } catch (notifyError) {
+      console.error("Non-blocking notification error:", notifyError);
+    }
+    // ----------------------------
 
     return NextResponse.json({ product: response }, { status: 201 });
   } catch (error: any) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -32,6 +32,7 @@ import {
 import { useSession } from "@/lib/useSession";
 import { performLogout } from "@/lib/logout";
 import { useUIStore } from "@/stores/ui-store";
+import { getImageUrl } from "@/lib/appwrite/storage";
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -77,7 +78,7 @@ export default function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { authenticated, profile, loading } = useSession();
+  const { authenticated, profile, account, loading } = useSession();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -86,6 +87,13 @@ export default function AdminLayout({
   const [drawerVisible, setDrawerVisible] = useState(false);
   const screens = useBreakpoint();
   const isMobile = !screens.lg;
+
+  const adminAvatarUrl = useMemo(() => {
+    if (profile?.avatarId) {
+      return getImageUrl("avatars", profile.avatarId);
+    }
+    return null;
+  }, [profile?.avatarId]);
 
   const {
     token: { colorBgContainer, borderRadiusLG },
@@ -223,7 +231,7 @@ export default function AdminLayout({
           onClose={() => setDrawerVisible(false)}
           open={drawerVisible}
           styles={{ body: { padding: 0 } }}
-          width={250}
+          size="default"
           closable={false}
         >
           <div className="bg-[#001529] h-full text-white">{siderContent()}</div>
@@ -273,11 +281,17 @@ export default function AdminLayout({
           <div className="flex items-center gap-4">
             <Dropdown menu={userMenu} trigger={["click"]}>
               <div className="cursor-pointer flex items-center gap-2 hover:bg-gray-100 px-3 py-1 rounded-md transition-colors">
-                <Avatar style={{ backgroundColor: "#f56a00" }}>
-                  {userInitials}
+                <Avatar
+                  style={{ backgroundColor: "#f56a00" }}
+                  src={adminAvatarUrl}
+                >
+                  <span suppressHydrationWarning>{userInitials}</span>
                 </Avatar>
                 {!isMobile && (
-                  <span className="hidden sm:block font-medium">
+                  <span
+                    className="hidden sm:block font-medium"
+                    suppressHydrationWarning
+                  >
                     {profile?.name}
                   </span>
                 )}
@@ -294,6 +308,30 @@ export default function AdminLayout({
             borderRadius: borderRadiusLG,
           }}
         >
+          {authenticated && account?.emailVerification === false && (
+            <div className="mb-6 bg-orange-50 border border-orange-200 rounded-lg p-4 flex items-center gap-4">
+              <div className="text-orange-500 text-2xl">
+                <i className="fa-solid fa-triangle-exclamation"></i>
+              </div>
+              <div>
+                <h4 className="text-orange-900 font-bold m-0">
+                  Verify your Email
+                </h4>
+                <p className="text-orange-700 text-sm m-0">
+                  We sent a verification link to your new email. Please check
+                  your inbox.
+                </p>
+              </div>
+              <div className="ml-auto">
+                <Link
+                  href="/admin/settings"
+                  className="text-orange-900 font-bold underline text-sm"
+                >
+                  Settings
+                </Link>
+              </div>
+            </div>
+          )}
           {children}
         </Content>
       </Layout>
@@ -303,18 +341,18 @@ export default function AdminLayout({
   function siderContent() {
     return (
       <>
-        <div className="demo-logo-vertical p-4 flex items-center justify-center gap-2 border-b border-gray-700 mb-2">
-          <div className="bg-white/10 p-1 rounded">
-            <Avatar
-              shape="square"
-              size="small"
-              style={{ backgroundColor: "#1890ff" }}
-            >
-              A
-            </Avatar>
+        <div className="demo-logo-vertical p-4 flex flex-col items-center justify-center gap-2 border-b border-gray-700 mb-2">
+          <div className="flex items-center justify-center bg-white rounded-lg p-0 w-full max-w-[200px]">
+            <img
+              src="/spartpartslogo-01.png"
+              alt="SomaParts"
+              className="h-20 object-contain"
+            />
           </div>
           {(!collapsed || isMobile) && (
-            <span className="text-white font-bold text-lg">Admin</span>
+            <span className="text-white/80 font-bold text-xs uppercase tracking-widest mt-0">
+              Admin Portal
+            </span>
           )}
         </div>
         <Menu

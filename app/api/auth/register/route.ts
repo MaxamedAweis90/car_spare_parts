@@ -7,12 +7,13 @@ import {
   hashPassword,
   sanitizeUser,
 } from "@/lib/auth-utils";
-import { appwriteConfig } from "@/lib/appwrite-server";
-import { isValidEmailDomain } from "@/lib/email-validator";
 import {
-  createAppwriteEmailSession,
-  triggerAppwriteVerification,
-} from "@/lib/server/appwrite-auth-actions";
+  appwriteConfig,
+  usersServer,
+  messagingServer,
+} from "@/lib/appwrite-server";
+import { isValidEmailDomain } from "@/lib/email-validator";
+import { createAdminClient } from "@/lib/server/appwrite-admin";
 
 export async function POST(req: NextRequest) {
   try {
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
     // Create Appwrite auth user (email/password).
     const appwriteUser = await ensureAppwriteUser({ name, email, password });
 
-    // Persist profile in the existing users collection; default role = customer.
+    // Persist profile in our database
     const profile = await createUserProfile({
       name,
       email,
@@ -58,128 +59,103 @@ export async function POST(req: NextRequest) {
       appwriteUserId: appwriteUser.$id,
     });
 
-    // 3. Trigger Verification Email automatically (for customers) or Approval Email (for sellers)
-    if (becomeSeller) {
-      // Send custom email for successful account creation but pending approval
-      try {
-        const { messagingServer } = await import("@/lib/appwrite-server");
-        // Using Create Email from Messaging service
-        // Required: defined provider in Appwrite console.
-        // We'll Create an email message. Targets the user by userId.
-        const subject = "Seller Account Created - Pending Approval";
-        const content = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-    .content { background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; }
-    .footer { background: #f7f7f7; padding: 20px; text-align: center; border-radius: 0 0 10px 10px; font-size: 12px; color: #666; }
-    .button { display: inline-block; padding: 12px 30px; margin: 10px 5px; text-decoration: none; border-radius: 5px; font-weight: bold; color: white !important; }
-    .btn-whatsapp { background-color: #25D366; }
-    .btn-telegram { background-color: #0088cc; }
-    .status-badge { background: #FFA500; color: white; padding: 8px 16px; border-radius: 20px; display: inline-block; font-size: 14px; margin: 10px 0; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1 style="margin: 0; font-size: 28px;">Welcome to Our Seller Platform!</h1>
-    </div>
-    <div class="content">
-      <p>Dear <strong>${name}</strong>,</p>
-      
-      <p>Thank you for registering as a seller on our platform. Your account has been created successfully!</p>
-      
-      <div style="text-align: center; margin: 20px 0;">
-        <span class="status-badge">⏳ Pending Admin Approval</span>
-      </div>
-      
-      <p>Your seller account is currently <strong>waiting for admin approval</strong>. Once approved, you will gain full access to:</p>
-      
-      <ul style="line-height: 2;">
-        <li>Product management dashboard</li>
-        <li>Order tracking and fulfillment</li>
-        <li>Sales analytics and reports</li>
-        <li>Customer communication tools</li>
-      </ul>
-      
-      <p><strong>What happens next?</strong></p>
-      <p>Our admin team will review your application shortly. You will receive a confirmation email once your account is approved.</p>
-      
-      <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 30px 0;">
-      
-      <p style="text-align: center; font-size: 16px;"><strong>Need help or want to expedite the process?</strong></p>
-      <p style="text-align: center;">Contact our admin team directly:</p>
-      
-      <div style="text-align: center; margin: 20px 0;">
-        <a href="https://wa.me/25261XXXXXXX" class="button btn-whatsapp">📱 Contact via WhatsApp</a>
-        <a href="https://t.me/admin_handle" class="button btn-telegram">✈️ Contact via Telegram</a>
-      </div>
-      
-      <p style="font-size: 12px; color: #666; margin-top: 30px;">
-        <em>Please do not reply to this email. For support, use the contact buttons above.</em>
-      </p>
-    </div>
-    <div class="footer">
-      <p>© 2026 SomaParts. All rights reserved.</p>
-      <p>This is an automated message. Please do not reply directly to this email.</p>
-    </div>
-  </div>
-</body>
-</html>
+    const { messaging } = createAdminClient();
+
+    // 3. Trigger CUSTOM Verification Email
+    try {
+      const verificationToken = ID.unique();
+      // Store token in user prefs
+      const prefs = await usersServer.getPrefs(appwriteUser.$id);
+      await usersServer.updatePrefs(appwriteUser.$id, {
+        ...prefs,
+        emailVerificationToken: verificationToken,
+      });
+
+      const origin = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
+      const verifyLink = `${origin}/auth/verify?userId=${appwriteUser.$id}&token=${verificationToken}`;
+
+      let subject = "Verify your email address - SomaParts";
+      let content = "";
+
+      if (becomeSeller) {
+        subject = "Seller Account Created - Action Required";
+        content = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px; }
+            .header { background: #1e293b; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0; }
+            .button { display: inline-block; padding: 12px 24px; background-color: #2563eb; color: #fff !important; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header"><h1>SomaParts</h1></div>
+            <div style="padding: 20px;">
+              <h2>Welcome, ${name}!</h2>
+              <p>Your seller account has been created successfully and is now <b>pending admin approval</b>.</p>
+              <p>While we review your application, please verify your email address by clicking the button below:</p>
+              <p style="text-align: center;">
+                <a href="${verifyLink}" class="button">Verify Email Address</a>
+              </p>
+              <p>After verification, you will receive another email once your store is fully approved.</p>
+              <hr/>
+              <p style="font-size: 12px; color: #666;">If you didn't create this account, please ignore this email.</p>
+            </div>
+          </div>
+        </body>
+        </html>
         `;
-
-        // Check availability of providers or just attempt send
-        // Note: In newer Appwrite Messaging, we create a message which can trigger emails if targets are set.
-        // Or simpler: Create a message directly to a target.
-        // Assuming "email" provider is set up and default.
-
-        // We need to create a target first? Or can we send to a user ID?
-        // documentation: createEmail(messageId, subject, content, topics[], users[], targets[], cc[], bcc[], draft, html, scheduledAt)
-        // Messaging.createEmail(ID.unique(), subject, content, [], [appwriteUser.$id]);
-
-        // Get provider ID from environment (optional)
-        // If not set, Appwrite will use the first enabled email provider
-        // Note: createEmail signature: (messageId, subject, content, topics, users, targets, cc, bcc, attachments, draft, html, scheduledAt)
-
-        await messagingServer.createEmail(
-          ID.unique(), // messageId
-          subject, // subject
-          content, // content
-          [], // topics (optional)
-          [appwriteUser.$id], // users (optional)
-          [], // targets (optional)
-          [], // cc (optional)
-          [], // bcc (optional)
-          [], // attachments (optional)
-          false, // draft
-          true, // html
-          undefined // scheduledAt (undefined = send immediately)
-        );
-
-        console.log("Seller pending approval email sent.");
-      } catch (msgErr) {
-        console.error("Failed to send seller approval email:", msgErr);
-        // Do not fail registration
+      } else {
+        content = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px; }
+            .header { background: #059669; color: white; padding: 20px; text-align: center; border-radius: 10px 10px 0 0; }
+            .button { display: inline-block; padding: 12px 24px; background-color: #059669; color: #fff !important; text-decoration: none; border-radius: 6px; font-weight: bold; margin: 20px 0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header"><h1>SomaParts</h1></div>
+            <div style="padding: 20px;">
+              <h2>Welcome to SomaParts!</h2>
+              <p>Thank you for joining our community. Please verify your email address to get started:</p>
+              <p style="text-align: center;">
+                <a href="${verifyLink}" class="button">Verify Email Address</a>
+              </p>
+              <p>Once verified, you'll have full access to browse and purchase car parts.</p>
+              <hr/>
+              <p style="font-size: 12px; color: #666;">If you didn't create this account, please ignore this email.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+        `;
       }
-    } else {
-      // Customer: Trigger verification email
-      try {
-        const { cookieHeader } = await createAppwriteEmailSession(
-          email,
-          password
-        );
-        const origin = process.env.NEXT_PUBLIC_APP_URL || req.nextUrl.origin;
-        await triggerAppwriteVerification(cookieHeader, origin);
-      } catch (vErr) {
-        console.warn("Failed to trigger automatic verification email:", vErr);
-        // We don't fail the registration if only verification toast fails
-      }
+
+      await messaging.createEmail(
+        ID.unique(),
+        subject,
+        content,
+        [],
+        [appwriteUser.$id],
+        [],
+        [],
+        [],
+        [],
+        false,
+        true
+      );
+
+      console.log(`✅ Verification email sent to ${email} (${profile.role})`);
+    } catch (vErr) {
+      console.warn("Failed to trigger custom verification email:", vErr);
     }
 
     const isCustomer = profile.role === "customer";
@@ -190,7 +166,7 @@ export async function POST(req: NextRequest) {
         appwriteUserId: appwriteUser.$id,
         databaseId: appwriteConfig.databaseId,
         usersCollectionId: appwriteConfig.usersCollectionId,
-        mustVerify: isCustomer,
+        mustVerify: true, // both roles should see verify notice now
       },
       { status: 201 }
     );

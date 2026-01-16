@@ -11,6 +11,7 @@ import { CartDrawer } from "./CartDrawer";
 import { Dropdown } from "antd";
 import { useCart } from "@/lib/cart";
 import { SearchFilters } from "./SearchFilters";
+import NotificationBell from "./NotificationBell";
 
 const LANG_KEY = "spareparts-lang";
 const LANG_OPTIONS = ["EN", "AR", "SO"] as const;
@@ -228,7 +229,10 @@ export default function Navbar() {
           )}
         </div>
         <div className="min-w-0">
-          <div className="truncate text-sm font-extrabold text-slate-900">
+          <div
+            className="truncate text-sm font-extrabold text-slate-900"
+            suppressHydrationWarning
+          >
             {loading ? "Loading..." : userName}
           </div>
           {showAsAuthenticated && profile?.email && (
@@ -262,6 +266,17 @@ export default function Navbar() {
                 aria-hidden
               />
               <span>Orders</span>
+            </Link>
+
+            <Link
+              href="/account/followed-stores"
+              className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50"
+            >
+              <i
+                className="fa-solid fa-heart text-sm text-slate-600"
+                aria-hidden
+              />
+              <span>Followed Stores</span>
             </Link>
 
             {isSellerPending && (
@@ -350,6 +365,8 @@ export default function Navbar() {
                 />
               </button>
 
+              <NotificationBell />
+
               <button
                 type="button"
                 onClick={() => {
@@ -359,7 +376,10 @@ export default function Navbar() {
                 aria-label="Cart"
               >
                 <i className="fa-solid fa-cart-shopping text-lg" aria-hidden />
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-bold text-slate-900 shadow-sm">
+                <span
+                  className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-bold text-slate-900 shadow-sm"
+                  suppressHydrationWarning
+                >
                   {cartCount}
                 </span>
               </button>
@@ -549,7 +569,7 @@ export default function Navbar() {
             >
               <button
                 type="button"
-                className="inline-flex items-center gap-2 bg-transparent px-2 py-1 text-sm font-semibold text-white transition hover:opacity-70 active:scale-95 touch-manipulation"
+                className="group inline-flex items-center gap-2 bg-white/10 px-3 py-2 rounded-full text-sm font-bold text-white transition-all hover:bg-white/20 active:scale-95"
                 aria-label="Select Language"
               >
                 <img
@@ -557,40 +577,56 @@ export default function Navbar() {
                   alt={LANG_META[language].label}
                   className="h-5 w-5 object-contain"
                 />
-                <span className="font-bold tracking-wide">
-                  {LANG_META[language].label}
-                </span>
-                <span className="hidden text-xs font-semibold text-slate-000 lg:inline">
-                  Language
-                </span>
-                <i
-                  className="fa-solid fa-chevron-down text-[10px] text-slate-900"
-                  aria-hidden
-                />
+                <div className="flex max-w-0 items-center gap-1 overflow-hidden transition-all duration-300 group-hover:max-w-[100px]">
+                  <span className="whitespace-nowrap font-bold tracking-wide">
+                    {LANG_META[language].label}
+                  </span>
+                  <span className="whitespace-nowrap text-xs font-semibold opacity-70">
+                    Language
+                  </span>
+                  <i
+                    className="fa-solid fa-chevron-down text-[10px]"
+                    aria-hidden
+                  />
+                </div>
               </button>
             </Dropdown>
 
             {/* Right: Cart + Avatar */}
             <div className="flex items-center gap-4">
+              <NotificationBell />
+
               <button
                 type="button"
                 onClick={openCart}
-                className="group relative flex items-center gap-2 text-white"
+                className="group relative flex items-center bg-white/10 px-3 py-2 rounded-full text-white transition-all hover:bg-white/20 active:scale-95"
                 aria-label="Cart"
               >
-                <div className="relative">
+                <div className="relative flex h-6 w-6 items-center justify-center">
                   <i
-                    className="fa-solid fa-cart-shopping text-2xl transition group-hover:opacity-70"
+                    className="fa-solid fa-cart-shopping text-xl transition group-hover:scale-110"
                     aria-hidden
                   />
-                  <span className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-(--color-accent) text-[10px] font-bold text-white shadow-sm">
-                    {cartCount}
+                  {cartCount > 0 && (
+                    <span
+                      className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-orange-400"
+                      suppressHydrationWarning
+                    >
+                      {cartCount}
+                    </span>
+                  )}
+                </div>
+                <div className="flex max-w-0 items-center gap-2 overflow-hidden transition-all duration-300 group-hover:ml-2 group-hover:max-w-[150px]">
+                  <span className="whitespace-nowrap text-sm font-bold">
+                    Cart
+                  </span>
+                  <span
+                    className="whitespace-nowrap text-sm font-bold text-slate-200"
+                    suppressHydrationWarning
+                  >
+                    ${cartTotal.toFixed(2)}
                   </span>
                 </div>
-                <span className="hidden text-sm font-bold sm:block">Cart</span>
-                <span className="hidden text-sm font-bold sm:block">
-                  ${cartTotal.toFixed(2)}
-                </span>
               </button>
 
               <Dropdown

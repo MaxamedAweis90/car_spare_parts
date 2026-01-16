@@ -5,18 +5,45 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/useSession";
 import Button from "@/components/Button";
+import { VerificationSuccessBanner } from "@/components/EmailVerification";
+import { useSearchParams } from "next/navigation";
+
+import { Suspense } from "react";
 
 export default function AccountPage() {
+  return (
+    <Suspense fallback={<div className="p-10">Loading account...</div>}>
+      <AccountContent />
+    </Suspense>
+  );
+}
+
+function AccountContent() {
   const router = useRouter();
-  const { authenticated, profile, loading } = useSession();
+  const { authenticated, profile, account, loading } = useSession();
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savingProfile, setSavingProfile] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showVerifiedBanner, setShowVerifiedBanner] = useState(false);
+  const searchParams = useSearchParams();
+
+  // Check for verification success
+  useEffect(() => {
+    if (searchParams.get("verified") === "true") {
+      setShowVerifiedBanner(true);
+      window.dispatchEvent(new Event("session-changed"));
+      window.history.replaceState({}, "", "/account");
+      setTimeout(() => setShowVerifiedBanner(false), 10000);
+    }
+  }, [searchParams]);
 
   const [name, setName] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+  const [resending, setResending] = useState(false);
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
 
   const initials = useMemo(() => {
     const name: string = profile?.name || "";
@@ -33,18 +60,20 @@ export default function AccountPage() {
   const initialForm = useMemo(
     () => ({
       name: (profile?.name as string | undefined) || "",
+      email: (profile?.email as string | undefined) || "",
       phone:
         profile?.phone === null || profile?.phone === undefined
           ? ""
           : String(profile.phone),
     }),
-    [profile?.name, profile?.phone]
+    [profile?.name, profile?.email, profile?.phone]
   );
 
   useEffect(() => {
     setName(initialForm.name);
     setPhone(initialForm.phone);
-  }, [initialForm.name, initialForm.phone]);
+    setEmail(initialForm.email);
+  }, [initialForm.name, initialForm.phone, initialForm.email]);
 
   useEffect(() => {
     if (!file) {
@@ -59,7 +88,32 @@ export default function AccountPage() {
   const canEdit = authenticated && profile?.role === "customer";
   const profileDirty =
     name.trim() !== initialForm.name.trim() ||
+    email.trim() !== initialForm.email.trim() ||
     phone.trim() !== initialForm.phone.trim();
+
+  const handleResendVerification = async () => {
+    setResending(true);
+    setError(null);
+    setProfileMessage(null);
+    try {
+      const res = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setProfileMessage(
+          "✓ Verification email sent! Please check your inbox."
+        );
+      } else {
+        setError(data.error || "Failed to send email");
+      }
+    } catch (err) {
+      setError("Server error");
+    } finally {
+      setResending(false);
+    }
+  };
 
   const onUpload = async () => {
     if (!file) return;
@@ -96,11 +150,26 @@ export default function AccountPage() {
     if (!canEdit) return;
     setSavingProfile(true);
     setError(null);
+    setProfileMessage(null);
 
     try {
-      const payload: { name?: string; phone?: string } = {};
-      if (name.trim() !== initialForm.name.trim()) payload.name = name;
-      if (phone.trim() !== initialForm.phone.trim()) payload.phone = phone;
+      const payload: { name?: string; email?: string; phone?: string } = {};
+      const updatedFields: string[] = [];
+
+      if (name.trim() !== initialForm.name.trim()) {
+        payload.name = name;
+        updatedFields.push("Name");
+      }
+      if (email.trim() !== initialForm.email.trim()) {
+        payload.email = email;
+        updatedFields.push("Email");
+      }
+      if (phone.trim() !== initialForm.phone.trim()) {
+        payload.phone = phone;
+        updatedFields.push("Phone");
+      }
+
+      if (updatedFields.length === 0) return;
 
       const res = await fetch("/api/customer/profile", {
         method: "PATCH",
@@ -112,6 +181,12 @@ export default function AccountPage() {
       if (!res.ok) {
         throw new Error(body?.error || "Failed to update profile");
       }
+
+      let successMsg = `✓ Updated: ${updatedFields.join(", ")}`;
+      if (payload.email) {
+        successMsg += ". Verification email sent to new address.";
+      }
+      setProfileMessage(successMsg);
 
       router.refresh();
       if (typeof window !== "undefined") {
@@ -126,8 +201,10 @@ export default function AccountPage() {
 
   const onCancel = () => {
     setError(null);
+    setProfileMessage(null);
     setFile(null);
     setName(initialForm.name);
+    setEmail(initialForm.email);
     setPhone(initialForm.phone);
   };
 
@@ -142,6 +219,19 @@ export default function AccountPage() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+
+  const canUpdatePassword = useMemo(() => {
+    return (
+      passwordForm.currentPassword.trim() !== "" &&
+      passwordForm.newPassword.trim() !== "" &&
+      passwordForm.newPassword === passwordForm.confirmPassword &&
+      passwordForm.newPassword.length >= 8
+    );
+  }, [passwordForm]);
+
+  const passwordsMatch =
+    passwordForm.newPassword === "" ||
+    passwordForm.newPassword === passwordForm.confirmPassword;
 
   const onUpdatePassword = async () => {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
@@ -226,6 +316,13 @@ export default function AccountPage() {
     <div className="mx-auto w-full max-w-full sm:max-w-10/12 px-4 py-10">
       <h1 className="text-xl font-extrabold text-slate-900">My Account</h1>
 
+      <div className="mt-4">
+        <VerificationSuccessBanner
+          show={showVerifiedBanner}
+          onClose={() => setShowVerifiedBanner(false)}
+        />
+      </div>
+
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
         <div className="flex items-center gap-4">
           <div className="relative h-16 w-16 overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200">
@@ -272,6 +369,38 @@ export default function AccountPage() {
           </div>
           <div>
             <label className="block text-sm font-bold text-slate-900">
+              Email Address
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={`mt-2 w-full rounded-xl border px-4 py-3 text-sm font-semibold text-slate-900 outline-none ring-black/10 focus:ring-2 ${
+                account?.emailVerification === false
+                  ? "border-orange-300 bg-orange-50"
+                  : "border-slate-200"
+              }`}
+              placeholder="your@email.com"
+            />
+            {account?.emailVerification === false && (
+              <div className="mt-2 flex items-center gap-2">
+                <p className="text-xs font-bold text-orange-600 flex items-center gap-1">
+                  <i className="fa-solid fa-triangle-exclamation"></i> Email not
+                  verified.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleResendVerification}
+                  disabled={resending}
+                  className="text-[10px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-md hover:bg-orange-200 transition font-bold disabled:opacity-50"
+                >
+                  {resending ? "Sending..." : "Resend Email"}
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-bold text-slate-900">
               Phone / Contact
             </label>
             <input
@@ -283,6 +412,12 @@ export default function AccountPage() {
             />
           </div>
         </div>
+
+        {profileMessage && (
+          <div className="mt-4 text-sm font-bold text-green-600">
+            {profileMessage}
+          </div>
+        )}
 
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <Button
@@ -404,6 +539,11 @@ export default function AccountPage() {
               className="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-900 outline-none ring-black/10 focus:ring-2"
               placeholder="••••••••"
             />
+            {passwordForm.confirmPassword && !passwordsMatch && (
+              <p className="mt-1 text-xs font-bold text-red-600">
+                Passwords do not match
+              </p>
+            )}
           </div>
         </div>
 
@@ -412,12 +552,7 @@ export default function AccountPage() {
             type="button"
             variant="primary"
             rounded="full"
-            disabled={
-              savingPassword ||
-              !passwordForm.currentPassword ||
-              !passwordForm.newPassword ||
-              !passwordForm.confirmPassword
-            }
+            disabled={savingPassword || !canUpdatePassword}
             onClick={onUpdatePassword}
           >
             {savingPassword ? "Updating…" : "Update Password"}

@@ -16,10 +16,10 @@ export const appwriteClientConfig = {
   productsCollectionId:
     process.env.NEXT_PUBLIC_APPWRITE_PRODUCTS_COLLECTION_ID!,
   ordersCollectionId: process.env.NEXT_PUBLIC_APPWRITE_ORDERS_COLLECTION_ID!,
-  storeCollectionId: process.env.NEXT_PUBLIC_APPWRITE_STORE_COLLECTION_ID!,
-  mainAdminId: process.env.NEXT_PUBLIC_APPWRITE_MAIN_ADMIN_USER_ID!,
-  storeAvatarBucketId: process.env.NEXT_PUBLIC_APPWRITE_STORE_AVATAR_BUCKET_ID!,
   storeBannerBucketId:
     process.env.NEXT_PUBLIC_APPWRITE_STORE_BANNER_BUCKET_ID ||
     process.env.NEXT_PUBLIC_APPWRITE_STORE_AVATAR_BUCKET_ID!,
+  followsCollectionId: process.env.NEXT_PUBLIC_APPWRITE_FOLLOWS_COLLECTION_ID!,
+  notificationsCollectionId:
+    process.env.NEXT_PUBLIC_APPWRITE_NOTIFICATIONS_COLLECTION_ID!,
 };

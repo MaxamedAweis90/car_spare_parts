@@ -19,13 +19,18 @@ function RegisterContent() {
   const { authenticated, profile, loading: sessionLoading } = useSession();
   const nameParam = searchParams.get("name") || "";
   const emailParam = searchParams.get("email") || "";
+  const returnUrl = searchParams.get("returnUrl");
+  const intent = searchParams.get("intent");
+
   const [name, setName] = useState(nameParam);
   const [email, setEmail] = useState(emailParam);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(
+    intent === "follow" ? "Join us to follow your favorite stores!" : ""
+  );
   const shouldHide = sessionLoading || authenticated;
 
   useEffect(() => {
@@ -39,6 +44,12 @@ function RegisterContent() {
   useEffect(() => {
     if (sessionLoading) return;
     if (!authenticated) return;
+
+    if (returnUrl) {
+      router.replace(returnUrl);
+      return;
+    }
+
     if (profile?.role === "customer") {
       router.replace("/");
       return;
@@ -83,7 +94,9 @@ function RegisterContent() {
         return;
       }
 
-      router.push("/");
+      const target = returnUrl || "/";
+      router.push(target);
+      router.refresh();
     } catch (error) {
       console.error(error);
       setMessage("Server error");

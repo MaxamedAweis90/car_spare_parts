@@ -21,11 +21,15 @@ export const appwriteConfig = {
   storeAvatarBucketId: process.env.APPWRITE_STORE_AVATAR_BUCKET_ID!,
   storeBannerBucketId:
     process.env.APPWRITE_STORE_BANNER_BUCKET_ID ||
-    process.env.APPWRITE_STORE_AVATAR_BUCKET_ID!,
+    process.env.NEXT_PUBLIC_APPWRITE_STORE_AVATAR_BUCKET_ID!,
   avatarBucketId:
     process.env.APPWRITE_AVATAR_BUCKET_ID ||
     process.env.NEXT_PUBLIC_APPWRITE_AVATAR_BUCKET_ID!,
   endpoint: process.env.APPWRITE_ENDPOINT!,
   projectId: process.env.APPWRITE_PROJECT_ID!,
   apiKey: process.env.APPWRITE_API_KEY!,
+  followsCollectionId: process.env.APPWRITE_FOLLOWS_COLLECTION_ID!,
+  notificationsCollectionId: process.env.APPWRITE_NOTIFICATIONS_COLLECTION_ID!,
+  activitiesCollectionId:
+    process.env.APPWRITE_ACTIVITIES_COLLECTION_ID || "activities",
 };

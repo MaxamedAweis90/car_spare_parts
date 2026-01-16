@@ -208,9 +208,62 @@ export function useUpdateProduct() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onMutate: async (payload) => {
+      // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+      await queryClient.cancelQueries({ queryKey: ["products"] });
+      await queryClient.cancelQueries({
+        queryKey: ["product", payload.productId],
+      });
+
+      // Snapshot the previous value
+      const previousProducts = queryClient.getQueryData(["products"]);
+      const previousProduct = queryClient.getQueryData([
+        "product",
+        payload.productId,
+      ]);
+
+      // Optimistically update "products" list cache
+      queryClient.setQueriesData({ queryKey: ["products"] }, (old: any) => {
+        if (!old || !old.products) return old;
+        return {
+          ...old,
+          products: old.products.map((p: any) =>
+            p.$id === payload.productId ? { ...p, ...payload.data } : p
+          ),
+        };
+      });
+
+      // Optimistically update single "product" cache
+      if (previousProduct) {
+        queryClient.setQueryData(
+          ["product", payload.productId],
+          (old: any) => ({
+            ...old,
+            ...payload.data,
+          })
+        );
+      }
+
+      return { previousProducts, previousProduct };
+    },
+    onError: (err, payload, context) => {
+      // Rollback to previous state
+      if (context?.previousProducts) {
+        queryClient.setQueryData(["products"], context.previousProducts);
+      }
+      if (context?.previousProduct) {
+        queryClient.setQueryData(
+          ["product", payload.productId],
+          context.previousProduct
+        );
+      }
+    },
+    onSettled: (data, error, payload) => {
+      // Always refetch to stay in sync with server
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      queryClient.invalidateQueries({ queryKey: ["product"] });
+      queryClient.invalidateQueries({
+        queryKey: ["product", payload.productId],
+      });
     },
   });
 }

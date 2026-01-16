@@ -12,6 +12,7 @@ import {
 } from "@/lib/server/appwrite-auth-actions";
 import { createAdminClient } from "@/lib/server/appwrite-admin";
 import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
+import { logActivity } from "@/lib/server/auditService";
 
 const endpoint = process.env.APPWRITE_ENDPOINT!;
 const projectId = process.env.APPWRITE_PROJECT_ID!;
@@ -155,6 +156,19 @@ export async function POST(req: NextRequest) {
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
       });
+    }
+
+    // Log admin login activity
+    if (user.role && (user.role === "admin" || user.role === "main_admin")) {
+      // Don't await log to avoid slowing down login response
+      logActivity({
+        adminId: user.$id,
+        adminName: user.name || "Admin",
+        action: "LOGIN_ADMIN",
+        details: "Admin logged in",
+      }).catch((err) =>
+        console.warn("Failed to log admin login activity", err)
+      );
     }
 
     return res;

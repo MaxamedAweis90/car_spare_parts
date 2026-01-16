@@ -8,6 +8,7 @@ import {
   findProductsBySellerId,
 } from "@/lib/server/productService";
 import Breadcrumbs from "@/components/Breadcrumbs";
+import FollowButton from "@/components/FollowButton";
 
 function buildStoreAssetUrl(fileId: string | null, kind: "avatar" | "banner") {
   if (!fileId) return null;
@@ -88,7 +89,7 @@ export default async function StorePage({ params }: StorePageProps) {
 
   return (
     <div className="bg-[#f4f1e9] min-h-screen">
-      <div className="mx-auto w-full max-w-10/12 px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full md:max-w-10/12 px-4 py-6 sm:px-6 lg:px-8">
         <Breadcrumbs
           items={[
             { title: "Stores", href: "/stores" },
@@ -151,17 +152,8 @@ export default async function StorePage({ params }: StorePageProps) {
                 </p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <button className="inline-flex items-center gap-2 rounded-full bg-(--color-primary) px-5 py-2 text-sm font-semibold text-black transition hover:bg-(--color-primary-strong)">
-                <svg
-                  aria-hidden
-                  viewBox="0 0 16 16"
-                  className="h-3.5 w-3.5 fill-current"
-                >
-                  <path d="M7 1h2v6h6v2H9v6H7V9H1V7h6z" />
-                </svg>
-                Follow
-              </button>
+            <div className="flex flex-wrap items-center gap-6">
+              <FollowButton storeId={store.id} />
               <button className="inline-flex items-center gap-2 rounded-full border border-(--color-border) px-4 py-2 text-sm font-semibold text-(--color-text) hover:border-(--color-primary) hover:text-(--color-primary)">
                 <svg
                   aria-hidden

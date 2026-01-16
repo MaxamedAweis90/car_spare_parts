@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/server/requireAdmin";
+import { requireSeller } from "@/lib/server/requireSeller";
 import { createSessionClient } from "@/lib/server/appwrite-admin";
 import { messagingServer } from "@/lib/appwrite-server";
 import { ID } from "node-appwrite";
 
 export async function GET(req: NextRequest) {
   try {
-    await requireAdmin(req);
+    await requireSeller(req);
     const jwt = req.cookies.get("appwrite_jwt")?.value;
 
     if (!jwt) {
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ sessions: sessions.sessions });
   } catch (error: any) {
-    console.error("List sessions error:", error);
+    console.error("List seller sessions error:", error);
     return NextResponse.json(
       { error: error?.message || "Server error" },
       { status: 500 }
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    const { account: userAccount } = await requireAdmin(req);
+    await requireSeller(req);
     const { sessionId, all } = await req.json().catch(() => ({}));
     const jwt = req.cookies.get("appwrite_jwt")?.value;
 
@@ -41,7 +41,7 @@ export async function DELETE(req: NextRequest) {
     // Fetch user details for email (before deleting sessions)
     const user = await account.get();
     const email = user.email;
-    const name = user.name || "User";
+    const name = user.name || "Seller";
 
     if (all) {
       await account.deleteSessions();
@@ -55,8 +55,6 @@ export async function DELETE(req: NextRequest) {
       res.cookies.delete("appwrite_jwt");
       return res;
     } else if (sessionId) {
-      // Optional: Get session details before deleting to mention device name?
-      // Might be overkill and adds latency. "A device" is sufficient.
       await account.deleteSession(sessionId);
       await sendSecurityEmail(
         email,
@@ -71,7 +69,7 @@ export async function DELETE(req: NextRequest) {
       );
     }
   } catch (error: any) {
-    console.error("Revoke session error:", error);
+    console.error("Revoke seller session error:", error);
     return NextResponse.json(
       { error: error?.message || "Server error" },
       { status: 500 }

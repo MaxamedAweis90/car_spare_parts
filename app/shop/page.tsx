@@ -245,7 +245,7 @@ function ShopPageContent() {
               placement="right"
               onClose={() => setIsMobileFilterOpen(false)}
               open={isMobileFilterOpen}
-              width="100%"
+              size="default"
               styles={{
                 body: { padding: "2rem 1rem", backgroundColor: "#f4f1e9" },
               }}

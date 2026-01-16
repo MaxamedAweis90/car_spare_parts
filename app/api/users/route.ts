@@ -13,6 +13,7 @@ import {
   hashPassword,
   sanitizeUser,
 } from "@/lib/auth-utils";
+import { logActivity } from "@/lib/server/auditService";
 
 const appwriteEndpoint = (
   process.env.APPWRITE_ENDPOINT ||
@@ -153,6 +154,23 @@ export async function POST(req: NextRequest) {
       appwriteUserId: appwriteUser.$id,
     });
 
+    // Log Activity
+    if (role === "admin") {
+      try {
+        const creator = await getUserById(creatorId);
+        await logActivity({
+          adminId: creatorId,
+          adminName: creator.name || "Main Admin",
+          action: "INVITE_ADMIN",
+          targetId: appwriteUser.$id,
+          targetName: name,
+          details: `Invited new admin: ${email}`,
+        });
+      } catch (err) {
+        console.warn("Failed to log activity", err);
+      }
+    }
+
     return NextResponse.json(sanitizeUser(profile), { status: 201 });
   } catch (error: unknown) {
     console.error("Create user error:", error);
@@ -197,6 +215,98 @@ export async function PUT(req: NextRequest) {
     const updatedData: Partial<UserDocument> = {};
 
     if (name) updatedData.name = name;
+
+    // Sync Email with Appwrite Auth
+    if (email && email !== user.email && user.appwriteUserId) {
+      try {
+        await usersServer.updateEmail(user.appwriteUserId, email);
+
+        // If main_admin, auto-verify (no need for verification)
+        if (user.role === "main_admin") {
+          await usersServer.updateEmailVerification(user.appwriteUserId, true);
+        } else {
+          // Send Verification Email for others
+          try {
+            const verificationToken = ID.unique();
+            const prefs = await usersServer.getPrefs(user.appwriteUserId);
+            await usersServer.updatePrefs(user.appwriteUserId, {
+              ...prefs,
+              emailVerificationToken: verificationToken,
+            });
+
+            // Send Email
+            const verifyLink = `${req.nextUrl.origin}/auth/verify?userId=${user.appwriteUserId}&token=${verificationToken}`;
+            const subject = "Verify your new email address";
+            const content = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+              <style>
+                body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px; }
+                .button { display: inline-block; padding: 10px 20px; background-color: #007bff; color: #fff !important; text-decoration: none; border-radius: 5px; font-weight: bold; }
+              </style>
+            </head>
+            <body>
+              <div class="container">
+                <h2>Verify your email</h2>
+                <p>Hello ${name || user.name},</p>
+                <p>Your email address has been updated to <strong>${email}</strong>. Please verify this change by clicking the button below.</p>
+                <p style="text-align: center; margin: 30px 0;">
+                  <a href="${verifyLink}" class="button">Verify Email Address</a>
+                </p>
+                <p>If you didn't request this change, please contact support immediately.</p>
+              </div>
+            </body>
+            </html>
+            `;
+
+            console.log("📧 Sending verification email to admin:", {
+              userId: user.appwriteUserId,
+              newEmail: email,
+              oldEmail: user.email,
+              verifyLink,
+            });
+
+            // Send to the user ID - Appwrite will use the NEW email we just updated
+            const emailMessage = await messagingServer.createEmail(
+              ID.unique(),
+              subject,
+              content,
+              [], // topics
+              [user.appwriteUserId], // users - send to this user (uses their updated email)
+              [], // targets
+              [], // cc
+              [], // bcc
+              [], // attachments
+              false, // draft
+              true // html
+            );
+
+            console.log("✅ Admin verification email sent successfully:", {
+              messageId: emailMessage.$id,
+              userId: user.appwriteUserId,
+              sentToEmail: email,
+            });
+          } catch (err: any) {
+            console.error(
+              "Failed to send verification email for admin update",
+              err
+            );
+          }
+        }
+      } catch (err: any) {
+        console.error("Failed to update Appwrite email:", err);
+        return NextResponse.json(
+          {
+            error:
+              err?.message || "Failed to update email address in Auth system",
+          },
+          { status: 400 }
+        );
+      }
+    }
+
     if (email) updatedData.email = email;
     if (role && allowedRoles.includes(role)) updatedData.role = role;
     if (typeof isActive === "boolean") updatedData.isActive = isActive;
@@ -310,6 +420,70 @@ export async function PUT(req: NextRequest) {
       }
     }
 
+    // Log Activity
+    try {
+      if (updater) {
+        // Seller Approval
+        if (
+          sellerApproved === true &&
+          user.role === "seller" &&
+          user.sellerApproved !== true
+        ) {
+          await logActivity({
+            adminId: updater.$id,
+            adminName: updater.name,
+            action: "APPROVE_SELLER",
+            targetId: user.$id,
+            targetName: user.name,
+            details: "Approved seller application",
+          });
+        }
+
+        // Deactivate/Activate
+        if (typeof isActive === "boolean" && isActive !== user.isActive) {
+          const action =
+            user.role === "seller"
+              ? isActive
+                ? "APPROVE_SELLER"
+                : "DEACTIVATE_SELLER" // Re-activating acts like approval/reset
+              : isActive
+              ? "UPDATE_PASSWORD_ADMIN"
+              : "DEACTIVATE_ADMIN"; // Re-using UPDATE_PASSWORD_ADMIN as placeholder for 'REACTIVATE' isn't great, let's Stick to checking role.
+
+          // Correct logic:
+          let act = "";
+          if (user.role === "seller")
+            act = isActive ? "APPROVE_SELLER" : "DEACTIVATE_SELLER";
+          else if (user.role.includes("admin"))
+            act = isActive ? "INVITE_ADMIN" : "DEACTIVATE_ADMIN"; // 'INVITE_ADMIN' implies active? Maybe just use generic.
+
+          // Let's simple it down:
+          if (user.role === "seller" && !isActive) {
+            await logActivity({
+              adminId: updater.$id,
+              adminName: updater.name,
+              action: "DEACTIVATE_SELLER",
+              targetId: user.$id,
+              targetName: user.name,
+              details: "Deactivated seller account",
+            });
+          }
+          if (user.role.includes("admin") && !isActive) {
+            await logActivity({
+              adminId: updater.$id,
+              adminName: updater.name,
+              action: "DEACTIVATE_ADMIN",
+              targetId: user.$id,
+              targetName: user.name,
+              details: "Deactivated admin account",
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Log error", e);
+    }
+
     return NextResponse.json(updatedUser, { status: 200 });
   } catch (error: unknown) {
     console.error("Update user error:", error);
@@ -391,6 +565,20 @@ export async function DELETE(req: NextRequest) {
       } catch (error: unknown) {
         console.warn("Appwrite auth user delete failed:", error);
       }
+    }
+
+    // Log Activity
+    try {
+      await logActivity({
+        adminId: deleterId,
+        adminName: deleter.name || "Admin",
+        action: target.role === "seller" ? "DELETE_SELLER" : "DELETE_ADMIN",
+        targetId: userId,
+        targetName: target.name,
+        details: `Deleted ${target.role} account`,
+      });
+    } catch (e) {
+      console.warn("Log error", e);
     }
 
     return NextResponse.json({ ok: true }, { status: 200 });

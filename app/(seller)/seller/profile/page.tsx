@@ -1,6 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+} from "react";
+import { useSearchParams } from "next/navigation";
 import Box from "@mui/material/Box";
 import Paper from "@mui/material/Paper";
 import Stack from "@mui/material/Stack";
@@ -16,6 +25,11 @@ import AccordionDetails from "@mui/material/AccordionDetails";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { getImageUrl } from "@/lib/appwrite/storage";
 import { useSellerProfile } from "@/lib/SellerProfileProvider";
+import { useSession } from "@/lib/useSession";
+import {
+  EmailVerificationField,
+  VerificationSuccessBanner,
+} from "@/components/EmailVerification";
 
 type Feedback = { type: "success" | "error"; message: string } | null;
 type SellerProfile = {
@@ -27,11 +41,42 @@ type SellerProfile = {
   avatarUrl?: string | null;
 };
 
+import { Suspense } from "react";
+
 export default function ProfilePage() {
-  const { profile, loading: profileLoading, error: profileError, setProfileState } = useSellerProfile();
-  const [profileData, setProfileData] = useState<SellerProfile | null>(profile as SellerProfile | null);
+  return (
+    <Suspense
+      fallback={
+        <Box sx={{ p: 10 }}>
+          <CircularProgress />
+        </Box>
+      }
+    >
+      <ProfileContent />
+    </Suspense>
+  );
+}
+
+function ProfileContent() {
+  const searchParams = useSearchParams();
+  const { account } = useSession();
+  const emailVerified = account?.emailVerification;
+
+  const {
+    profile,
+    loading: profileLoading,
+    error: profileError,
+    setProfileState,
+  } = useSellerProfile();
+  const [profileData, setProfileData] = useState<SellerProfile | null>(
+    profile as SellerProfile | null
+  );
   const [loadError, setLoadError] = useState<string | null>(profileError);
   const [infoForm, setInfoForm] = useState({ name: "", email: "" });
+  const [initialInfoForm, setInitialInfoForm] = useState({
+    name: "",
+    email: "",
+  }); // Track initial state
   const [infoFeedback, setInfoFeedback] = useState<Feedback>(null);
   const [infoSaving, setInfoSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -40,9 +85,24 @@ export default function ProfilePage() {
   const [pendingAvatarFile, setPendingAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [passwordExpanded, setPasswordExpanded] = useState(false);
-  const [passwordForm, setPasswordForm] = useState({ current: "", next: "", confirm: "" });
+  const [passwordForm, setPasswordForm] = useState({
+    current: "",
+    next: "",
+    confirm: "",
+  });
   const [passwordFeedback, setPasswordFeedback] = useState<Feedback>(null);
   const [passwordSaving, setPasswordSaving] = useState(false);
+  const [showVerifiedBanner, setShowVerifiedBanner] = useState(false);
+
+  // Check for verification success
+  useEffect(() => {
+    if (searchParams.get("verified") === "true") {
+      setShowVerifiedBanner(true);
+      window.dispatchEvent(new Event("session-changed"));
+      window.history.replaceState({}, "", "/seller/profile");
+      setTimeout(() => setShowVerifiedBanner(false), 10000);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (profile) {
@@ -57,16 +117,41 @@ export default function ProfilePage() {
     }
   }, [profileError]);
 
-
   useEffect(() => {
     if (!profileData) {
       return;
     }
-    setInfoForm({
+    const formData = {
       name: profileData.name ?? "",
       email: profileData.email ?? "",
-    });
+    };
+    setInfoForm(formData);
+    setInitialInfoForm(formData); // Set initial state for comparison
   }, [profileData]);
+
+  // Detect if form has changes
+  const hasInfoChanges = useMemo(() => {
+    return (
+      infoForm.name !== initialInfoForm.name ||
+      infoForm.email !== initialInfoForm.email ||
+      pendingAvatarFile !== null
+    );
+  }, [infoForm, initialInfoForm, pendingAvatarFile]);
+
+  // Get only changed fields
+  const getChangedFields = useCallback(() => {
+    const changes: { name?: string; email?: string } = {};
+
+    if (infoForm.name.trim() !== initialInfoForm.name) {
+      changes.name = infoForm.name.trim();
+    }
+
+    if (infoForm.email.trim() !== initialInfoForm.email) {
+      changes.email = infoForm.email.trim();
+    }
+
+    return changes;
+  }, [infoForm, initialInfoForm]);
 
   useEffect(() => {
     return () => {
@@ -75,6 +160,31 @@ export default function ProfilePage() {
       }
     };
   }, [avatarPreview]);
+
+  // Smart password validation
+  const canSubmitPassword = useMemo(() => {
+    return (
+      passwordForm.current.trim() !== "" &&
+      passwordForm.next.trim() !== "" &&
+      passwordForm.next === passwordForm.confirm &&
+      passwordForm.next.length >= 8
+    );
+  }, [passwordForm]);
+
+  const passwordsMatch =
+    passwordForm.next === "" || passwordForm.next === passwordForm.confirm;
+
+  const handleResendVerification = async () => {
+    const res = await fetch("/api/auth/resend-verification", {
+      method: "POST",
+      credentials: "include",
+    });
+
+    if (!res.ok) {
+      const body = await res.json();
+      throw new Error(body?.error || "Failed to send verification email");
+    }
+  };
 
   const avatarUrl = useMemo(() => {
     if (avatarPreview) {
@@ -104,55 +214,77 @@ export default function ProfilePage() {
     return letters.slice(0, 2) || "SE";
   }, [profileData?.name]);
 
-  const handleInfoFieldChange = (field: "name" | "email") => (event: ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    setInfoForm((prev) => ({ ...prev, [field]: value }));
-  };
+  const handleInfoFieldChange =
+    (field: "name" | "email") => (event: ChangeEvent<HTMLInputElement>) => {
+      const value = event.target.value;
+      setInfoForm((prev) => ({ ...prev, [field]: value }));
+    };
 
   const handleInfoSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!profileData) {
       return;
     }
+
+    // Get only changed fields
+    const changedFields = getChangedFields();
+    const hasAvatarChange = pendingAvatarFile !== null;
+
+    // If nothing changed, don't submit
+    if (Object.keys(changedFields).length === 0 && !hasAvatarChange) {
+      setInfoFeedback({ type: "error", message: "No changes to save" });
+      return;
+    }
+
     setInfoSaving(true);
     setInfoFeedback(null);
     setAvatarFeedback(null);
 
     try {
-      const res = await fetch("/api/seller/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          name: infoForm.name.trim(),
-          email: infoForm.email.trim(),
-        }),
-      });
+      const updatedFields: string[] = [];
 
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        throw new Error(body?.error || "Failed to update profile");
+      // Only send changed fields
+      if (Object.keys(changedFields).length > 0) {
+        const res = await fetch("/api/seller/profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(changedFields),
+        });
+
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(body?.error || "Failed to update profile");
+        }
+
+        const nextProfile = body?.profile as SellerProfile | undefined;
+        if (!nextProfile) {
+          throw new Error("Profile payload missing from response");
+        }
+        setProfileData(nextProfile);
+        setLoadError(null);
+        setProfileState(nextProfile);
+
+        // Track what was updated
+        if (changedFields.name) updatedFields.push("Name");
+        if (changedFields.email) {
+          updatedFields.push("Email (verification sent)");
+          window.dispatchEvent(new Event("session-changed"));
+        }
       }
 
-      const nextProfile = body?.profile as SellerProfile | undefined;
-      if (!nextProfile) {
-        throw new Error("Profile payload missing from response");
-      }
-      setProfileData(nextProfile);
-      setLoadError(null);
-      setProfileState(nextProfile);
-
-      if (pendingAvatarFile) {
+      // Handle avatar upload
+      if (hasAvatarChange) {
         setAvatarUploading(true);
         try {
-          const updatedProfile = await uploadAvatarFile(pendingAvatarFile);
+          const updatedProfile = await uploadAvatarFile(pendingAvatarFile!);
           if (avatarPreview && avatarPreview.startsWith("blob:")) {
             URL.revokeObjectURL(avatarPreview);
           }
           setAvatarPreview(updatedProfile?.avatarUrl ?? null);
           setProfileState(updatedProfile);
           setPendingAvatarFile(null);
-          setAvatarFeedback({ type: "success", message: "Avatar updated" });
+          updatedFields.push("Avatar");
           if (fileInputRef.current) {
             fileInputRef.current.value = "";
           }
@@ -165,9 +297,24 @@ export default function ProfilePage() {
         }
       }
 
-      setInfoFeedback({ type: "success", message: "Profile updated" });
+      // Create specific success message
+      const successMessage =
+        updatedFields.length > 0
+          ? `✓ Updated: ${updatedFields.join(", ")}`
+          : "Profile updated successfully";
+
+      setInfoFeedback({ type: "success", message: successMessage });
+
+      // Update initial form state
+      setInitialInfoForm({
+        name: infoForm.name,
+        email: infoForm.email,
+      });
     } catch (error: any) {
-      setInfoFeedback({ type: "error", message: error?.message || "Profile update failed" });
+      setInfoFeedback({
+        type: "error",
+        message: error?.message || "Profile update failed",
+      });
     } finally {
       setInfoSaving(false);
     }
@@ -177,9 +324,10 @@ export default function ProfilePage() {
     if (!profileData) {
       return;
     }
+    // Reset to initial values
     setInfoForm({
-      name: profileData.name ?? "",
-      email: profileData.email ?? "",
+      name: initialInfoForm.name,
+      email: initialInfoForm.email,
     });
     setInfoFeedback(null);
     if (avatarPreview && avatarPreview.startsWith("blob:")) {
@@ -194,32 +342,35 @@ export default function ProfilePage() {
     }
   };
 
-  const uploadAvatarFile = useCallback(async (file: File) => {
-    const formData = new FormData();
-    formData.set("file", file);
-    formData.set("filename", file.name);
+  const uploadAvatarFile = useCallback(
+    async (file: File) => {
+      const formData = new FormData();
+      formData.set("file", file);
+      formData.set("filename", file.name);
 
-    const res = await fetch("/api/seller/profile/avatar", {
-      method: "POST",
-      credentials: "include",
-      body: formData,
-    });
+      const res = await fetch("/api/seller/profile/avatar", {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
 
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(body?.error || "Failed to update avatar");
-    }
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body?.error || "Failed to update avatar");
+      }
 
-    const nextProfile = body?.profile as SellerProfile | undefined;
-    if (!nextProfile) {
-      throw new Error("Profile payload missing from response");
-    }
+      const nextProfile = body?.profile as SellerProfile | undefined;
+      if (!nextProfile) {
+        throw new Error("Profile payload missing from response");
+      }
 
-    setProfileData(nextProfile);
-    setLoadError(null);
-    setProfileState(nextProfile);
-    return nextProfile;
-  }, [setProfileState]);
+      setProfileData(nextProfile);
+      setLoadError(null);
+      setProfileState(nextProfile);
+      return nextProfile;
+    },
+    [setProfileState]
+  );
 
   const handleAvatarButtonClick = () => {
     setAvatarFeedback(null);
@@ -242,10 +393,12 @@ export default function ProfilePage() {
     setPendingAvatarFile(file);
   };
 
-  const handlePasswordFieldChange = (field: "current" | "next" | "confirm") => (event: ChangeEvent<HTMLInputElement>) => {
-    const value = event.target.value;
-    setPasswordForm((prev) => ({ ...prev, [field]: value }));
-  };
+  const handlePasswordFieldChange =
+    (field: "current" | "next" | "confirm") =>
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const value = event.target.value;
+      setPasswordForm((prev) => ({ ...prev, [field]: value }));
+    };
 
   const handlePasswordSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -270,9 +423,15 @@ export default function ProfilePage() {
       }
 
       setPasswordForm({ current: "", next: "", confirm: "" });
-      setPasswordFeedback({ type: "success", message: "Password updated" });
+      setPasswordFeedback({
+        type: "success",
+        message: "✓ Password updated successfully",
+      });
     } catch (error: any) {
-      setPasswordFeedback({ type: "error", message: error?.message || "Password update failed" });
+      setPasswordFeedback({
+        type: "error",
+        message: error?.message || "Password update failed",
+      });
     } finally {
       setPasswordSaving(false);
     }
@@ -316,6 +475,12 @@ export default function ProfilePage() {
           <Typography variant="body2" color="text.secondary">
             Personal info stays private; store details are public.
           </Typography>
+
+          <VerificationSuccessBanner
+            show={showVerifiedBanner}
+            onClose={() => setShowVerifiedBanner(false)}
+          />
+
           {infoFeedback && (
             <Alert severity={infoFeedback.type} variant="outlined">
               {infoFeedback.message}
@@ -370,17 +535,38 @@ export default function ProfilePage() {
             >
               {avatarUploading ? "Uploading..." : "Change avatar"}
             </Button>
-            <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={handleAvatarChange} />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={handleAvatarChange}
+            />
             {pendingAvatarFile && (
-              <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                display="block"
+                sx={{ mt: 0.5 }}
+              >
                 New avatar will be applied after saving.
               </Typography>
             )}
           </div>
         </Stack>
 
-        <Box component="form" onSubmit={handleInfoSubmit} sx={{ display: "grid", gap: 3 }}>
-          <Box sx={{ display: "grid", gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" }, gap: 2 }}>
+        <Box
+          component="form"
+          onSubmit={handleInfoSubmit}
+          sx={{ display: "grid", gap: 3 }}
+        >
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
+              gap: 2,
+            }}
+          >
             <Stack spacing={2}>
               <TextField
                 label="Full name"
@@ -390,23 +576,36 @@ export default function ProfilePage() {
                 fullWidth
                 required
               />
-              <TextField
+              <EmailVerificationField
                 label="Email"
-                type="email"
                 placeholder="seller@email.com"
                 value={infoForm.email}
                 onChange={handleInfoFieldChange("email")}
                 fullWidth
                 required
+                isVerified={emailVerified}
+                showVerificationStatus={true}
+                onResendVerification={handleResendVerification}
               />
             </Stack>
           </Box>
 
           <Stack direction="row" spacing={1.5} justifyContent="flex-end">
-            <Button type="button" variant="outlined" color="inherit" disabled={infoSaving} onClick={handleInfoReset}>
+            <Button
+              type="button"
+              variant="outlined"
+              color="inherit"
+              disabled={infoSaving}
+              onClick={handleInfoReset}
+            >
               Cancel
             </Button>
-            <Button type="submit" variant="contained" disableElevation disabled={infoSaving}>
+            <Button
+              type="submit"
+              variant="contained"
+              disableElevation
+              disabled={!hasInfoChanges || infoSaving}
+            >
               {infoSaving ? "Saving..." : "Save changes"}
             </Button>
           </Stack>
@@ -414,7 +613,11 @@ export default function ProfilePage() {
 
         <Divider />
 
-        <Accordion expanded={passwordExpanded} onChange={(_, expanded) => setPasswordExpanded(expanded)} sx={{ borderRadius: 2, border: "1px solid #ece8de" }}>
+        <Accordion
+          expanded={passwordExpanded}
+          onChange={(_, expanded) => setPasswordExpanded(expanded)}
+          sx={{ borderRadius: 2, border: "1px solid #ece8de" }}
+        >
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Stack spacing={0.5}>
               <Typography variant="subtitle1" fontWeight={800}>
@@ -456,15 +659,21 @@ export default function ProfilePage() {
                 onChange={handlePasswordFieldChange("confirm")}
                 fullWidth
                 required
+                error={passwordForm.confirm !== "" && !passwordsMatch}
+                helperText={
+                  passwordForm.confirm && !passwordsMatch
+                    ? "Passwords don't match"
+                    : ""
+                }
               />
               <Stack direction="row" spacing={1.5} justifyContent="flex-end">
                 <Button
                   type="submit"
                   variant="contained"
                   disableElevation
-                  disabled={passwordSaving}
+                  disabled={!canSubmitPassword || passwordSaving}
                 >
-                  {passwordSaving ? "Saving..." : "Save password"}
+                  {passwordSaving ? "Updating..." : "Update password"}
                 </Button>
               </Stack>
             </Stack>

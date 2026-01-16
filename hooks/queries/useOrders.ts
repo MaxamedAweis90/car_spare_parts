@@ -62,7 +62,33 @@ export function useUpdateOrder() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onMutate: async ({ orderId, status }) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ["orders"] });
+
+      // Snapshot the previous value
+      const previousOrders = queryClient.getQueryData(["orders"]);
+
+      // Optimistically update the cache
+      queryClient.setQueriesData({ queryKey: ["orders"] }, (old: any) => {
+        if (!old) return old;
+        // The cache might be an array or a paginated object depending on params
+        if (Array.isArray(old)) {
+          return old.map((o: any) =>
+            o.$id === orderId ? { ...o, status } : o
+          );
+        }
+        return old;
+      });
+
+      return { previousOrders };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousOrders) {
+        queryClient.setQueryData(["orders"], context.previousOrders);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["orders"] });
     },
   });

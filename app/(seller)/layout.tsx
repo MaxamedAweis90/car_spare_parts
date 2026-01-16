@@ -113,7 +113,7 @@ export default function SellerLayout({
 }
 
 function SellerLayoutShell({ children }: { children: React.ReactNode }) {
-  const { authenticated, profile, loading } = useSession();
+  const { authenticated, profile, account, loading } = useSession();
   const router = useRouter();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
@@ -358,7 +358,7 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
           onClose={() => setDrawerVisible(false)}
           open={drawerVisible}
           styles={{ body: { padding: 0 } }}
-          width={260}
+          size="default"
           closable={false}
         >
           {siderContent()}
@@ -441,6 +441,21 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
             borderRadius: borderRadiusLG,
           }}
         >
+          {authenticated && account?.emailVerification === false && (
+            <div className="mb-6">
+              <Result
+                status="warning"
+                title="Please Verify Your Email Address"
+                subTitle="We sent a verification link to your new email address. Please click it to verify your account and ensure full access."
+                extra={
+                  <Button type="primary" href="/seller/profile">
+                    Go to Profile
+                  </Button>
+                }
+                style={{ padding: "20px 0" }}
+              />
+            </div>
+          )}
           {children}
         </Content>
       </Layout>
@@ -451,30 +466,42 @@ function SellerLayoutShell({ children }: { children: React.ReactNode }) {
     return (
       <>
         <div
-          className={`h-[64px] border-b flex items-center ${
-            collapsed && !isMobile ? "justify-center" : "px-4 gap-3"
+          className={`py-5 border-b border-gray-100 flex items-center transition-all duration-300 ${
+            collapsed && !isMobile
+              ? "justify-center px-2"
+              : "px-5 gap-3 bg-gradient-to-r from-gray-50 to-white"
           }`}
         >
-          <Avatar
-            src={storeAvatarUrl}
-            style={{
-              backgroundColor: "#f56a00",
-              flexShrink: 0,
-            }}
-            shape="square"
-            size={collapsed && !isMobile ? 32 : 36}
+          {/* Store Logo */}
+          <div
+            className={`relative flex-shrink-0 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex items-center justify-center transition-all duration-300 ${
+              collapsed && !isMobile ? "w-10 h-10" : "w-11 h-11"
+            }`}
           >
-            {storeDisplayName.slice(0, 1)}
-          </Avatar>
+            {storeAvatarUrl ? (
+              <img
+                src={storeAvatarUrl}
+                alt={storeDisplayName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="bg-orange-50 w-full h-full flex items-center justify-center">
+                <ShopOutlined className="text-orange-500 text-lg" />
+              </div>
+            )}
+          </div>
+
+          {/* Store Name & Portal Label */}
           {(!collapsed || isMobile) && (
-            <div className="overflow-hidden leading-tight">
-              <Text strong className="block truncate text-sm">
+            <div className="flex flex-col overflow-hidden">
+              <Text
+                strong
+                className="truncate text-slate-800 leading-tight text-[15px]"
+                title={storeDisplayName}
+              >
                 {storeDisplayName}
               </Text>
-              <Text
-                type="secondary"
-                className="text-[10px] block uppercase tracking-wider font-bold opacity-60"
-              >
+              <Text className="text-[10px] font-bold text-slate-400 tracking-wider uppercase mt-0.5">
                 Seller Portal
               </Text>
             </div>

@@ -1,4 +1,4 @@
-import { Client, Account, Databases, Users } from "node-appwrite";
+import { Client, Account, Databases, Users, Messaging } from "node-appwrite";
 
 const endpoint = process.env.APPWRITE_ENDPOINT!;
 const projectId = process.env.APPWRITE_PROJECT_ID!;
@@ -23,6 +23,9 @@ export function createAdminClient() {
     },
     get users() {
       return new Users(client);
+    },
+    get messaging() {
+      return new Messaging(client);
     },
   };
 }

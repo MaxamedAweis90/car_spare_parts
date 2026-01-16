@@ -1,23 +1,43 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { FormEvent, useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "@/lib/useSession";
 import BackToHome from "@/components/BackToHome";
 
 export default function LoginClient() {
+  return (
+    <Suspense fallback={null}>
+      <LoginContent />
+    </Suspense>
+  );
+}
+
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams.get("returnUrl");
+  const intent = searchParams.get("intent");
+
   const { authenticated, profile, loading } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState(
+    intent === "follow" ? "Please login to follow this store" : ""
+  );
   const shouldHide = loading || authenticated;
 
   useEffect(() => {
     if (loading) return;
     if (!authenticated) return;
+
+    if (returnUrl) {
+      router.replace(returnUrl);
+      return;
+    }
+
     if (profile?.role === "customer") {
       router.replace("/");
       return;
@@ -29,7 +49,7 @@ export default function LoginClient() {
     if (profile?.role === "admin" || profile?.role === "main_admin") {
       router.replace("/admin");
     }
-  }, [authenticated, profile?.role, loading, router]);
+  }, [authenticated, profile?.role, loading, router, returnUrl]);
 
   if (shouldHide) return null;
 
@@ -56,7 +76,10 @@ export default function LoginClient() {
       }
 
       setMessage("Logged in successfully");
-      router.push("/");
+
+      const target = returnUrl || "/";
+      router.push(target);
+      router.refresh();
     } catch (error) {
       console.error(error);
       setMessage("Server error");

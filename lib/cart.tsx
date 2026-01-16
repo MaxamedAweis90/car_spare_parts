@@ -75,16 +75,22 @@ function safeParseCart(raw: string | null): CartItem[] {
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isOpen, setIsOpen] = useState(false);
+  const [isRehydrated, setIsRehydrated] = useState(false);
 
+  // Initialize from storage on mount
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    setItems(safeParseCart(localStorage.getItem(CART_KEY)));
+    const raw = localStorage.getItem(CART_KEY);
+    if (raw) {
+      setItems(safeParseCart(raw));
+    }
+    setIsRehydrated(true);
   }, []);
 
+  // Save to storage whenever items change
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!isRehydrated) return; // Wait until initial load
     localStorage.setItem(CART_KEY, JSON.stringify(items));
-  }, [items]);
+  }, [items, isRehydrated]);
 
   const count = useMemo(
     () => items.reduce((sum, item) => sum + item.quantity, 0),

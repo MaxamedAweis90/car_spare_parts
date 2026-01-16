@@ -18,7 +18,10 @@ export default function NavLinks() {
   ];
 
   return (
-    <div className="mx-auto flex w-full max-w-10/12 items-center justify-between px-4 py-3 sm:px-6">
+    <div
+      className="mx-auto flex w-full max-w-10/12 items-center justify-between px-4 py-3 sm:px-6"
+      suppressHydrationWarning
+    >
       <div className="flex items-center gap-8 overflow-x-auto no-scrollbar">
         {links.map((link) => {
           const isActive = pathname === link.href;

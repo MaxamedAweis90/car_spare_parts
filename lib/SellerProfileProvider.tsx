@@ -1,6 +1,15 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 type SellerProfile = {
   $id: string;
@@ -20,7 +29,9 @@ type SellerProfileContextValue = {
   setProfileState: (value: SellerProfile | null) => void;
 };
 
-const SellerProfileContext = createContext<SellerProfileContextValue | undefined>(undefined);
+const SellerProfileContext = createContext<
+  SellerProfileContextValue | undefined
+>(undefined);
 
 const CACHE_KEY = "seller-profile-cache";
 
@@ -69,7 +80,10 @@ export function SellerProfileProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/seller/profile", { cache: "no-store", credentials: "include" });
+      const res = await fetch("/api/seller/profile", {
+        cache: "no-store",
+        credentials: "include",
+      });
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(body?.error || "Failed to load profile");
@@ -108,16 +122,25 @@ export function SellerProfileProvider({ children }: { children: ReactNode }) {
     }
 
     const handleStorage = (event: StorageEvent) => {
-      if (event.key === CACHE_KEY && event.storageArea === window.sessionStorage) {
+      if (
+        event.key === CACHE_KEY &&
+        event.storageArea === window.sessionStorage
+      ) {
         const next = readCachedProfile();
         setProfile(next?.profile ?? null);
         profileRef.current = next?.profile ?? null;
       }
     };
 
+    const handleSessionChanged = () => {
+      void load(true);
+    };
+
     window.addEventListener("storage", handleStorage);
+    window.addEventListener("session-changed", handleSessionChanged);
     return () => {
       window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("session-changed", handleSessionChanged);
     };
   }, [load]);
 
@@ -139,13 +162,19 @@ export function SellerProfileProvider({ children }: { children: ReactNode }) {
     [profile, loading, error, load, setProfileState]
   );
 
-  return <SellerProfileContext.Provider value={value}>{children}</SellerProfileContext.Provider>;
+  return (
+    <SellerProfileContext.Provider value={value}>
+      {children}
+    </SellerProfileContext.Provider>
+  );
 }
 
 export function useSellerProfile() {
   const context = useContext(SellerProfileContext);
   if (!context) {
-    throw new Error("useSellerProfile must be used within a SellerProfileProvider");
+    throw new Error(
+      "useSellerProfile must be used within a SellerProfileProvider"
+    );
   }
   return context;
 }
