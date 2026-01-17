@@ -1,13 +1,14 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "@/lib/useSession";
 import BackToHome from "@/components/BackToHome";
 
 export default function SellerLoginClient() {
   const router = useRouter();
-  const { authenticated, profile, loading } = useSession();
+  const searchParams = useSearchParams();
+  const { authenticated, profile, account, loading } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -18,7 +19,22 @@ export default function SellerLoginClient() {
   useEffect(() => {
     if (loading) return;
     if (!authenticated) return;
+
+    // LOOP PROTECTION
+    if (searchParams.get("reason")) {
+      setMessage("Session validation failed. Please log in again.");
+      return;
+    }
+
     if (profile?.role === "seller") {
+      if (account?.emailVerification === false) {
+        router.replace(
+          `/auth/verify-notice?email=${encodeURIComponent(
+            profile?.email || ""
+          )}`
+        );
+        return;
+      }
       if (profile?.sellerApproved === false) {
         router.replace("/auth/seller/pending");
         return;
@@ -50,9 +66,11 @@ export default function SellerLoginClient() {
       });
 
       const body = await res.json();
-      if (!res.ok) {
+      if (!res.ok || body.mustVerify) {
         if (body.mustVerify) {
-          router.push(`/auth/verify-notice?email=${encodeURIComponent(email)}`);
+          window.location.href = `/auth/verify-notice?email=${encodeURIComponent(
+            email
+          )}`;
           return;
         }
         setMessage(body?.error || "Login failed");
@@ -72,7 +90,9 @@ export default function SellerLoginClient() {
         return;
       }
       setMessage("Logged in as seller");
-      router.push("/seller");
+      setMessage("Logged in as seller");
+      const callbackUrl = searchParams.get("callbackUrl");
+      window.location.href = callbackUrl || "/seller";
     } catch (error) {
       console.error(error);
       setMessage("Server error");

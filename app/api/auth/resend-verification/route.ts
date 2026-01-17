@@ -1,38 +1,67 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ID, Client, Account } from "node-appwrite";
-import { usersServer, messagingServer } from "@/lib/appwrite-server";
+import {
+  usersServer,
+  messagingServer,
+  databasesServer,
+  appwriteConfig,
+} from "@/lib/appwrite-server";
 import { cookies } from "next/headers";
+import { Query } from "node-appwrite";
+import { getVerificationEmailTemplate } from "@/lib/emails/templates";
 
 export async function POST(req: NextRequest) {
+  // Parse body for email
+  let email = "";
   try {
-    // Get all cookies
-    const cookieStore = await cookies();
-    const allCookies = cookieStore.getAll();
+    const body = await req.json();
+    email = body.email;
+  } catch {
+    /* ignore */
+  }
 
-    // Find the Appwrite session cookie (it starts with a_session_)
-    const sessionCookie = allCookies.find((c) =>
-      c.name.startsWith("a_session_")
-    );
-    const jwtCookie = cookieStore.get("appwrite_jwt");
+  // Use Admin Client (usersServer) to find user by email or session
+  // This avoids "JWT Expired" issues since we are Admin
+  let user;
 
-    if (!sessionCookie && !jwtCookie) {
-      console.log("❌ No session or JWT cookie found");
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  try {
+    if (email) {
+      // Strategy 1: Look up by email (Robust)
+      const list = await usersServer.list([Query.equal("email", email)]);
+      user = list.users[0];
     }
 
-    // Create client
-    const client = new Client()
-      .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
-      .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!);
+    if (!user) {
+      // Strategy 2: Look up by Session (Fallback)
+      // Get all cookies
+      const cookieStore = await cookies();
+      const allCookies = cookieStore.getAll();
+      const jwtCookie = cookieStore.get("appwrite_jwt");
+      const sessionCookie = allCookies.find((c) =>
+        c.name.startsWith("a_session_")
+      );
 
-    if (jwtCookie) {
-      client.setJWT(jwtCookie.value);
-    } else if (sessionCookie) {
-      client.setSession(sessionCookie.value);
+      if (!sessionCookie && !jwtCookie) {
+        return NextResponse.json(
+          { error: "No email provided and not authenticated" },
+          { status: 401 }
+        );
+      }
+
+      const client = new Client()
+        .setEndpoint(process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT!)
+        .setProject(process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID!);
+
+      if (jwtCookie) client.setJWT(jwtCookie.value);
+      else if (sessionCookie) client.setSession(sessionCookie.value);
+
+      const account = new Account(client);
+      user = await account.get();
     }
 
-    const account = new Account(client);
-    const user = await account.get();
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
 
     // Check if email is already verified
     if (user.emailVerification) {
@@ -42,7 +71,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generate new verification token
+    console.log(`[ResendVerification] Sending to ${user.email} (${user.$id})`);
+
+    // Generate new verification token (Admin Privilege)
     const verificationToken = ID.unique();
     const prefs = await usersServer.getPrefs(user.$id);
     await usersServer.updatePrefs(user.$id, {
@@ -50,32 +81,16 @@ export async function POST(req: NextRequest) {
       emailVerificationToken: verificationToken,
     });
 
-    // Send verification email
-    const verifyLink = `${req.nextUrl.origin}/auth/verify?userId=${user.$id}&token=${verificationToken}`;
+    // Use Bouncer API for intelligent redirection
+    const origin = req.nextUrl.origin;
+    const verifyLink = `${origin}/api/auth/verify-link?userId=${user.$id}&token=${verificationToken}`;
+
     const subject = "Verify your email address";
-    const content = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px; }
-        .button { display: inline-block; padding: 10px 20px; background-color: #007bff; color: #fff !important; text-decoration: none; border-radius: 5px; font-weight: bold; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <h2>Verify your email</h2>
-        <p>Hello ${user.name},</p>
-        <p>Please verify your email address <strong>${user.email}</strong> by clicking the button below.</p>
-        <p style="text-align: center; margin: 30px 0;">
-          <a href="${verifyLink}" class="button">Verify Email Address</a>
-        </p>
-        <p>If you didn't request this, please contact support immediately.</p>
-      </div>
-    </body>
-    </html>
-    `;
+    const content = getVerificationEmailTemplate(
+      user.name,
+      user.email,
+      verifyLink
+    );
 
     console.log("📧 Resending verification email:", {
       userId: user.$id,
@@ -106,11 +121,12 @@ export async function POST(req: NextRequest) {
       success: true,
       message: "Verification email sent successfully",
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("❌ Resend verification error:", error);
-    return NextResponse.json(
-      { error: error?.message || "Failed to send verification email" },
-      { status: 500 }
-    );
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : "Failed to send verification email";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

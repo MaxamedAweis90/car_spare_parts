@@ -68,7 +68,9 @@ function LoginContent() {
       const body = await res.json();
       if (!res.ok) {
         if (body.mustVerify) {
-          router.push(`/auth/verify-notice?email=${encodeURIComponent(email)}`);
+          window.location.href = `/auth/verify-notice?email=${encodeURIComponent(
+            email
+          )}`;
           return;
         }
         setMessage(body?.error || "Login failed");
@@ -78,8 +80,7 @@ function LoginContent() {
       setMessage("Logged in successfully");
 
       const target = returnUrl || "/";
-      router.push(target);
-      router.refresh();
+      window.location.href = target;
     } catch (error) {
       console.error(error);
       setMessage("Server error");

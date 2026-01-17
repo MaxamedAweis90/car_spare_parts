@@ -39,6 +39,30 @@ function AccountContent() {
     }
   }, [searchParams]);
 
+  // REDIRECT UNVERIFIED CUSTOMERS
+  useEffect(() => {
+    if (loading) return;
+    if (authenticated && account?.emailVerification === false) {
+      const target = `/auth/verify-notice?email=${encodeURIComponent(
+        profile?.email || ""
+      )}`;
+      const targetPathname = target.split("?")[0];
+      // Only redirect if we aren't already there (avoids infinite loops)
+      if (
+        typeof window !== "undefined" &&
+        window.location.pathname !== targetPathname
+      ) {
+        router.replace(target);
+      }
+    }
+  }, [
+    loading,
+    authenticated,
+    account?.emailVerification,
+    profile?.email,
+    router,
+  ]);
+
   const [name, setName] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
   const [email, setEmail] = useState<string>("");

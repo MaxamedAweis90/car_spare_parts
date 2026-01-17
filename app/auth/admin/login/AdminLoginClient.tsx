@@ -2,12 +2,14 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useSession } from "@/lib/useSession";
 import BackToHome from "@/components/BackToHome";
 
 export default function AdminLoginClient() {
   const router = useRouter();
-  const { authenticated, profile, loading } = useSession();
+  const searchParams = useSearchParams();
+  const { authenticated, profile, account, loading } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -18,7 +20,22 @@ export default function AdminLoginClient() {
   useEffect(() => {
     if (loading) return;
     if (!authenticated) return;
+
+    // LOOP PROTECTION: If redirected here with a reason, DO NOT auto-redirect back
+    if (searchParams.get("reason")) {
+      setMessage("Session validation failed. Please log in again.");
+      return;
+    }
+
     if (profile?.role === "admin" || profile?.role === "main_admin") {
+      if (account?.emailVerification === false) {
+        router.replace(
+          `/auth/verify-notice?email=${encodeURIComponent(
+            profile?.email || ""
+          )}`
+        );
+        return;
+      }
       router.replace("/admin");
       return;
     }
@@ -46,7 +63,13 @@ export default function AdminLoginClient() {
       });
 
       const body = await res.json();
-      if (!res.ok) {
+      if (!res.ok || body.mustVerify) {
+        if (body.mustVerify) {
+          window.location.href = `/auth/verify-notice?email=${encodeURIComponent(
+            email
+          )}`;
+          return;
+        }
         setMessage(body?.error || "Login failed");
         return;
       }
@@ -58,7 +81,9 @@ export default function AdminLoginClient() {
         return;
       }
       setMessage("Logged in as admin");
-      router.push("/admin");
+      setMessage("Logged in as admin");
+      const callbackUrl = searchParams.get("callbackUrl");
+      window.location.href = callbackUrl || "/admin";
     } catch (error) {
       console.error(error);
       setMessage("Server error");

@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
     }
 
     const res = NextResponse.json(
-      !appwriteUser.emailVerification && user.role === "customer"
+      !appwriteUser.emailVerification
         ? {
             error: "Email not verified",
             userId: session.userId,
@@ -124,10 +124,7 @@ export async function POST(req: NextRequest) {
             jwt,
           },
       {
-        status:
-          !appwriteUser.emailVerification && user.role === "customer"
-            ? 403
-            : 200,
+        status: 200,
       }
     );
 

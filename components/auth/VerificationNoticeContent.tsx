@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useSession } from "@/lib/useSession";
@@ -13,17 +13,60 @@ export default function VerificationNoticeContent({
   email,
 }: VerificationNoticeContentProps) {
   const router = useRouter();
-  const { authenticated, profile } = useSession();
+  const { authenticated, profile, account, loading } = useSession(); // Destructure loading
+
+  console.log(
+    "[VerificationNoticeContent] Render. Loading:",
+    loading,
+    "Auth:",
+    authenticated,
+    "EmailVerified:",
+    account?.emailVerification
+  );
+  // Ensure strict check of authenticated state before auto-sending
 
   const [resending, setResending] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  const hasSentRef = useRef(false);
+
   useEffect(() => {
-    if (authenticated && profile?.status === "active") {
+    if (loading) return; // Wait for session load
+
+    // Only redirect if explicitly verified or if user is active AND verified
+    if (authenticated && account?.emailVerification === true) {
+      console.log(
+        "[VerificationNoticeContent] User is verified. Redirecting..."
+      );
       router.replace("/");
     }
-  }, [authenticated, profile?.status, router]);
+  }, [loading, authenticated, account?.emailVerification, router]);
+
+  useEffect(() => {
+    if (loading) return; // Wait for session load
+
+    // Auto-send logic: We need either 'email' prop OR 'profile.email' from session
+    const targetEmail = email || profile?.email;
+
+    if (targetEmail && !hasSentRef.current && !account?.emailVerification) {
+      console.log(
+        "[VerificationNoticeContent] Auto-triggering email resend for:",
+        targetEmail
+      );
+      hasSentRef.current = true;
+      // We pass targetEmail to handleResend or update the logic to accept it
+      // For now, let's call handleResend but we need to ensure handleResend uses targetEmail
+      if (email === targetEmail) {
+        handleResend().catch(console.error);
+      } else {
+        // If email prop is missing but profile has it, we might need to handle that
+        // But handleResend relies on 'email' prop currently.
+        // Let's rely on the prop for now, or update handleResend.
+        if (email) handleResend().catch(console.error);
+      }
+    }
+  }, [email, profile?.email, account?.emailVerification, loading]);
 
   const handleResend = async () => {
     if (!email) {
@@ -89,6 +132,17 @@ export default function VerificationNoticeContent({
       setIsChecking(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh]">
+        <i className="fa-solid fa-circle-notch animate-spin text-4xl text-blue-500 mb-4"></i>
+        <p className="text-slate-500 font-medium">
+          Checking verification status...
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center text-center animate-in fade-in duration-700">

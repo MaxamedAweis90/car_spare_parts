@@ -24,6 +24,7 @@ function VerifyContent() {
     "verifying"
   );
   const [message, setMessage] = useState("Verifying your email...");
+  const [redirectPath, setRedirectPath] = useState("/");
 
   useEffect(() => {
     if (!userId || (!secret && !token)) {
@@ -40,7 +41,7 @@ function VerifyContent() {
       }
 
       const startTime = Date.now();
-      const MIN_DELAY = 1500; // Minimum 1.5s for loading state
+      const MIN_DELAY = 2200; // Increased to 2.2s for better UI feedback
 
       try {
         // Custom Token Flow
@@ -82,9 +83,9 @@ function VerifyContent() {
         }
 
         setStatus("success");
-        setMessage("Email verified successfully! Preparing your dashboard...");
+        setMessage("Email verified successfully! You can now proceed.");
 
-        // Fetch current session to determine role
+        // Fetch current session to determine role and set redirect path
         try {
           const meRes = await fetch("/api/auth/me", {
             credentials: "include",
@@ -99,24 +100,22 @@ function VerifyContent() {
             // Final refresh trigger
             window.dispatchEvent(new Event("session-changed"));
 
-            setTimeout(() => {
-              if (role === "seller") {
-                router.push("/seller/profile?verified=true");
-              } else if (role === "admin" || role === "main_admin") {
-                router.push("/admin/settings?verified=true");
-              } else if (role === "customer") {
-                router.push("/account?verified=true");
-              } else {
-                router.push("/");
-              }
-            }, 1000);
+            if (role === "seller") {
+              setRedirectPath("/seller/profile?verified=true");
+            } else if (role === "admin" || role === "main_admin") {
+              setRedirectPath("/admin/settings?verified=true");
+            } else if (role === "customer") {
+              setRedirectPath("/account?verified=true");
+            } else {
+              setRedirectPath("/");
+            }
           } else {
             // Fallback if me check fails (e.g. session expired or not set)
-            setTimeout(() => router.push("/auth/login?verified=true"), 2000);
+            setRedirectPath("/auth/login?verified=true");
           }
         } catch (err) {
           console.error("Failed to fetch user role", err);
-          setTimeout(() => router.push("/auth/login"), 2000);
+          setRedirectPath("/auth/login");
         }
       } catch (error: any) {
         console.error("Verification error:", error);
@@ -131,7 +130,28 @@ function VerifyContent() {
       }
     };
 
-    verify();
+    // Robustness: Check if we are logged in as a DIFFERENT user than the verification link
+    const checkMatchingSession = async () => {
+      try {
+        const res = await fetch("/api/auth/me", { cache: "no-store" });
+        if (res.ok) {
+          const me = await res.json();
+          if (me.authenticated && me.account?.$id !== userId) {
+            console.warn(
+              "🔐 Verification link is for a different user. Logging out first..."
+            );
+            await fetch("/api/auth/logout", { method: "POST" });
+            localStorage.removeItem("spareparts-session");
+            window.dispatchEvent(new Event("session-changed"));
+          }
+        }
+      } catch (err) {
+        console.warn("Failed session matching check", err);
+      }
+      verify();
+    };
+
+    checkMatchingSession();
   }, [userId, secret, token, router]);
 
   return (
@@ -174,12 +194,13 @@ function VerifyContent() {
         )}
 
         {status === "success" && (
-          <div className="w-full space-y-4">
-            <div className="flex items-center justify-center gap-2 text-green-700 font-semibold text-sm">
-              <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
-              Redirecting now...
-            </div>
-          </div>
+          <button
+            onClick={() => router.push(redirectPath)}
+            className="w-full rounded-xl bg-blue-600 px-4 py-4 text-sm font-bold text-white shadow-lg transition hover:bg-blue-500 active:scale-95 flex items-center justify-center gap-2 animate-in fade-in slide-in-from-bottom-4 duration-500"
+          >
+            <span>Continue to Dashboard</span>
+            <i className="fa-solid fa-arrow-right"></i>
+          </button>
         )}
       </div>
     </div>

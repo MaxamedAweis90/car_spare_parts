@@ -7,7 +7,13 @@ import BackToHome from "@/components/BackToHome";
 
 export default function VerificationNoticePage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <i className="fa-solid fa-circle-notch animate-spin text-4xl text-blue-500"></i>
+        </div>
+      }
+    >
       <VerificationNoticeShell />
     </Suspense>
   );
