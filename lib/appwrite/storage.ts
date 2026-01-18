@@ -1,4 +1,4 @@
-import { storageClient, generateUniqueId } from "@/lib/appwrite";
+import { storageClient, generateUniqueId } from "@/lib/api/appwrite";
 
 // Reuse the shared Appwrite client instead of creating a new one.
 export const storage = storageClient;
@@ -45,3 +45,4 @@ export function getImageUrl(bucketId: "avatars" | "products" | "storeAvatars" | 
   }
   return storage.getFileView(id, fileId).toString();
 }
+

@@ -2,14 +2,14 @@
 
 import { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { useSession } from "@/lib/useSession";
+import { useSession } from "@/lib/auth/useSession";
 import { Avatar } from "antd";
 import {
   UserOutlined,
   CameraOutlined,
   LoadingOutlined,
 } from "@ant-design/icons";
-import { VerificationSuccessBanner } from "@/components/EmailVerification";
+import { VerificationSuccessBanner } from "@/components/features/auth/EmailVerification";
 
 interface Session {
   $id: string;
@@ -575,3 +575,4 @@ function AdminSettingsContent() {
     </div>
   );
 }
+

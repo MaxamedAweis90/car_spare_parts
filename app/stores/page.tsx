@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { getStores } from "@/services/store";
 import type { SellerStoreResponse } from "@/lib/types/seller-store";
-import StoreCard from "@/components/StoreCard";
-import Breadcrumbs from "@/components/Breadcrumbs";
+import StoreCard from "@/components/features/store/StoreCard";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { Spin, Empty } from "antd";
 
 export default function StoresPage() {
@@ -69,3 +69,4 @@ export default function StoresPage() {
     </div>
   );
 }
+

@@ -2,8 +2,8 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useSession } from "@/lib/useSession";
-import BackToHome from "@/components/BackToHome";
+import { useSession } from "@/lib/auth/useSession";
+import BackToHome from "@/components/ui/BackToHome";
 
 export default function SellerLoginClient() {
   const router = useRouter();
@@ -233,3 +233,4 @@ export default function SellerLoginClient() {
     </div>
   );
 }
+

@@ -2,7 +2,7 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import BackToHome from "@/components/BackToHome";
+import BackToHome from "@/components/ui/BackToHome";
 
 export default function SellerPendingPage() {
   return (
@@ -101,3 +101,4 @@ function SellerPendingContent() {
     </div>
   );
 }
+

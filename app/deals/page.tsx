@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import ProductCard from "@/components/ProductCard";
+import ProductCard from "@/components/features/products/ProductCard";
 import Skeleton from "@mui/material/Skeleton";
 
 type Product = {
@@ -171,3 +171,4 @@ export default function DealsPage() {
     </div>
   );
 }
+

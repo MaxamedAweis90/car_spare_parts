@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ID, Query, Permission, Role } from "node-appwrite";
-import { databasesServer, appwriteConfig } from "@/lib/appwrite-server";
+import { databasesServer, appwriteConfig } from "@/lib/api/appwrite-server";
 import {
   buildProductImageUrl,
   type ProductDocument,
@@ -355,3 +355,4 @@ export async function PUT(req: NextRequest) {
     return jsonError(error?.message || "Server error", error?.status || 500);
   }
 }
+

@@ -10,8 +10,8 @@ import {
   type FormEvent,
 } from "react";
 import { getImageUrl } from "@/lib/appwrite/storage";
-import { useSellerStore } from "@/lib/SellerStoreProvider";
-import Button from "@/components/Button";
+import { useSellerStore } from "@/lib/providers/SellerStoreProvider";
+import Button from "@/components/ui/Button";
 
 import { slugify } from "@/lib/utils/slugify";
 
@@ -678,3 +678,4 @@ export default function StoreSettingsPage() {
     </div>
   );
 }
+

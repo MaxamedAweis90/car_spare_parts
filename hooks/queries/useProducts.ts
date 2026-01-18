@@ -3,7 +3,7 @@ import {
   databasesClient,
   appwriteClientConfig,
   storageClient,
-} from "@/lib/appwrite";
+} from "@/lib/api/appwrite";
 import { Query, ID, Models } from "appwrite";
 import { ProductDocument } from "@/lib/types/product";
 
@@ -267,3 +267,4 @@ export function useUpdateProduct() {
     },
   });
 }
+

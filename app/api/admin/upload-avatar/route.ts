@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/requireAdmin";
-import { sanitizeUser } from "@/lib/auth-utils";
+import { sanitizeUser } from "@/lib/auth/auth-utils";
 import {
   buildUserAvatarUrl,
   deleteUserAvatar,
@@ -65,3 +65,4 @@ export async function POST(req: NextRequest) {
     return jsonError(error?.message || "Failed to upload avatar", status);
   }
 }
+

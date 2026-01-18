@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ID } from "node-appwrite";
-import { messagingServer } from "@/lib/appwrite-server";
+import { messagingServer } from "@/lib/api/appwrite-server";
 import { requireSeller } from "@/lib/server/requireSeller";
 import {
   createStoreForSeller,
@@ -203,3 +203,4 @@ export async function PUT(req: NextRequest) {
     return jsonError(error?.message || "Failed to update store", status);
   }
 }
+

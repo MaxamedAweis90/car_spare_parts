@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ID, Query, Permission, Role, type Models } from "node-appwrite";
 import { requireSeller } from "@/lib/server/requireSeller";
-import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
+import { appwriteConfig, databasesServer } from "@/lib/api/appwrite-server";
 import {
   buildProductImageUrl,
   type ProductDocument,
@@ -252,3 +252,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

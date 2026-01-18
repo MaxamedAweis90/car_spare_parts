@@ -5,12 +5,12 @@ import {
   findUserByEmail,
   sanitizeUser,
   type UserProfile,
-} from "@/lib/auth-utils";
+} from "@/lib/auth/auth-utils";
 import {
   usersServer,
   appwriteConfig,
   databasesServer,
-} from "@/lib/appwrite-server";
+} from "@/lib/api/appwrite-server";
 import {
   buildUserAvatarUrl,
   getUserProfileById,
@@ -155,3 +155,4 @@ export async function PUT(req: NextRequest) {
     return jsonError(message, status);
   }
 }
+

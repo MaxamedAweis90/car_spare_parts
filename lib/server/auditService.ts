@@ -1,4 +1,4 @@
-import { databasesServer, appwriteConfig } from "../appwrite-server";
+import { databasesServer, appwriteConfig } from "@/lib/api/appwrite-server";
 import { ID } from "node-appwrite";
 
 export type ActivityAction =
@@ -40,3 +40,4 @@ export async function logActivity(payload: ActivityPayload) {
     console.error("Failed to log activity:", error);
   }
 }
+

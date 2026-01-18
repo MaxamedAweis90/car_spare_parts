@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSeller } from "@/lib/server/requireSeller";
 import { createSessionClient } from "@/lib/server/appwrite-admin";
-import { messagingServer } from "@/lib/appwrite-server";
+import { messagingServer } from "@/lib/api/appwrite-server";
 import { ID } from "node-appwrite";
 
 export async function GET(req: NextRequest) {
@@ -123,3 +123,4 @@ async function sendSecurityEmail(email: string, name: string, message: string) {
     console.error("Failed to send security email", error);
   }
 }
+

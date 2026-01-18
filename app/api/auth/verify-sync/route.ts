@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/appwrite-admin";
-import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
-import { findUserByEmail } from "@/lib/auth-utils";
+import { appwriteConfig, databasesServer } from "@/lib/api/appwrite-server";
+import { findUserByEmail } from "@/lib/auth/auth-utils";
 
 export async function POST(req: NextRequest) {
   try {
@@ -46,3 +46,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

@@ -5,7 +5,7 @@ import {
   messagingServer,
   databasesServer,
   appwriteConfig,
-} from "@/lib/appwrite-server";
+} from "@/lib/api/appwrite-server";
 import { cookies } from "next/headers";
 import { Query } from "node-appwrite";
 import { getVerificationEmailTemplate } from "@/lib/emails/templates";
@@ -130,3 +130,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
+

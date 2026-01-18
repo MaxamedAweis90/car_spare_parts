@@ -28,9 +28,9 @@ import StoreMallDirectoryIcon from "@mui/icons-material/StoreMallDirectory";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
-import { BreadcrumbTrail } from "@/components/BreadcrumbTrail";
+import { BreadcrumbTrail } from "@/components/ui/BreadcrumbTrail";
 import { useCart } from "@/lib/cart";
-import { useSession } from "@/lib/useSession";
+import { useSession } from "@/lib/auth/useSession";
 
 // --- Types ---
 type DeliveryMethod = "delivery" | "pickup";
@@ -928,3 +928,4 @@ function DeliveryLabel({
     </Stack>
   );
 }
+

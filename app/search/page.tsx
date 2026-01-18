@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { BreadcrumbTrail } from "@/components/BreadcrumbTrail";
+import { BreadcrumbTrail } from "@/components/ui/BreadcrumbTrail";
 
 interface Product {
   $id: string;
@@ -255,3 +255,4 @@ function SearchContent() {
     </div>
   );
 }
+

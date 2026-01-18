@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ID, Query, Permission, Role } from "node-appwrite";
-import { databasesServer, appwriteConfig } from "@/lib/appwrite-server";
+import { databasesServer, appwriteConfig } from "@/lib/api/appwrite-server";
 import { getServerSession } from "@/lib/session-server";
 import { FollowDocument } from "@/lib/types/follow";
 
@@ -132,3 +132,4 @@ export async function POST(req: NextRequest) {
     return jsonError(error?.message || "Server error", 500);
   }
 }
+

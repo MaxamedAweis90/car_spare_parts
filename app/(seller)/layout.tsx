@@ -1,4 +1,4 @@
-import { getServerSession } from "@/lib/get-server-session";
+import { getServerSession } from "@/lib/auth/get-server-session";
 import { redirect } from "next/navigation";
 import SellerLayoutShell from "./SellerLayoutShell";
 import VerificationListener from "@/components/auth/VerificationListener";
@@ -47,3 +47,4 @@ export default async function SellerLayout({
     </SellerLayoutShell>
   );
 }
+

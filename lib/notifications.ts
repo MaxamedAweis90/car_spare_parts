@@ -5,7 +5,7 @@
  * HTML emails to users.
  */
 
-import { AdminStatus } from "./auth-utils";
+import { AdminStatus } from "@/lib/auth/auth-utils";
 
 export const sendStatusNotification = async (params: {
   email: string;
@@ -55,3 +55,4 @@ export const sendWelcomeEmail = async (params: {
     CONTENT: Hello ${name}, your email has been verified. Welcome to SomaAutoPart using Appwrite!
   `);
 };
+

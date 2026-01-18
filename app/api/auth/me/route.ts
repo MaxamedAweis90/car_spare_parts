@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findUserByEmail, sanitizeUser } from "@/lib/auth-utils";
-import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
+import { findUserByEmail, sanitizeUser } from "@/lib/auth/auth-utils";
+import { appwriteConfig, databasesServer } from "@/lib/api/appwrite-server";
 import { buildUserAvatarUrl } from "@/lib/server/userProfileService";
 
 const endpoint = process.env.APPWRITE_ENDPOINT!;
@@ -77,3 +77,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 }
+

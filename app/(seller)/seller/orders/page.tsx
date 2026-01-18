@@ -13,9 +13,9 @@ import {
   App,
 } from "antd";
 import { ExclamationCircleOutlined } from "@ant-design/icons";
-import { useSellerStore } from "@/lib/SellerStoreProvider";
+import { useSellerStore } from "@/lib/providers/SellerStoreProvider";
 import { useOrders, useUpdateOrder } from "@/hooks/queries/useOrders";
-import { client, appwriteClientConfig } from "@/lib/appwrite";
+import { client, appwriteClientConfig } from "@/lib/api/appwrite";
 import { useQueryClient } from "@tanstack/react-query";
 
 const { Title, Text } = Typography;
@@ -279,3 +279,4 @@ export default function SellerOrdersPage() {
     </div>
   );
 }
+

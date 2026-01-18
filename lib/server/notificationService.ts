@@ -1,5 +1,5 @@
 import { Query, ID, Permission, Role } from "node-appwrite";
-import { databasesServer, appwriteConfig } from "@/lib/appwrite-server";
+import { databasesServer, appwriteConfig } from "@/lib/api/appwrite-server";
 import { FollowDocument } from "@/lib/types/follow";
 import { sendStatusNotification } from "@/lib/notifications"; // Mock email service
 
@@ -65,3 +65,4 @@ export async function notifyFollowers(params: {
     console.error("Failed to notify followers", error);
   }
 }
+

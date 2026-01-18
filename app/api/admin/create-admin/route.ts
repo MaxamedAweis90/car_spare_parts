@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/requireAdmin";
 import { createAdminClient } from "@/lib/server/appwrite-admin";
-import { createUserProfile, hashPassword } from "@/lib/auth-utils";
+import { createUserProfile, hashPassword } from "@/lib/auth/auth-utils";
 import { ID } from "node-appwrite";
 
 export async function POST(req: NextRequest) {
@@ -78,3 +78,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

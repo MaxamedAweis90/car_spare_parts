@@ -31,3 +31,4 @@ export function isValidEmailDomain(email: string): boolean {
 
   return true;
 }
+

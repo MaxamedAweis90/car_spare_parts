@@ -1,5 +1,5 @@
 import { ID, Query, type Models } from "node-appwrite";
-import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
+import { appwriteConfig, databasesServer } from "@/lib/api/appwrite-server";
 
 export type CompatibilityDocument = Models.Document & {
   productId: string;
@@ -88,3 +88,4 @@ export async function replaceCompatibilitiesForProduct(params: {
 
   return created;
 }
+

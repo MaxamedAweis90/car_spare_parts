@@ -33,7 +33,7 @@ import {
 } from "@/hooks/queries/useProducts";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCategories } from "@/hooks/queries/useCategories";
-import { useSellerStore } from "@/lib/SellerStoreProvider";
+import { useSellerStore } from "@/lib/providers/SellerStoreProvider";
 import { useFilterStore } from "@/stores/ui-store"; // Use persisted store
 
 const { Title } = Typography;
@@ -418,3 +418,4 @@ export default function SellerProductsPage() {
     </div>
   );
 }
+

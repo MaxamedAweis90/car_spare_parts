@@ -21,7 +21,7 @@ import {
   EyeOutlined,
 } from "@ant-design/icons";
 import Link from "next/link";
-import { useSellerStore } from "@/lib/SellerStoreProvider";
+import { useSellerStore } from "@/lib/providers/SellerStoreProvider";
 import { useSellerStats } from "@/hooks/queries/useSellerStats";
 import { useOrders } from "@/hooks/queries/useOrders";
 
@@ -299,3 +299,4 @@ export default function SellerDashboardPage() {
     </div>
   );
 }
+

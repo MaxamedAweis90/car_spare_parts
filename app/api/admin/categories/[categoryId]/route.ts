@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { Models } from "node-appwrite";
 import { requireAdmin } from "@/lib/server/requireAdmin";
-import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
+import { appwriteConfig, databasesServer } from "@/lib/api/appwrite-server";
 
 type CategoryType = "vehicle" | "system" | "sellable";
 type StoredCategoryType = "Vehicle" | "System" | "sellable";

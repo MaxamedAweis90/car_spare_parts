@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { findUserByEmail, sanitizeUser } from "@/lib/auth-utils";
+import { findUserByEmail, sanitizeUser } from "@/lib/auth/auth-utils";
 import { buildUserAvatarUrl } from "@/lib/server/userProfileService";
 
 const endpoint = process.env.APPWRITE_ENDPOINT!;
@@ -64,3 +64,4 @@ export async function getServerSession(req: NextRequest) {
     return null;
   }
 }
+

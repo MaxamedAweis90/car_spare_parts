@@ -1,5 +1,5 @@
 import { Query, type Models } from "node-appwrite";
-import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
+import { appwriteConfig, databasesServer } from "@/lib/api/appwrite-server";
 
 export type ProductDocument = Models.Document & {
   name: string;
@@ -48,3 +48,4 @@ export function buildProductImageUrl(fileId: string | null) {
   url.searchParams.set("project", project);
   return url.toString();
 }
+

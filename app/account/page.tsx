@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useSession } from "@/lib/useSession";
-import Button from "@/components/Button";
-import { VerificationSuccessBanner } from "@/components/EmailVerification";
+import { useSession } from "@/lib/auth/useSession";
+import Button from "@/components/ui/Button";
+import { VerificationSuccessBanner } from "@/components/features/auth/EmailVerification";
 import { useSearchParams } from "next/navigation";
 
 import { Suspense } from "react";
@@ -598,3 +598,4 @@ function AccountContent() {
     </div>
   );
 }
+

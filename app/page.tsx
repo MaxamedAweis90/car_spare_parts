@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
-import ProductCard from "@/components/ProductCard";
+import ProductCard from "@/components/features/products/ProductCard";
 import Skeleton from "@mui/material/Skeleton";
-import { HeroSection } from "./sections/HeroSection";
-import { TopDealsSection } from "./sections/TopDealsSection";
+import { HeroSection } from "@/components/features/landing/HeroSection";
+import { TopDealsSection } from "@/components/features/landing/TopDealsSection";
 
 type Product = {
   $id: string;
@@ -266,3 +266,4 @@ export default function Home() {
     </div>
   );
 }
+

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "@/lib/useSession";
+import { useSession } from "@/lib/auth/useSession";
 import { Switch, Button, Empty, Spin, App } from "antd";
 import Link from "next/link";
-import Breadcrumbs from "@/components/Breadcrumbs";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface FollowedStore {
@@ -225,3 +225,4 @@ export default function FollowedStoresPage() {
     </div>
   );
 }
+

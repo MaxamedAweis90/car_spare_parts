@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ID, Query, type Models } from "node-appwrite";
 import { requireAdmin } from "@/lib/server/requireAdmin";
-import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
+import { appwriteConfig, databasesServer } from "@/lib/api/appwrite-server";
 
 type CompatibilityDocument = Models.Document & {
   productId?: string | null;
@@ -112,3 +112,4 @@ export async function POST(req: NextRequest) {
     return jsonError(error?.message || "Server error", error?.status || 500);
   }
 }
+

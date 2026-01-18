@@ -3,7 +3,7 @@ import {
   usersServer,
   databasesServer,
   appwriteConfig,
-} from "@/lib/appwrite-server";
+} from "@/lib/api/appwrite-server";
 import { cookies } from "next/headers";
 import { Query } from "node-appwrite";
 
@@ -76,3 +76,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

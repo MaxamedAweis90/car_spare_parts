@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import BackToHome from "@/components/BackToHome";
+import BackToHome from "@/components/ui/BackToHome";
 
 export default function ResetPasswordPage() {
   return (
@@ -150,3 +150,4 @@ function ResetPasswordContent() {
     </div>
   );
 }
+

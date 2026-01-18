@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/requireAdmin";
 import { createAdminClient } from "@/lib/server/appwrite-admin";
-import { databasesServer, appwriteConfig } from "@/lib/appwrite-server";
+import { databasesServer, appwriteConfig } from "@/lib/api/appwrite-server";
 import { Query } from "node-appwrite";
 import { sendStatusNotification } from "@/lib/notifications";
 
@@ -109,3 +109,4 @@ export async function PATCH(req: NextRequest) {
     );
   }
 }
+

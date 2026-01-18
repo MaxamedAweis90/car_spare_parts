@@ -4,7 +4,7 @@ import {
   appwriteConfig,
   usersServer,
   messagingServer,
-} from "@/lib/appwrite-server";
+} from "@/lib/api/appwrite-server";
 import { Models, Query, ID } from "node-appwrite";
 import {
   createUserProfile,
@@ -12,7 +12,7 @@ import {
   findUserByEmail,
   hashPassword,
   sanitizeUser,
-} from "@/lib/auth-utils";
+} from "@/lib/auth/auth-utils";
 import { logActivity } from "@/lib/server/auditService";
 import {
   getEmailUpdateVerificationTemplate,
@@ -519,3 +519,4 @@ export async function DELETE(req: NextRequest) {
     );
   }
 }
+

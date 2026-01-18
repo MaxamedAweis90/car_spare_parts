@@ -36,14 +36,14 @@ import {
   InfoCircleOutlined,
 } from "@ant-design/icons";
 
-import { useSession } from "@/lib/useSession";
+import { useSession } from "@/lib/auth/useSession";
 import { performLogout } from "@/lib/logout";
 import { getImageUrl } from "@/lib/appwrite/storage"; // Assuming this exists as per original
-import { SellerStoreProvider, useSellerStore } from "@/lib/SellerStoreProvider";
+import { SellerStoreProvider, useSellerStore } from "@/lib/providers/SellerStoreProvider";
 import {
   SellerProfileProvider,
   useSellerProfile,
-} from "@/lib/SellerProfileProvider";
+} from "@/lib/providers/SellerProfileProvider";
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -498,3 +498,4 @@ function SellerLayoutShell({
     );
   }
 }
+

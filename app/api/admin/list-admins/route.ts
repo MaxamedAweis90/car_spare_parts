@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/server/requireAdmin";
-import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
+import { appwriteConfig, databasesServer } from "@/lib/api/appwrite-server";
 import { Query } from "node-appwrite";
 
 export async function GET(req: NextRequest) {
@@ -31,3 +31,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

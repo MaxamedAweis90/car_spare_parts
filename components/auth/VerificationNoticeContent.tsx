@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useSession } from "@/lib/useSession";
+import { useSession } from "@/lib/auth/useSession";
 
 interface VerificationNoticeContentProps {
   email: string | null;
@@ -276,3 +276,4 @@ export default function VerificationNoticeContent({
     </div>
   );
 }
+

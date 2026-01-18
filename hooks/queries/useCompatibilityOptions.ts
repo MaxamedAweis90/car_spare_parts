@@ -23,3 +23,4 @@ export function useCompatibilityOptions() {
     initialData: options.length > 0 ? options : undefined,
   });
 }
+

@@ -21,3 +21,4 @@ export type ProductDocument = Models.Document & {
   // Computed fields
   imageUrl?: string | null;
 };
+

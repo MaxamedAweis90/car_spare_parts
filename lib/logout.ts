@@ -14,3 +14,4 @@ export async function performLogout(): Promise<boolean> {
     return false;
   }
 }
+

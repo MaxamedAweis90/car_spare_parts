@@ -22,3 +22,4 @@ export interface OrderDocument extends Models.Document {
   parsedItems?: OrderItem[];
   parsedShippingAddress?: any;
 }
+

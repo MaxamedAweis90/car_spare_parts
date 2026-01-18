@@ -3,10 +3,10 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "../theme/ecommerce.css";
 import "./globals.css";
 
-import CDNs from "@/components/Tools/CDNs";
-import SiteShell from "@/components/SiteShell";
-import QueryProvider from "@/components/providers/QueryProvider";
-import AntdRegistryProvider from "@/components/providers/AntdRegistryProvider";
+import CDNs from "@/components/layout/Tools/CDNs";
+import SiteShell from "@/components/layout/SiteShell";
+import QueryProvider from "@/lib/providers/QueryProvider";
+import AntdRegistryProvider from "@/lib/providers/AntdRegistryProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,3 +45,4 @@ export default function RootLayout({
     </html>
   );
 }
+

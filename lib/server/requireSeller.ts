@@ -22,3 +22,4 @@ export async function requireSeller(req: NextRequest): Promise<SellerContext> {
 
   return { account, profile };
 }
+

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import BackToHome from "@/components/BackToHome";
+import BackToHome from "@/components/ui/BackToHome";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
@@ -104,3 +104,4 @@ export default function ForgotPasswordPage() {
     </div>
   );
 }
+

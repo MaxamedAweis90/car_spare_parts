@@ -24,12 +24,12 @@ import AccordionSummary from "@mui/material/AccordionSummary";
 import AccordionDetails from "@mui/material/AccordionDetails";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { getImageUrl } from "@/lib/appwrite/storage";
-import { useSellerProfile } from "@/lib/SellerProfileProvider";
-import { useSession } from "@/lib/useSession";
+import { useSellerProfile } from "@/lib/providers/SellerProfileProvider";
+import { useSession } from "@/lib/auth/useSession";
 import {
   EmailVerificationField,
   VerificationSuccessBanner,
-} from "@/components/EmailVerification";
+} from "@/components/features/auth/EmailVerification";
 
 type Feedback = { type: "success" | "error"; message: string } | null;
 type SellerProfile = {
@@ -683,3 +683,4 @@ function ProfileContent() {
     </Box>
   );
 }
+

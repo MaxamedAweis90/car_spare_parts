@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ID, Query, Permission, Role } from "node-appwrite";
-import { databasesServer, appwriteConfig } from "@/lib/appwrite-server";
+import { databasesServer, appwriteConfig } from "@/lib/api/appwrite-server";
 import { Models } from "appwrite";
 import { buildProductImageUrl } from "@/lib/server/productService";
 
@@ -293,3 +293,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

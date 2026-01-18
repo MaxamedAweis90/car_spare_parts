@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { accountClient } from "@/lib/appwrite";
+import { accountClient } from "@/lib/api/appwrite";
 
 export default function OAuthCallback() {
   const router = useRouter();
@@ -115,3 +115,4 @@ export default function OAuthCallback() {
     </div>
   );
 }
+

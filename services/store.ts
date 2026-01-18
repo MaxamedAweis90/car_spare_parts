@@ -67,3 +67,4 @@ export async function getStores() {
   const res = await fetch("/api/stores", { cache: "no-store" });
   return handleJson<{ stores: SellerStoreResponse[] }>(res);
 }
+

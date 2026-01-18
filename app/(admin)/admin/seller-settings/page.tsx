@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useSession } from "@/lib/useSession";
+import { useSession } from "@/lib/auth/useSession";
 import { getUsers, updateUser } from "@/services/users";
 
 type SellerRecord = {
@@ -198,3 +198,4 @@ export default function SellerRoleSettingsPage() {
     </div>
   );
 }
+

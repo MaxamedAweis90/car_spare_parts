@@ -4,8 +4,8 @@ import {
   createAppwriteEmailSession,
   triggerAppwriteVerification,
 } from "@/lib/server/appwrite-auth-actions";
-import { findUserByEmail, hashPassword } from "@/lib/auth-utils";
-import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
+import { findUserByEmail, hashPassword } from "@/lib/auth/auth-utils";
+import { appwriteConfig, databasesServer } from "@/lib/api/appwrite-server";
 
 export async function POST(req: NextRequest) {
   try {
@@ -77,3 +77,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

@@ -19,3 +19,4 @@ export type NotificationDocument = Models.Document & {
   link: string;
   isRead: boolean;
 };
+

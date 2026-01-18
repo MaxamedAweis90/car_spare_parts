@@ -6,3 +6,4 @@ export function slugify(input: string) {
     .replace(/^-+|-+$/g, "")
     .slice(0, 60) || "store";
 }
+

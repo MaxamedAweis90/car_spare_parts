@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSeller } from "@/lib/server/requireSeller";
-import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
+import { appwriteConfig, databasesServer } from "@/lib/api/appwrite-server";
 import { ProductDocument } from "@/lib/server/productService";
 
 function jsonError(message: string, status = 400) {
@@ -81,3 +81,4 @@ export async function PATCH(req: NextRequest) {
     return jsonError(error?.message || "Server error", error?.status || 500);
   }
 }
+

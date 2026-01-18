@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireCustomer } from "@/lib/server/requireCustomer";
-import { sanitizeUser } from "@/lib/auth-utils";
+import { sanitizeUser } from "@/lib/auth/auth-utils";
 import {
   buildUserAvatarUrl,
   deleteUserAvatar,
@@ -64,3 +64,4 @@ export async function POST(req: NextRequest) {
     return jsonError(message, status);
   }
 }
+

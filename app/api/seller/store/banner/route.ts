@@ -48,3 +48,4 @@ export async function POST(req: NextRequest) {
     return jsonError(error?.message || "Failed to upload banner", status);
   }
 }
+

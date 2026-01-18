@@ -41,3 +41,4 @@ export async function requireAdmin(req: NextRequest): Promise<AdminContext> {
 
   return { account, profile };
 }
+

@@ -11,7 +11,7 @@ import {
   App,
 } from "antd";
 import { CheckOutlined, ReloadOutlined } from "@ant-design/icons";
-import { useSession } from "@/lib/useSession";
+import { useSession } from "@/lib/auth/useSession";
 import { usePendingSellers, useApproveSeller } from "@/hooks/queries/useUsers";
 
 const { Title, Text } = Typography;
@@ -110,3 +110,4 @@ export default function AdminApprovalsPage() {
     </div>
   );
 }
+

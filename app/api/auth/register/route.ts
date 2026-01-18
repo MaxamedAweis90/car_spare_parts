@@ -6,12 +6,12 @@ import {
   findUserByEmail,
   hashPassword,
   sanitizeUser,
-} from "@/lib/auth-utils";
+} from "@/lib/auth/auth-utils";
 import {
   appwriteConfig,
   usersServer,
   messagingServer,
-} from "@/lib/appwrite-server";
+} from "@/lib/api/appwrite-server";
 import { isValidEmailDomain } from "@/lib/email-validator";
 import { createAdminClient } from "@/lib/server/appwrite-admin";
 
@@ -178,3 +178,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

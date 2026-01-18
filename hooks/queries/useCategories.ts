@@ -19,3 +19,4 @@ export function useCategories() {
     initialData: categories.length > 0 ? categories : undefined,
   });
 }
+

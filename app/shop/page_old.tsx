@@ -2,10 +2,10 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import ProductCard from "@/components/ProductCard";
+import ProductCard from "@/components/features/products/ProductCard";
 import Skeleton from "@mui/material/Skeleton";
 import Link from "next/link";
-import { SearchFilters } from "@/components/SearchFilters";
+import { SearchFilters } from "@/components/features/products/SearchFilters";
 import { useCategories } from "@/hooks/queries/useCategories";
 
 type Product = {
@@ -317,3 +317,4 @@ function ShopPageContent() {
     </div>
   );
 }
+

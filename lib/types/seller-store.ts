@@ -61,3 +61,4 @@ export function serializeStore(doc: SellerStoreDocument): SellerStoreResponse {
     updatedAt: doc.$updatedAt,
   };
 }
+

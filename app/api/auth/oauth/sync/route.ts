@@ -3,8 +3,8 @@ import {
   createUserProfile,
   findUserByEmail,
   sanitizeUser,
-} from "@/lib/auth-utils";
-import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
+} from "@/lib/auth/auth-utils";
+import { appwriteConfig, databasesServer } from "@/lib/api/appwrite-server";
 import {
   buildUserAvatarUrl,
   updateUserProfileDocument,
@@ -302,3 +302,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

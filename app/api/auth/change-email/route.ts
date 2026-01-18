@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromRequest } from "@/lib/server/getSession";
 import { createAdminClient } from "@/lib/server/appwrite-admin";
-import { appwriteConfig } from "@/lib/appwrite-server";
+import { appwriteConfig } from "@/lib/api/appwrite-server";
 import { ID, Query } from "node-appwrite";
 
 /**
@@ -109,3 +109,4 @@ export async function PATCH(req: NextRequest) {
     );
   }
 }
+

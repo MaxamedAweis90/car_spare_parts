@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ID } from "node-appwrite";
 import { requireCustomer } from "@/lib/server/requireCustomer";
-import { findUserByEmail, sanitizeUser } from "@/lib/auth-utils";
+import { findUserByEmail, sanitizeUser } from "@/lib/auth/auth-utils";
 import {
   buildUserAvatarUrl,
   getUserProfileById,
   updateUserProfileDocument,
 } from "@/lib/server/userProfileService";
-import { usersServer, messagingServer } from "@/lib/appwrite-server";
+import { usersServer, messagingServer } from "@/lib/api/appwrite-server";
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ error: message }, { status });
@@ -169,3 +169,4 @@ export async function PATCH(req: NextRequest) {
     return jsonError(message, status);
   }
 }
+

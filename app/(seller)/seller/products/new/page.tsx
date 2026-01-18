@@ -30,7 +30,7 @@ import type { UploadFile, UploadProps } from "antd/es/upload/interface";
 import { useCategories } from "@/hooks/queries/useCategories";
 import { useCompatibilityOptions } from "@/hooks/queries/useCompatibilityOptions";
 import { useCreateProduct } from "@/hooks/queries/useProducts";
-import { useSellerStore } from "@/lib/SellerStoreProvider";
+import { useSellerStore } from "@/lib/providers/SellerStoreProvider";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
@@ -635,3 +635,4 @@ export default function SellerAddProductPage() {
     </div>
   );
 }
+

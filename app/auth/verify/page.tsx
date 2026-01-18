@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Client, Account } from "appwrite";
-import BackToHome from "@/components/BackToHome";
+import BackToHome from "@/components/ui/BackToHome";
 
 export default function VerifyPage() {
   return (
@@ -206,3 +206,4 @@ function VerifyContent() {
     </div>
   );
 }
+

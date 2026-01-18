@@ -4,7 +4,7 @@ import {
   appwriteConfig,
   databasesServer,
   storageServer,
-} from "@/lib/appwrite-server";
+} from "@/lib/api/appwrite-server";
 import { slugify } from "@/lib/utils/slugify";
 import type {
   SellerStoreDocument,
@@ -279,3 +279,4 @@ export async function uploadStoreBanner(
 export function serializeStoreDocument(doc: SellerStoreDocument) {
   return serializeStore(doc);
 }
+

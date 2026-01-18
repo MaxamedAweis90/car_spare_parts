@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireSeller } from "@/lib/server/requireSeller";
-import { findUserByEmail, hashPassword, verifyPassword } from "@/lib/auth-utils";
-import { usersServer } from "@/lib/appwrite-server";
+import { findUserByEmail, hashPassword, verifyPassword } from "@/lib/auth/auth-utils";
+import { usersServer } from "@/lib/api/appwrite-server";
 import { updateUserProfileDocument } from "@/lib/server/userProfileService";
 
 function jsonError(message: string, status = 400) {
@@ -54,3 +54,4 @@ export async function POST(req: NextRequest) {
     return jsonError(message, status);
   }
 }
+

@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
-import type { UserProfile } from "@/lib/auth-utils";
-import { findUserByEmail, sanitizeUser } from "@/lib/auth-utils";
+import type { UserProfile } from "@/lib/auth/auth-utils";
+import { findUserByEmail, sanitizeUser } from "@/lib/auth/auth-utils";
 import { buildUserAvatarUrl } from "@/lib/server/userProfileService";
 
 type AppwriteAccount = {
@@ -57,3 +57,4 @@ export async function getSessionFromRequest(req: NextRequest): Promise<SessionRe
     return null;
   }
 }
+

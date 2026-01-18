@@ -19,3 +19,4 @@ export async function requireCustomer(req: NextRequest): Promise<CustomerContext
 
   return { account, profile: profile as CustomerContext["profile"] };
 }
+

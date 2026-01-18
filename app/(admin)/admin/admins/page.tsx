@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import CreateUserForm from "@/components/CreateUserForm";
-import { useSession } from "@/lib/useSession";
+import CreateUserForm from "@/components/forms/CreateUserForm";
+import { useSession } from "@/lib/auth/useSession";
 import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
 import { deleteUser, getUsers, updateUser } from "@/services/users";
 
@@ -363,3 +363,4 @@ export default function AdminAdminsPage() {
     </section>
   );
 }
+

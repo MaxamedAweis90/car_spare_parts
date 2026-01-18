@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Query, type Models } from "node-appwrite";
-import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
+import { appwriteConfig, databasesServer } from "@/lib/api/appwrite-server";
 
 type CompatibilityOptionDocument = Models.Document & {
   vehicleType: string;
@@ -75,3 +75,4 @@ export async function GET(req: NextRequest) {
     return jsonError(error?.message || "Server error", error?.status || 500);
   }
 }
+

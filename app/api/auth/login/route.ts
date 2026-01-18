@@ -5,13 +5,13 @@ import {
   findUserByEmail,
   sanitizeUser,
   verifyPassword,
-} from "@/lib/auth-utils";
+} from "@/lib/auth/auth-utils";
 import {
   createAppwriteEmailSession,
   triggerAppwriteVerification,
 } from "@/lib/server/appwrite-auth-actions";
 import { createAdminClient } from "@/lib/server/appwrite-admin";
-import { appwriteConfig, databasesServer } from "@/lib/appwrite-server";
+import { appwriteConfig, databasesServer } from "@/lib/api/appwrite-server";
 import { logActivity } from "@/lib/server/auditService";
 
 const endpoint = process.env.APPWRITE_ENDPOINT!;
@@ -177,3 +177,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import VerificationNoticeContent from "@/components/auth/VerificationNoticeContent";
-import BackToHome from "@/components/BackToHome";
+import BackToHome from "@/components/ui/BackToHome";
 
 export default function VerificationNoticePage() {
   return (
@@ -32,3 +32,4 @@ function VerificationNoticeShell() {
     </div>
   );
 }
+

@@ -29,7 +29,7 @@ import {
   MenuUnfoldOutlined,
   LockOutlined,
 } from "@ant-design/icons";
-import { useSession } from "@/lib/useSession";
+import { useSession } from "@/lib/auth/useSession";
 import { performLogout } from "@/lib/logout";
 import { useUIStore } from "@/stores/ui-store";
 import { getImageUrl } from "@/lib/appwrite/storage";
@@ -374,3 +374,4 @@ export default function AdminLayoutShell({
     );
   }
 }
+

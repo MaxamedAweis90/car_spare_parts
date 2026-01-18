@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import BackToHome from "@/components/BackToHome";
+import BackToHome from "@/components/ui/BackToHome";
 
 function SetupPasswordForm() {
   const searchParams = useSearchParams();
@@ -163,3 +163,4 @@ export default function SetupPasswordPage() {
     </div>
   );
 }
+

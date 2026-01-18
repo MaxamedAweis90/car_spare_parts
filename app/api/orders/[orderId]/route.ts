@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Query } from "node-appwrite";
-import { databasesServer, appwriteConfig } from "@/lib/appwrite-server";
+import { databasesServer, appwriteConfig } from "@/lib/api/appwrite-server";
 
 type RouteContext = {
   params: Promise<{ orderId: string }>;

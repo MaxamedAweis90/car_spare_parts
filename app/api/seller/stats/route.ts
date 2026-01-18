@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Query } from "node-appwrite";
-import { databasesServer, appwriteConfig } from "@/lib/appwrite-server";
+import { databasesServer, appwriteConfig } from "@/lib/api/appwrite-server";
 
 export async function GET(req: NextRequest) {
   try {
@@ -156,3 +156,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+

@@ -1,8 +1,8 @@
 import { randomUUID } from "crypto";
 import { Buffer } from "node:buffer";
 import { Permission, Role } from "node-appwrite";
-import { appwriteConfig, databasesServer, storageServer } from "@/lib/appwrite-server";
-import type { UserProfile } from "@/lib/auth-utils";
+import { appwriteConfig, databasesServer, storageServer } from "@/lib/api/appwrite-server";
+import type { UserProfile } from "@/lib/auth/auth-utils";
 
 const { databaseId, usersCollectionId, avatarBucketId, endpoint, projectId, apiKey } = appwriteConfig;
 
@@ -96,3 +96,4 @@ export function buildUserAvatarUrl(fileId: string | null | undefined) {
     return null;
   }
 }
+

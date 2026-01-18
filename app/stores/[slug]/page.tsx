@@ -7,8 +7,8 @@ import {
   buildProductImageUrl,
   findProductsBySellerId,
 } from "@/lib/server/productService";
-import Breadcrumbs from "@/components/Breadcrumbs";
-import FollowButton from "@/components/FollowButton";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import FollowButton from "@/components/features/store/FollowButton";
 
 function buildStoreAssetUrl(fileId: string | null, kind: "avatar" | "banner") {
   if (!fileId) return null;

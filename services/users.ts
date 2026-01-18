@@ -53,3 +53,4 @@ export async function deleteUser(payload: UserPayload) {
   });
   return res.json();
 }
+

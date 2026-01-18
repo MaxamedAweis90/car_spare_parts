@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Query } from "node-appwrite";
-import { databasesServer, appwriteConfig } from "@/lib/appwrite-server";
+import { databasesServer, appwriteConfig } from "@/lib/api/appwrite-server";
 import { getServerSession } from "@/lib/session-server";
 import { FollowDocument } from "@/lib/types/follow";
 import { SellerStoreDocument } from "@/lib/types/seller-store";
@@ -62,3 +62,4 @@ export async function GET(req: NextRequest) {
     return jsonError(error?.message || "Server error", 500);
   }
 }
+

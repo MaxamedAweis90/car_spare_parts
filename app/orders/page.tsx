@@ -16,9 +16,9 @@ import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 
-import { useSession } from "@/lib/useSession";
-import { BreadcrumbTrail } from "@/components/BreadcrumbTrail";
-import { client, appwriteClientConfig } from "@/lib/appwrite";
+import { useSession } from "@/lib/auth/useSession";
+import { BreadcrumbTrail } from "@/components/ui/BreadcrumbTrail";
+import { client, appwriteClientConfig } from "@/lib/api/appwrite";
 
 interface Order {
   $id: string;
@@ -409,3 +409,4 @@ export default function CustomerOrdersPage() {
     </Box>
   );
 }
+

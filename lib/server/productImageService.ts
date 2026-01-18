@@ -88,3 +88,4 @@ export async function deleteProductImage(fileId: string) {
     console.error("Failed to delete product image", error);
   }
 }
+
