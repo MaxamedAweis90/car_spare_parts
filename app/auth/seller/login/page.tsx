@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import SellerLoginClient from "./SellerLoginClient";
 
 export default function SellerLoginPage() {
-  return <SellerLoginClient />;
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SellerLoginClient />
+    </Suspense>
+  );
 }
