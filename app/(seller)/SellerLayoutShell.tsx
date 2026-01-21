@@ -16,6 +16,7 @@ import {
   Badge,
   Drawer,
   Grid,
+  Modal,
 } from "antd";
 import type { MenuProps } from "antd";
 const { useBreakpoint } = Grid;
@@ -39,7 +40,10 @@ import {
 import { useSession } from "@/lib/auth/useSession";
 import { performLogout } from "@/lib/logout";
 import { getImageUrl } from "@/lib/appwrite/storage"; // Assuming this exists as per original
-import { SellerStoreProvider, useSellerStore } from "@/lib/providers/SellerStoreProvider";
+import {
+  SellerStoreProvider,
+  useSellerStore,
+} from "@/lib/providers/SellerStoreProvider";
 import {
   SellerProfileProvider,
   useSellerProfile,
@@ -138,13 +142,41 @@ function SellerLayoutShell({
   >("idle");
   const screens = useBreakpoint();
   const isMobile = !screens.lg;
+  const [showImageReminder, setShowImageReminder] = useState(false);
 
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
 
   const { store } = useSellerStore();
-  const { profile: sellerProfile } = useSellerProfile();
+  const { profile: sellerProfile, loading: profileLoading } =
+    useSellerProfile();
+
+  useEffect(() => {
+    if (loading || profileLoading) return;
+    if (!sellerProfile) return;
+
+    // Check if profile image is missing
+    const hasImage = !!(sellerProfile.avatarId || sellerProfile.avatarUrl);
+
+    // Check session storage to only show once per session
+    const reminderDismissed = sessionStorage.getItem(
+      "seller_profile_reminder_dismissed",
+    );
+
+    if (!hasImage && !reminderDismissed) {
+      // Delay slightly for better UX
+      const timer = setTimeout(() => {
+        setShowImageReminder(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, profileLoading, sellerProfile]);
+
+  const handleDismissReminder = () => {
+    setShowImageReminder(false);
+    sessionStorage.setItem("seller_profile_reminder_dismissed", "true");
+  };
 
   // Client-side redirects removed - handled by Server Layout
 
@@ -278,7 +310,7 @@ function SellerLayoutShell({
 
   const activeKey =
     NAV_ITEMS.filter(
-      (item) => pathname === item.key || pathname.startsWith(`${item.key}/`)
+      (item) => pathname === item.key || pathname.startsWith(`${item.key}/`),
     ).sort((a, b) => b.key.length - a.key.length)[0]?.key ||
     "/seller/dashboard";
 
@@ -420,17 +452,17 @@ function SellerLayoutShell({
                     resendStatus === "success"
                       ? "bg-green-100 text-green-700 border-green-200"
                       : resendStatus === "error"
-                      ? "bg-red-100 text-red-700 border-red-200"
-                      : "bg-amber-100 text-amber-900 border-amber-200 hover:bg-amber-200"
+                        ? "bg-red-100 text-red-700 border-red-200"
+                        : "bg-amber-100 text-amber-900 border-amber-200 hover:bg-amber-200"
                   }`}
                 >
                   {resending
                     ? "Sending..."
                     : resendStatus === "success"
-                    ? "✓ Link Sent"
-                    : resendStatus === "error"
-                    ? "Failed to send"
-                    : "Resend Link"}
+                      ? "✓ Link Sent"
+                      : resendStatus === "error"
+                        ? "Failed to send"
+                        : "Resend Link"}
                 </button>
               </div>
             </div>
@@ -438,6 +470,58 @@ function SellerLayoutShell({
           {children}
         </Content>
       </Layout>
+
+      <Modal
+        title={null}
+        open={showImageReminder}
+        onCancel={handleDismissReminder}
+        footer={null}
+        centered
+        width={400}
+        styles={{ body: { padding: 0, overflow: "hidden", borderRadius: 16 } }}
+      >
+        <div className="p-8 text-center">
+          <div className="mb-6 flex justify-center">
+            <div className="relative">
+              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-blue-50 text-blue-500 border-2 border-dashed border-blue-200">
+                <UserOutlined style={{ fontSize: 40 }} />
+              </div>
+              <div className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg border-2 border-white">
+                <PlusSquareOutlined />
+              </div>
+            </div>
+          </div>
+          <h2 className="text-xl font-black text-slate-800 mb-2">
+            Setup Your Profile
+          </h2>
+          <p className="text-slate-500 mb-8">
+            Complete your seller identity! Adding a profile picture helps build
+            trust with your customers.
+          </p>
+          <div className="flex flex-col gap-3">
+            <Button
+              type="primary"
+              size="large"
+              block
+              className="h-12 font-bold rounded-xl"
+              onClick={() => {
+                handleDismissReminder();
+                router.push("/seller/profile");
+              }}
+            >
+              Set up profile picture
+            </Button>
+            <Button
+              type="text"
+              block
+              className="text-slate-400 font-medium"
+              onClick={handleDismissReminder}
+            >
+              Remind me later
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </Layout>
   );
 
@@ -498,4 +582,3 @@ function SellerLayoutShell({
     );
   }
 }
-

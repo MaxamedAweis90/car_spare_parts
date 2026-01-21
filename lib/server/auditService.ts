@@ -12,6 +12,7 @@ export type ActivityAction =
   | "LOGIN_ADMIN";
 
 export interface ActivityPayload {
+  activityId?: string; // Appwrite might require this as an attribute
   adminId: string;
   adminName: string;
   action: ActivityAction;
@@ -28,16 +29,17 @@ export async function logActivity(payload: ActivityPayload) {
       return;
     }
 
+    const activityId = payload.activityId || ID.unique();
     await databasesServer.createDocument(
       appwriteConfig.databaseId,
       process.env.APPWRITE_ACTIVITIES_COLLECTION_ID,
-      ID.unique(),
+      activityId,
       {
         ...payload,
-      }
+        activityId: activityId,
+      },
     );
   } catch (error) {
     console.error("Failed to log activity:", error);
   }
 }
-

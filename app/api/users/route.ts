@@ -57,7 +57,16 @@ async function getAppwriteAccountFromRequest(req: NextRequest) {
     cache: "no-store",
   });
 
-  if (!accountRes.ok) return null;
+  if (!accountRes.ok) {
+    const errorText = await accountRes.text();
+    console.warn("Appwrite session retrieval failed:", {
+      status: accountRes.status,
+      error: errorText,
+      hasJwt: Boolean(jwtCookie),
+      hasCookies: Boolean(cookieHeader),
+    });
+    return null;
+  }
   return accountRes.json();
 }
 
@@ -100,30 +109,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 
-    // Authorize using the current Appwrite session (most reliable), falling back to creatorId checks.
-    let isMainAdmin = false;
+    // Authorize: Check if the requester is the main admin
     const account = await getAppwriteAccountFromRequest(req);
-    if (account?.$id && mainAdminId && account.$id === mainAdminId) {
-      isMainAdmin = true;
-    }
+    const creator = await getUserById(creatorId);
 
-    // Some setups store the main admin id as the profile document id instead of the Appwrite auth user id.
-    if (!isMainAdmin && mainAdminId && creatorId === mainAdminId) {
-      isMainAdmin = true;
-    }
+    // Check main admin by role in DB OR by ID in env
+    let isMainAdmin =
+      creator.role === "main_admin" ||
+      (account?.$id && mainAdminId && account.$id === mainAdminId) ||
+      (mainAdminId && creatorId === mainAdminId);
 
-    if (!isMainAdmin) {
-      const creator = await getUserById(creatorId);
-      if (creator.role === "main_admin") {
-        isMainAdmin = true;
-      } else if (
-        creator.appwriteUserId &&
-        mainAdminId &&
-        creator.appwriteUserId === mainAdminId
-      ) {
-        isMainAdmin = true;
-      }
-    }
+    console.log("Create Admin Permission Check:", {
+      creatorId,
+      creatorRole: creator.role,
+      mainAdminId,
+      isMainAdmin,
+      appwriteSessionId: account?.$id || "none",
+    });
 
     if (!isMainAdmin) {
       return NextResponse.json(

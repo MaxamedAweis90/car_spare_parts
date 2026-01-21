@@ -26,6 +26,7 @@ function SellerRegisterContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const [success, setSuccess] = useState(false);
   const shouldHide = sessionLoading || authenticated;
 
   useEffect(() => {
@@ -88,11 +89,9 @@ function SellerRegisterContent() {
         return;
       }
 
-      const params = new URLSearchParams();
-      if (email) params.set("email", email);
-      router.push(
-        `/auth/seller/pending${params.toString() ? `?${params}` : ""}`
-      );
+      setSuccess(true);
+      // Wait for 2 seconds then redirect, OR just stay on success screen.
+      // The user wants a success screen with a login button, so we'll just set success=true.
     } catch (error) {
       console.error(error);
       setMessage("Server error");
@@ -100,6 +99,43 @@ function SellerRegisterContent() {
       setSubmitting(false);
     }
   };
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_45%)] bg-[#f2f5fb] flex items-center justify-center px-4 py-10">
+        <BackToHome />
+        <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)] p-10 text-center">
+          <div className="mb-6 flex justify-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-50 shadow-sm border border-green-100">
+              <i className="fa-solid fa-check text-4xl text-green-500"></i>
+            </div>
+          </div>
+          <h1 className="text-3xl font-extrabold text-slate-900 mb-4">
+            Application Submitted!
+          </h1>
+          <p className="text-slate-600 mb-8 max-w-sm mx-auto">
+            Thank you for applying to SomaParts. Your application is now pending
+            admin approval. We will notify you via email once your account is
+            activated.
+          </p>
+          <div className="flex flex-col gap-3 max-w-xs mx-auto">
+            <a
+              href="/auth/seller/login"
+              className="w-full rounded-xl bg-[#1d4ed8] px-6 py-4 text-sm font-bold text-white shadow-md transition hover:bg-[#153ea8]"
+            >
+              Go to Login
+            </a>
+            <a
+              href="/"
+              className="w-full rounded-xl bg-slate-50 border border-slate-200 px-6 py-4 text-sm font-bold text-slate-700 transition hover:bg-slate-100"
+            >
+              Back to Home
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_45%)] bg-[#f2f5fb] flex items-center justify-center px-4 py-10">
@@ -257,4 +293,3 @@ function SellerRegisterContent() {
     </div>
   );
 }
-

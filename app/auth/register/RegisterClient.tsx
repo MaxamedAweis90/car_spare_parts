@@ -28,8 +28,9 @@ function RegisterContent() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [message, setMessage] = useState(
-    intent === "follow" ? "Join us to follow your favorite stores!" : ""
+    intent === "follow" ? "Join us to follow your favorite stores!" : "",
   );
   const shouldHide = sessionLoading || authenticated;
 
@@ -94,9 +95,9 @@ function RegisterContent() {
         return;
       }
 
-      const target = returnUrl || "/";
-      router.push(target);
-      router.refresh();
+      setSuccess(true);
+      // Let the user see the success screen, then they can click to continue or we redirect after a delay
+      // For now, let's keep it on the success screen as requested.
     } catch (error) {
       console.error(error);
       setMessage("Server error");
@@ -120,13 +121,49 @@ function RegisterContent() {
       await account.createOAuth2Session(
         "google" as any,
         `${origin}/auth/callback`,
-        `${origin}/auth/register`
+        `${origin}/auth/register`,
       );
     } catch (error) {
       console.error("Google signup error:", error);
       setMessage("Failed to initiate Google signup");
     }
   };
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_45%)] bg-[#f2f5fb] flex items-center justify-center px-4 py-10">
+        <BackToHome />
+        <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)] p-10 text-center">
+          <div className="mb-6 flex justify-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-50 shadow-sm border border-green-100">
+              <i className="fa-solid fa-party-horn text-4xl text-green-500"></i>
+            </div>
+          </div>
+          <h1 className="text-3xl font-extrabold text-slate-900 mb-4">
+            Welcome to SomaParts!
+          </h1>
+          <p className="text-slate-600 mb-8 max-w-sm mx-auto">
+            Your account has been successfully created. We&apos;re excited to
+            have you join our community of car enthusiasts.
+          </p>
+          <div className="flex flex-col gap-3 max-w-xs mx-auto">
+            <a
+              href={returnUrl || "/"}
+              className="w-full rounded-xl bg-green-600 px-6 py-4 text-sm font-bold text-white shadow-md transition hover:bg-green-700"
+            >
+              Continue to {returnUrl ? "Previous Page" : "Home"}
+            </a>
+            <a
+              href="/auth/login"
+              className="w-full rounded-xl bg-slate-50 border border-slate-200 px-6 py-4 text-sm font-bold text-slate-700 transition hover:bg-slate-100"
+            >
+              Sign In
+            </a>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_45%)] bg-[#f2f5fb] flex items-center justify-center px-4 py-10">
@@ -327,4 +364,3 @@ function RegisterContent() {
     </div>
   );
 }
-

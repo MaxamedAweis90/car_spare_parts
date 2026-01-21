@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import TopBar from "@/components/layout/TopBar";
 import Footer from "@/components/layout/Footer";
+import { CustomerProfileReminder } from "@/components/features/profile/CustomerProfileReminder";
 
 const HIDE_PREFIXES = ["/auth", "/admin", "/seller"];
 
@@ -24,6 +25,7 @@ export default function SiteShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen flex-col">
       <TopBar />
       <Navbar />
+      <CustomerProfileReminder />
       <main className="flex-1 bg-white pb-16 sm:pb-0">{children}</main>
       <Footer />
     </div>
