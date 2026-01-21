@@ -6,16 +6,10 @@ import {
 } from "@/lib/api/appwrite";
 import { Query, ID, Models } from "appwrite";
 import { ProductDocument } from "@/lib/types/product";
+import { getProductImageUrl as getImageUrl } from "@/lib/utils/product-image";
 
-// Helper to build image URL
-export function getProductImageUrl(fileId: string | null) {
-  if (!fileId) return null;
-  const bucketId =
-    process.env.NEXT_PUBLIC_APPWRITE_PRODUCT_BUCKET_ID ||
-    "products-bucket-id-placeholder";
-  const result = storageClient.getFileView(bucketId, fileId);
-  return result?.toString();
-}
+// Re-export or use the utility
+export const getProductImageUrl = getImageUrl;
 
 interface UseProductsParams {
   sellerId?: string;
@@ -60,7 +54,7 @@ export function useProducts({
           products: data.items.map((item: any) => ({
             ...item,
             imageUrl: getProductImageUrl(
-              item.imageId || (item.imageIds && item.imageIds[0]) || null
+              item.imageId || (item.imageIds && item.imageIds[0]) || null,
             ),
           })),
           total: data.total || data.items.length,
@@ -82,7 +76,7 @@ export function useProducts({
       const response = await databasesClient.listDocuments<ProductDocument>(
         appwriteClientConfig.databaseId,
         appwriteClientConfig.productsCollectionId,
-        queries
+        queries,
       );
 
       let documents = response.documents;
@@ -93,14 +87,14 @@ export function useProducts({
           (doc) =>
             doc.name.toLowerCase().includes(lowerSearch) ||
             (doc.description &&
-              doc.description.toLowerCase().includes(lowerSearch))
+              doc.description.toLowerCase().includes(lowerSearch)),
         );
       }
 
       const productsWithImages = documents.map((doc) => ({
         ...doc,
         imageUrl: getProductImageUrl(
-          doc.imageId || (doc.imageIds && doc.imageIds[0]) || null
+          doc.imageId || (doc.imageIds && doc.imageIds[0]) || null,
         ),
       }));
 
@@ -117,17 +111,24 @@ export function useProduct(productId: string) {
   return useQuery({
     queryKey: ["product", productId],
     queryFn: async () => {
-      const doc = await databasesClient.getDocument<ProductDocument>(
-        appwriteClientConfig.databaseId,
-        appwriteClientConfig.productsCollectionId,
-        productId
-      );
-      return {
-        ...doc,
-        imageUrl: getProductImageUrl(
-          doc.imageId || (doc.imageIds && doc.imageIds[0]) || null
-        ),
-      };
+      const res = await fetch(`/api/products/${productId}`);
+      if (!res.ok) {
+        // If 404, throw specific error so we can handle it
+        if (res.status === 404) throw new Error("Product not found");
+        throw new Error("Failed to load product");
+      }
+      const data = await res.json();
+
+      // Ensure image URL is handled if API doesn't return it (though it should)
+      if (
+        !data.imageUrl &&
+        (data.imageId || (data.imageIds && data.imageIds.length > 0))
+      ) {
+        data.imageUrl = getProductImageUrl(
+          data.imageId || (data.imageIds && data.imageIds[0]) || null,
+        );
+      }
+      return data as ProductDocument & { imageUrl: string | null };
     },
     enabled: !!productId,
   });
@@ -140,7 +141,7 @@ export function useDeleteProduct() {
       await databasesClient.deleteDocument(
         appwriteClientConfig.databaseId,
         appwriteClientConfig.productsCollectionId,
-        productId
+        productId,
       );
     },
     onSuccess: () => {
@@ -155,7 +156,7 @@ export function useCreateProduct() {
     mutationFn: async (
       data: Omit<ProductDocument, keyof Models.Document | "imageUrl"> & {
         imageFile?: File;
-      }
+      },
     ) => {
       let imageId = data.imageId;
 
@@ -165,7 +166,7 @@ export function useCreateProduct() {
         const upload = await storageClient.createFile(
           bucketId,
           ID.unique(),
-          data.imageFile
+          data.imageFile,
         );
         imageId = upload.$id;
       }
@@ -181,7 +182,7 @@ export function useCreateProduct() {
         {
           ...documentData,
           imageId,
-        }
+        },
       );
     },
     onSuccess: () => {
@@ -228,7 +229,7 @@ export function useUpdateProduct() {
         return {
           ...old,
           products: old.products.map((p: any) =>
-            p.$id === payload.productId ? { ...p, ...payload.data } : p
+            p.$id === payload.productId ? { ...p, ...payload.data } : p,
           ),
         };
       });
@@ -240,7 +241,7 @@ export function useUpdateProduct() {
           (old: any) => ({
             ...old,
             ...payload.data,
-          })
+          }),
         );
       }
 
@@ -254,7 +255,7 @@ export function useUpdateProduct() {
       if (context?.previousProduct) {
         queryClient.setQueryData(
           ["product", payload.productId],
-          context.previousProduct
+          context.previousProduct,
         );
       }
     },
@@ -267,4 +268,3 @@ export function useUpdateProduct() {
     },
   });
 }
-

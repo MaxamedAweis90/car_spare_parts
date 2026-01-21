@@ -7,6 +7,7 @@ import CDNs from "@/components/layout/Tools/CDNs";
 import SiteShell from "@/components/layout/SiteShell";
 import QueryProvider from "@/lib/providers/QueryProvider";
 import AntdRegistryProvider from "@/lib/providers/AntdRegistryProvider";
+import { CartProvider } from "@/lib/cart";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -38,11 +39,12 @@ export default function RootLayout({
       >
         <QueryProvider>
           <AntdRegistryProvider>
-            <SiteShell>{children}</SiteShell>
+            <CartProvider>
+              <SiteShell>{children}</SiteShell>
+            </CartProvider>
           </AntdRegistryProvider>
         </QueryProvider>
       </body>
     </html>
   );
 }
-

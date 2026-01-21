@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/lib/cart";
 
@@ -17,18 +18,7 @@ export interface ProductCardProps {
   stock?: number | null;
 }
 
-function buildPublicProductImageUrl(fileId?: string | null) {
-  if (!fileId) return null;
-  const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
-  const project = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
-  const bucket = process.env.NEXT_PUBLIC_APPWRITE_PRODUCT_BUCKET_ID;
-  if (!endpoint || !project || !bucket) return null;
-  const url = new URL(
-    `${endpoint}/storage/buckets/${bucket}/files/${fileId}/view`
-  );
-  url.searchParams.set("project", project);
-  return url.toString();
-}
+import { getProductImageUrl } from "@/lib/utils/product-image";
 export default function ProductCard({
   id,
   name,
@@ -56,8 +46,12 @@ export default function ProductCard({
 
   const cart = useCart();
   const priceDisplay = typeof price === "number" ? `$${price.toFixed(2)}` : "";
-  const linkHref = href ?? `/products/${id}`;
-  const imageUrl = imageUrlProp ?? buildPublicProductImageUrl(imageId ?? null);
+  const linkHref = href && href.length > 0 ? href : `/products/${id}`;
+  const imageUrl = imageUrlProp ?? getProductImageUrl(imageId ?? null);
+
+  if (!id) {
+    console.warn("ProductCard: missing id for product", name);
+  }
   const canAddToCart =
     typeof price === "number" && (typeof stock !== "number" || stock > 0);
 
@@ -75,18 +69,23 @@ export default function ProductCard({
     cart.openCart();
   };
 
+  const [currentImageUrl, setCurrentImageUrl] = useState(imageUrl);
+
   return (
     <Link
       href={linkHref}
+      onMouseEnter={() => {
+        // Potentially cycle images or show secondary image if supported in the future
+      }}
       className="group flex h-full flex-col overflow-hidden rounded-2xl border border-(--color-border-strong) bg-(--color-surface) shadow-panel transition hover:-translate-y-0.5"
     >
-      <div className="relative aspect-4/3 w-full bg-(--color-bg)">
-        {imageUrl ? (
+      <div className="relative aspect-square w-full bg-(--color-bg)">
+        {currentImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={imageUrl}
+            src={currentImageUrl}
             alt={name}
-            className="absolute inset-0 h-full w-full object-contain p-3 sm:p-4 transition-transform duration-300 group-hover:scale-105"
+            className="absolute inset-0 h-full w-full object-cover transition-all duration-500 group-hover:scale-110"
             loading="lazy"
           />
         ) : (
@@ -161,4 +160,3 @@ export default function ProductCard({
     </Link>
   );
 }
-

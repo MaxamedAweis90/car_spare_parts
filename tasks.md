@@ -15,14 +15,15 @@
 - [x] Check & Refactor `app/(admin)/layout.tsx` to Ant Design
 - [x] Check & Refactor `app/(seller)/layout.tsx` to Ant Design
 
-## Phase 3: Dashboard Implementation (Next Steps)
+## Phase 3: Product Page Implementation
 
-- [ ] **Admin Dashboard** (`app/(admin)/dashboard`):
-  - Implement Stats overview (Charts/Cards)
-  - Recent Orders table (using `useOrders`)
-- [ ] **Seller Dashboard** (`app/(seller)/dashboard`):
-  - Sales Overview
-  - Important Actions
+- [x] Implement Main Product Image & Thumbnails
+- [x] Implement Product Info & Sidebar (Breadcrumbs, Categories, etc.)
+- [x] Implement Product Details (Price, Stock Bar, Buttons)
+- [x] Implement Bottom Tabs (Description, Video, Reviews)
+- [x] Implement Related Products section
+  - [x] Refine Gallery (Hover selection, Image fitting)
+  - [x] Finalize Navigation Fixes (Regular products)
 - [ ] **Data Tables**:
   - `AdminProductsTable` / `SellerProductsTable` with sorting/filtering
   - `OrdersTable`

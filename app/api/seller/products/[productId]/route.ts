@@ -59,7 +59,7 @@ function ensureCompatibilityOptionsCollectionId() {
 
   if (!id) {
     throw new Error(
-      "Missing Appwrite compatibility options collection id (APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID)"
+      "Missing Appwrite compatibility options collection id (APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID)",
     );
   }
 
@@ -87,7 +87,7 @@ async function resolveCompatibilityOptions(ids: string[]) {
   const list = await databasesServer.listDocuments<CompatibilityOptionDocument>(
     appwriteConfig.databaseId,
     collectionId,
-    [Query.equal("$id", ids), Query.limit(Math.min(ids.length, 200))]
+    [Query.equal("$id", ids), Query.limit(Math.min(ids.length, 200))],
   );
   return list.documents.map((d) => ({
     id: d.$id,
@@ -126,18 +126,18 @@ async function listAllCompatibilityOptions(limit = 200) {
     [
       Query.orderDesc("$createdAt"),
       Query.limit(Math.min(Math.max(limit, 1), 200)),
-    ]
+    ],
   );
   return list.documents as CompatibilityOptionDocument[];
 }
 
 async function resolveOptionIdsFromCompatibilities(
-  compatDocs: CompatibilityDocument[]
+  compatDocs: CompatibilityDocument[],
 ) {
   if (!compatDocs.length) return [] as string[];
 
   const options = await listAllCompatibilityOptions(200).catch(
-    () => [] as CompatibilityOptionDocument[]
+    () => [] as CompatibilityOptionDocument[],
   );
   const optionIdByKey = new Map<string, string>();
   for (const opt of options) {
@@ -153,7 +153,7 @@ async function resolveOptionIdsFromCompatibilities(
 }
 
 function toCompatibilityInput(
-  doc: CompatibilityOptionDocument
+  doc: CompatibilityOptionDocument,
 ): CompatibilityInput {
   return {
     vehicleType: String((doc as any).vehicleType ?? "").trim(),
@@ -170,7 +170,7 @@ async function loadCompatibilityOptionDocsByIds(ids: string[]) {
   const list = await databasesServer.listDocuments<CompatibilityOptionDocument>(
     appwriteConfig.databaseId,
     collectionId,
-    [Query.equal("$id", ids), Query.limit(Math.min(ids.length, 200))]
+    [Query.equal("$id", ids), Query.limit(Math.min(ids.length, 200))],
   );
   return list.documents as CompatibilityOptionDocument[];
 }
@@ -179,7 +179,7 @@ async function getOwnedProduct(profileId: string, productId: string) {
   const doc = await databasesServer.getDocument<ProductDocument>(
     appwriteConfig.databaseId,
     appwriteConfig.productsCollectionId,
-    productId
+    productId,
   );
 
   if ((doc as any).sellerId !== profileId) {
@@ -191,7 +191,7 @@ async function getOwnedProduct(profileId: string, productId: string) {
 
 export async function GET(
   req: NextRequest,
-  ctx: { params: Promise<{ productId: string }> }
+  ctx: { params: Promise<{ productId: string }> },
 ) {
   try {
     const { profile } = await requireSeller(req);
@@ -209,10 +209,10 @@ export async function GET(
       limit: 200,
     }).catch(() => []);
     const compatibilityOptionIds = await resolveOptionIdsFromCompatibilities(
-      compatDocs
+      compatDocs,
     ).catch(() => []);
     const compatibilityOptions = await resolveCompatibilityOptions(
-      compatibilityOptionIds
+      compatibilityOptionIds,
     ).catch(() => []);
 
     const response: SellerProductResponse = {
@@ -231,14 +231,14 @@ export async function GET(
     console.error("Seller product GET error", error);
     return jsonError(
       error?.message || "Server error",
-      error?.code || error?.status || 500
+      error?.code || error?.status || 500,
     );
   }
 }
 
 export async function PATCH(
   req: NextRequest,
-  ctx: { params: Promise<{ productId: string }> }
+  ctx: { params: Promise<{ productId: string }> },
 ) {
   try {
     const { profile, account } = await requireSeller(req);
@@ -287,16 +287,18 @@ export async function PATCH(
       updates.mainCategoryId = cat;
     }
 
-    // Optional: replace images.
+    // Optional: replace images or update specific images
     const replaceImages =
       String(formData.get("replaceImages") ?? "false").toLowerCase() === "true";
+    const keptImageIdsRaw = formData.get("keptImageIds");
     const newImages = formData.getAll("images");
 
     let imageIds: string[] = Array.isArray((existing as any).imageIds)
       ? ((existing as any).imageIds as string[])
       : [];
 
-    if (replaceImages && newImages.length) {
+    // Logic 1: Replace All (Legacy/Simple mode)
+    if (replaceImages && newImages.length > 0 && !keptImageIdsRaw) {
       // Upload new, then delete old.
       const nextImageIds: string[] = [];
       for (const item of newImages) {
@@ -318,13 +320,51 @@ export async function PATCH(
       updates.imageIds = imageIds;
       updates.imageId = imageIds[0] ?? null;
     }
+    // Logic 2: Partial/Ordered Update (Manifest of Existing IDs + New File Placeholders)
+    else if (keptImageIdsRaw) {
+      const manifest = parseStringArrayJson(keptImageIdsRaw); // e.g. ["id1", "NEW_0", "id2"]
+      const newFiles = formData.getAll("images");
+      const resultImageIds: string[] = [];
+      let newFilePointer = 0;
+
+      for (const entry of manifest) {
+        if (entry.startsWith("NEW_")) {
+          const item = newFiles[newFilePointer++];
+          if (item instanceof Blob) {
+            const bytes = new Uint8Array(await item.arrayBuffer());
+            if (!bytes.length) continue;
+            const filename = (item as File).name || "product-image";
+            const fileId = await uploadProductImage(
+              bytes,
+              filename,
+              account.$id,
+            );
+            resultImageIds.push(fileId);
+          }
+        } else {
+          // It's an existing ID
+          resultImageIds.push(entry);
+        }
+      }
+
+      // Cleanup dropped images
+      for (const oldId of imageIds) {
+        if (!resultImageIds.includes(oldId)) {
+          await deleteProductImage(oldId);
+        }
+      }
+
+      imageIds = resultImageIds;
+      updates.imageIds = imageIds;
+      updates.imageId = imageIds[0] ?? null;
+    }
 
     // Optional: replace compatibilities (stored in compatibilities collection, not on product document).
     if (formData.has("compatibilityOptionIds")) {
       const ids = parseStringArrayJson(formData.get("compatibilityOptionIds"));
       const entries: CompatibilityInput[] = ids.length
         ? (await loadCompatibilityOptionDocsByIds(ids)).map(
-            toCompatibilityInput
+            toCompatibilityInput,
           )
         : [];
       await replaceCompatibilitiesForProduct({
@@ -340,7 +380,7 @@ export async function PATCH(
       appwriteConfig.databaseId,
       appwriteConfig.productsCollectionId,
       productId,
-      updates
+      updates,
     );
 
     const finalImageIds = Array.isArray((updated as any).imageIds)
@@ -354,10 +394,10 @@ export async function PATCH(
       limit: 200,
     }).catch(() => []);
     const compatibilityOptionIds = await resolveOptionIdsFromCompatibilities(
-      compatDocs
+      compatDocs,
     ).catch(() => []);
     const compatibilityOptions = await resolveCompatibilityOptions(
-      compatibilityOptionIds
+      compatibilityOptionIds,
     ).catch(() => []);
 
     const response: SellerProductResponse = {
@@ -376,14 +416,14 @@ export async function PATCH(
     console.error("Seller product PATCH error", error);
     return jsonError(
       error?.message || "Server error",
-      error?.code || error?.status || 500
+      error?.code || error?.status || 500,
     );
   }
 }
 
 export async function DELETE(
   req: NextRequest,
-  ctx: { params: Promise<{ productId: string }> }
+  ctx: { params: Promise<{ productId: string }> },
 ) {
   try {
     const { profile } = await requireSeller(req);
@@ -399,7 +439,7 @@ export async function DELETE(
     await databasesServer.deleteDocument(
       appwriteConfig.databaseId,
       appwriteConfig.productsCollectionId,
-      productId
+      productId,
     );
 
     // Best-effort cleanup.
@@ -412,7 +452,7 @@ export async function DELETE(
     console.error("Seller product DELETE error", error);
     return jsonError(
       error?.message || "Server error",
-      error?.code || error?.status || 500
+      error?.code || error?.status || 500,
     );
   }
 }

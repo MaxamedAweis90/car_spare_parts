@@ -1,638 +1,675 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import dayjs from "dayjs";
-import {
-  Form,
-  Input,
-  Select,
-  Button,
-  Upload,
-  Card,
-  Typography,
-  Space,
-  Divider,
-  Alert,
-  App,
-  Switch,
-  Tag,
-  DatePicker,
-  InputNumber,
-} from "antd";
-import {
-  PlusOutlined,
-  UploadOutlined,
-  SaveOutlined,
-  UndoOutlined,
-} from "@ant-design/icons";
-import type { UploadFile, UploadProps } from "antd/es/upload/interface";
-import { useCategories } from "@/hooks/queries/useCategories";
-import { useCompatibilityOptions } from "@/hooks/queries/useCompatibilityOptions";
-import { useCreateProduct } from "@/hooks/queries/useProducts";
-import { useSellerStore } from "@/lib/providers/SellerStoreProvider";
+import Box from "@mui/material/Box";
+import Paper from "@mui/material/Paper";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import TextField from "@mui/material/TextField";
+import MenuItem from "@mui/material/MenuItem";
+import Button from "@mui/material/Button";
+import Divider from "@mui/material/Divider";
+import Chip from "@mui/material/Chip";
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import DialogActions from "@mui/material/DialogActions";
+import IconButton from "@mui/material/IconButton";
+import { ProductGallery } from "@/components/features/products/ProductGallery";
+import ProductCard from "@/components/features/products/ProductCard";
 
-const { Title, Text } = Typography;
-const { Option } = Select;
-const { TextArea } = Input;
+type CategoryItem = { id: string; name: string; label?: string };
+type CompatibilityOptionItem = { id: string; label: string };
+const CONDITIONS = ["New", "Used", "Refurbished", "Open Box"] as const;
 
-const DRAFT_KEY = "seller:add-product-draft:v1";
-const CONDITIONS = ["New", "Used", "Refurbished", "Open Box"];
+type ManagedImage =
+  | { type: "existing"; id: string; url: string }
+  | { type: "new"; file: File; url: string; tempId: string };
 
 export default function SellerAddProductPage() {
   const router = useRouter();
-  const { store } = useSellerStore();
-  const sellerId = store?.sellerId;
-  const { message } = App.useApp();
 
-  const [form] = Form.useForm();
-  const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const { data: categories, isLoading: catsLoading } = useCategories();
-  const { data: compatibilityOptions, isLoading: compatLoading } =
-    useCompatibilityOptions();
-  const createProduct = useCreateProduct();
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [compatibilityOptions, setCompatibilityOptions] = useState<
+    CompatibilityOptionItem[]
+  >([]);
 
-  // Restore draft
+  const [managedImages, setManagedImages] = useState<ManagedImage[]>([]);
+  const [cardPreviewOpen, setCardPreviewOpen] = useState(false);
+  const [galleryPreviewOpen, setGalleryPreviewOpen] = useState(false);
+
+  const [payload, setPayload] = useState({
+    name: "",
+    mainCategoryId: "",
+    price: "",
+    stock: "",
+    description: "",
+    brand: "",
+    condition: "New",
+    partNumber: "",
+  });
+
+  const [selection, setSelection] = useState({
+    compatibilityOptionIds: [] as string[],
+  });
+
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(DRAFT_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (parsed?.payload) {
-          const restoredValues = { ...parsed.payload };
-          if (restoredValues.discountStartDate) {
-            restoredValues.discountStartDate = dayjs(
-              restoredValues.discountStartDate
-            );
-          }
-          if (restoredValues.discountExpiry) {
-            restoredValues.discountExpiry = dayjs(
-              restoredValues.discountExpiry
-            );
-          }
-          form.setFieldsValue(restoredValues);
-          message.info("Draft restored (images not included).");
-        }
+    async function loadResources() {
+      try {
+        const [catsRes, compatRes] = await Promise.all([
+          fetch("/api/categories"),
+          fetch("/api/compatibility-options"),
+        ]);
+        const [catsBody, compatBody] = await Promise.all([
+          catsRes.json(),
+          compatRes.json(),
+        ]);
+        setCategories(catsBody?.items || []);
+        setCompatibilityOptions(compatBody?.items || []);
+      } catch (e) {
+        console.error("Failed to load resources", e);
       }
-    } catch (e) {
-      console.error("Failed to restore draft", e);
     }
-  }, [form]);
+    loadResources();
+  }, []);
 
-  // Save draft on change
-  const handleValuesChange = (_: any, allValues: any) => {
-    try {
-      localStorage.setItem(
-        DRAFT_KEY,
-        JSON.stringify({
-          payload: allValues,
-          savedAt: new Date().toISOString(),
-        })
-      );
-    } catch (e) {
-      console.error("Failed to save draft", e);
-    }
-  };
-
-  const onFinish = (values: any) => {
-    if (!sellerId) {
-      message.error("Seller ID missing");
-      return;
-    }
-
-    if (fileList.length === 0) {
-      message.error("Please upload at least one image");
-      return;
-    }
-
-    // Prepare payload
-    const payload: any = {
-      name: values.name,
-      description: values.description,
-      price: Number(values.price),
-      stock: Number(values.stock),
-      mainCategoryId: values.mainCategoryId,
-      brand: values.brand,
-      condition: values.condition,
-      partNumber: values.partNumber,
-      sellerId,
-      compatibilityOptionIds: values.compatibilityOptionIds || [],
-      originalPrice: values.originalPrice ? Number(values.originalPrice) : null,
-      discountStartDate: values.discountStartDate
-        ? values.discountStartDate.toISOString()
-        : null,
-      discountExpiry: values.discountExpiry
-        ? values.discountExpiry.toISOString()
-        : null,
+  useEffect(() => {
+    return () => {
+      managedImages.forEach((img) => {
+        if (img.type === "new") {
+          URL.revokeObjectURL(img.url);
+        }
+      });
     };
+  }, [managedImages.length]); // Use length or some other simple trigger
 
-    // Create Product using Mutation
-    // We need to pass the actual File objects
-    // The useCreateProduct hook expects 'imageFile' as a single file?
-    // Let's check useProducts.ts logic.
-    // It seems useCreateProduct takes MutationParams which has { product: ..., imageFile: File }
-    // But the previous page allowed MULTIPLE images which were appended to FormData.
-    // My useCreateProduct might be simple.
-    // Let's assume for now we use the main image (first one) as the primary image
-    // and maybe the hook handles multiple?
-    // The API route supports multiple 'images'.
-    // I should modify useCreateProduct or just call fetch directly here to replicate complex logic.
-    // Replicating fetch logic here is safer for multiple images if the hook wasn't built for it.
+  const previewUrls = useMemo(() => {
+    return managedImages.map((img) => img.url);
+  }, [managedImages]);
 
-    const formData = new FormData();
-    Object.keys(payload).forEach((key) => {
-      if (key === "compatibilityOptionIds") {
-        formData.append(key, JSON.stringify(payload[key]));
-      } else {
-        formData.append(key, String(payload[key]));
-      }
-    });
+  const handleAddNew = (files: FileList | null) => {
+    if (!files) return;
+    const currentCount = managedImages.length;
+    const remaining = 6 - currentCount;
+    if (remaining <= 0) return;
 
-    fileList.forEach((file) => {
-      if (file.originFileObj) {
-        formData.append("images", file.originFileObj);
-      }
-    });
-
-    // Optimistic UI or just loading state
-    const hide = message.loading("Creating product...", 0);
-
-    fetch("/api/seller/products", {
-      method: "POST",
-      body: formData,
-    })
-      .then(async (res) => {
-        if (!res.ok) {
-          const body = await res.json();
-          throw new Error(body.error || "Failed");
-        }
-        message.success("Product created successfully!");
-        localStorage.removeItem(DRAFT_KEY);
-        router.push("/seller/products");
-      })
-      .catch((err) => {
-        message.error(err.message || "Failed to create product");
-      })
-      .finally(() => {
-        hide();
-      });
+    const incoming = Array.from(files).slice(0, remaining);
+    const newItems: ManagedImage[] = incoming.map((file) => ({
+      type: "new",
+      file,
+      url: URL.createObjectURL(file),
+      tempId: `new-${Math.random().toString(36).substr(2, 9)}`,
+    }));
+    setManagedImages((prev) => [...prev, ...newItems]);
   };
 
-  const handleUploadChange: UploadProps["onChange"] = ({
-    fileList: newFileList,
-  }) => {
-    setFileList(newFileList);
+  const handleRemoveImage = (index: number) => {
+    setManagedImages((prev) => {
+      const next = [...prev];
+      const removed = next[index];
+      if (removed.type === "new") URL.revokeObjectURL(removed.url);
+      next.splice(index, 1);
+      return next;
+    });
   };
 
-  const onPreview = async (file: UploadFile) => {
-    let src = file.url as string;
-    if (!src) {
-      src = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file.originFileObj as File);
-        reader.onload = () => resolve(reader.result as string);
-      });
+  const handleMoveImage = (index: number, direction: "up" | "down") => {
+    setManagedImages((prev) => {
+      const next = [...prev];
+      const target = direction === "up" ? index - 1 : index + 1;
+      if (target < 0 || target >= next.length) return prev;
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
+  const handleReplaceImage = (index: number, file: File) => {
+    setManagedImages((prev) => {
+      const next = [...prev];
+      const old = next[index];
+      if (old.type === "new") URL.revokeObjectURL(old.url);
+      next[index] = {
+        type: "new",
+        file,
+        url: URL.createObjectURL(file),
+        tempId: `replace-${Math.random().toString(36).substr(2, 9)}`,
+      };
+      return next;
+    });
+  };
+
+  const onSave = async (e: FormEvent) => {
+    e.preventDefault();
+    if (
+      !payload.name.trim() ||
+      !payload.mainCategoryId ||
+      payload.price === "" ||
+      payload.stock === "" ||
+      managedImages.length === 0
+    ) {
+      setError(
+        "Please fill in all required fields and add at least one image.",
+      );
+      return;
     }
-    const image = new Image();
-    image.src = src;
-    const imgWindow = window.open(src);
-    imgWindow?.document.write(image.outerHTML);
+
+    setSaving(true);
+    setError(null);
+
+    try {
+      const form = new FormData();
+      form.set("name", payload.name);
+      form.set("description", payload.description);
+      form.set("price", payload.price);
+      form.set("stock", payload.stock);
+      form.set("mainCategoryId", payload.mainCategoryId);
+      form.set("brand", payload.brand);
+      form.set("condition", payload.condition);
+      form.set("partNumber", payload.partNumber);
+      form.set(
+        "compatibilityOptionIds",
+        JSON.stringify(selection.compatibilityOptionIds),
+      );
+
+      // Append images in the current managed order
+      managedImages.forEach((img) => {
+        if (img.type === "new") {
+          form.append("images", img.file);
+        }
+      });
+
+      const res = await fetch("/api/seller/products", {
+        method: "POST",
+        body: form,
+      });
+      const body = await res.json().catch(() => null);
+      if (!res.ok) throw new Error(body?.error || "Failed to create product");
+
+      router.push("/seller/products");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
-    <div className="max-w-10/12 mx-auto space-y-6 pb-20">
-      <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-6 mb-2">
-        <div>
-          <Title level={2} style={{ margin: 0, fontWeight: 700 }}>
-            New Product
-          </Title>
-          <Text type="secondary" className="text-lg">
-            List a new item in your store
-          </Text>
-        </div>
-        <Space size="middle">
-          <Button
-            icon={<UndoOutlined />}
-            onClick={() => {
-              form.resetFields();
-              setFileList([]);
+    <Box sx={{ maxWidth: 1200, mx: "auto", py: 4, px: 2 }}>
+      <Paper
+        elevation={0}
+        sx={{ p: 4, borderRadius: 4, border: "1px solid #eee" }}
+      >
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          justifyContent="space-between"
+          alignItems={{ xs: "flex-start", sm: "center" }}
+          spacing={2}
+          mb={4}
+        >
+          <Box>
+            <Typography variant="h4" fontWeight={900} color="primary.main">
+              New Product
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              List a new item in your store
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={2}>
+            <Button
+              variant="outlined"
+              onClick={() => router.back()}
+              sx={{ borderRadius: 2 }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              disabled={saving}
+              onClick={onSave}
+              sx={{
+                borderRadius: 2,
+                px: 4,
+                boxShadow: "0 4px 14px 0 rgba(0,118,255,0.39)",
+              }}
+            >
+              {saving ? "Creating..." : "Publish Product"}
+            </Button>
+          </Stack>
+        </Stack>
+
+        {error && (
+          <Box
+            sx={{
+              mb: 3,
+              p: 2,
+              bgcolor: "#fff1f0",
+              border: "1px solid #ffa39e",
+              borderRadius: 2,
             }}
           >
-            Clear Form
-          </Button>
-          <Button
-            type="primary"
-            onClick={() => form.submit()}
-            size="large"
-            icon={<SaveOutlined />}
-            loading={createProduct.isPending}
-            className="px-8 h-12 rounded-xl font-bold shadow-md shadow-blue-100"
-          >
-            Publish Now
-          </Button>
-        </Space>
-      </header>
+            <Typography color="error.dark" fontWeight={700}>
+              {error}
+            </Typography>
+          </Box>
+        )}
 
-      <Form
-        form={form}
-        layout="vertical"
-        onFinish={onFinish}
-        onValuesChange={handleValuesChange}
-        initialValues={{ condition: "New", compatibilityOptionIds: [] }}
-        requiredMark="optional"
-        className="grid grid-cols-1 lg:grid-cols-12 gap-8"
-      >
-        <div className="lg:col-span-8 space-y-8">
-          <Card
-            title={
-              <>
-                <span className="text-blue-600 mr-2">01</span> Basic Details
-              </>
-            }
-            variant="borderless"
-            className="shadow-sm rounded-2xl overflow-hidden border border-gray-100"
+        <Box
+          component="form"
+          className="grid grid-cols-1 lg:grid-cols-12 gap-6"
+        >
+          <Paper
+            variant="outlined"
+            className="lg:col-span-8"
+            sx={{ p: 3, borderRadius: 3, borderColor: "#ece8de" }}
           >
-            <Form.Item
-              name="name"
-              label={
-                <span className="font-semibold text-gray-700">
-                  Product Name
-                </span>
-              }
-              rules={[
-                { required: true, message: "Please enter a product name" },
-              ]}
-            >
-              <Input
+            <Stack spacing={3}>
+              <Typography variant="h6" fontWeight={800}>
+                Core Details
+              </Typography>
+              <TextField
+                label="Product Name"
+                fullWidth
+                required
+                value={payload.name}
+                onChange={(e) =>
+                  setPayload({ ...payload, name: e.target.value })
+                }
                 placeholder="e.g. Brake Pad Set for Ford Mustang"
-                className="h-12 rounded-xl"
               />
-            </Form.Item>
-
-            <Form.Item
-              name="description"
-              label={
-                <span className="font-semibold text-gray-700">
-                  Detailed Description
-                </span>
-              }
-            >
-              <TextArea
-                rows={6}
-                placeholder="Describe the product features, benefits, and specifics..."
-                className="rounded-xl p-4"
-              />
-            </Form.Item>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <Form.Item
-                name="originalPrice"
-                label={
-                  <span className="font-semibold text-gray-700 font-sans">
-                    Original Price (Optional)
-                  </span>
-                }
-                tooltip="The price before discount. If set higher than selling price, a 'Sale' tag will appear."
-              >
-                <InputNumber
-                  prefix="$"
-                  min={0}
-                  step={0.01}
-                  className="w-full h-12 rounded-xl flex items-center"
-                  placeholder="e.g. 59.99"
-                />
-              </Form.Item>
-
-              <Form.Item
-                name="price"
-                label={
-                  <span className="font-semibold text-gray-700">
-                    Selling Price (USD)
-                  </span>
-                }
-                rules={[{ required: true, message: "Price is required" }]}
-              >
-                <InputNumber
-                  prefix="$"
-                  min={0}
-                  step={0.01}
-                  className="w-full h-12 rounded-xl flex items-center"
-                  placeholder="e.g. 49.99"
-                />
-              </Form.Item>
-
-              <Form.Item
-                name="stock"
-                label={
-                  <span className="font-semibold text-gray-700">
-                    Starting Stock
-                  </span>
-                }
-                rules={[{ required: true, message: "Stock is required" }]}
-              >
-                <InputNumber
-                  min={0}
-                  className="w-full h-12 rounded-xl flex items-center"
-                  placeholder="0"
-                />
-              </Form.Item>
-            </div>
-
-            <Form.Item dependencies={["price", "originalPrice"]} noStyle>
-              {({ getFieldValue }) => {
-                const price = getFieldValue("price");
-                const originalPrice = getFieldValue("originalPrice");
-                if (originalPrice && price && originalPrice > price) {
-                  const savings =
-                    ((originalPrice - price) / originalPrice) * 100;
-                  return (
-                    <div className="mb-6 p-4 bg-green-50 rounded-xl border border-green-100 flex justify-between items-center transition-all animate-in fade-in slide-in-from-top-2">
-                      <div>
-                        <Text className="text-green-700 font-bold block">
-                          Great Offer!
-                        </Text>
-                        <Text className="text-green-600 text-xs text-sans">
-                          Customers will see a {savings.toFixed(0)}% discount.
-                        </Text>
-                      </div>
-                      <Tag
-                        color="green"
-                        className="rounded-lg px-3 py-1 border-none font-bold text-sm"
-                      >
-                        -{savings.toFixed(0)}% OFF
-                      </Tag>
-                    </div>
-                  );
-                }
-                return null;
-              }}
-            </Form.Item>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Form.Item
-                name="discountStartDate"
-                label={
-                  <span className="font-semibold text-gray-700">
-                    Discount Start Date (Optional)
-                  </span>
-                }
-              >
-                <DatePicker
-                  showTime
-                  className="w-full h-12 rounded-xl"
-                  placeholder="When should this offer start?"
-                />
-              </Form.Item>
-
-              <Form.Item
-                name="discountExpiry"
-                label={
-                  <span className="font-semibold text-gray-700">
-                    Discount Expiry Date (Optional)
-                  </span>
-                }
-              >
-                <DatePicker
-                  showTime
-                  className="w-full h-12 rounded-xl"
-                  placeholder="When should this offer end?"
-                />
-              </Form.Item>
-            </div>
-          </Card>
-
-          <Card
-            title={
-              <>
-                <span className="text-blue-600 mr-2">02</span> Specifications
-              </>
-            }
-            variant="borderless"
-            className="shadow-sm rounded-2xl overflow-hidden border border-gray-100"
-          >
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Form.Item
-                name="brand"
-                label={
-                  <span className="font-semibold text-gray-700">Brand</span>
-                }
-              >
-                <Input
-                  placeholder="e.g. Bosch, Brembo..."
-                  className="h-11 rounded-lg"
-                />
-              </Form.Item>
-              <Form.Item
-                name="partNumber"
-                label={
-                  <span className="font-semibold text-gray-700">
-                    Manufacturer Part Number
-                  </span>
-                }
-              >
-                <Input placeholder="MPN-12345" className="h-11 rounded-lg" />
-              </Form.Item>
-              <Form.Item
-                name="condition"
-                label={
-                  <span className="font-semibold text-gray-700">Condition</span>
-                }
-              >
-                <Select className="h-11 rounded-lg custom-select">
-                  {CONDITIONS.map((c) => (
-                    <Option key={c} value={c}>
-                      {c}
-                    </Option>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <TextField
+                  label="Category"
+                  select
+                  fullWidth
+                  required
+                  value={payload.mainCategoryId}
+                  onChange={(e) =>
+                    setPayload({ ...payload, mainCategoryId: e.target.value })
+                  }
+                >
+                  {categories.map((cat) => (
+                    <MenuItem key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </MenuItem>
                   ))}
-                </Select>
-              </Form.Item>
-            </div>
-          </Card>
-
-          <Card
-            title={
-              <>
-                <span className="text-blue-600 mr-2">03</span> Categorization &
-                Fitment
-              </>
-            }
-            variant="borderless"
-            className="shadow-sm rounded-2xl overflow-hidden border border-gray-100"
-          >
-            <Form.Item
-              name="mainCategoryId"
-              label={
-                <span className="font-semibold text-gray-700">
-                  Platform Category
-                </span>
-              }
-              rules={[{ required: true, message: "Please select a category" }]}
-              className="mb-8"
-            >
-              <Select
-                loading={catsLoading}
-                showSearch
-                optionFilterProp="children"
-                placeholder="Search and select category..."
-                className="h-12 rounded-xl custom-select"
-                styles={{
-                  popup: { root: { borderRadius: "12px", padding: "8px" } },
+                </TextField>
+                <TextField
+                  label="Condition"
+                  select
+                  fullWidth
+                  value={payload.condition}
+                  onChange={(e) =>
+                    setPayload({ ...payload, condition: e.target.value })
+                  }
+                >
+                  {CONDITIONS.map((c) => (
+                    <MenuItem key={c} value={c}>
+                      {c}
+                    </MenuItem>
+                  ))}
+                </TextField>
+              </Stack>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <TextField
+                  label="Price (USD)"
+                  type="number"
+                  fullWidth
+                  required
+                  value={payload.price}
+                  onChange={(e) =>
+                    setPayload({ ...payload, price: e.target.value })
+                  }
+                />
+                <TextField
+                  label="Initial Stock"
+                  type="number"
+                  fullWidth
+                  required
+                  value={payload.stock}
+                  onChange={(e) =>
+                    setPayload({ ...payload, stock: e.target.value })
+                  }
+                />
+              </Stack>
+              <TextField
+                label="Description"
+                multiline
+                rows={4}
+                fullWidth
+                value={payload.description}
+                onChange={(e) =>
+                  setPayload({ ...payload, description: e.target.value })
+                }
+              />
+              <Divider />
+              <Typography variant="h6" fontWeight={800}>
+                Extra Info
+              </Typography>
+              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
+                <TextField
+                  label="Brand"
+                  fullWidth
+                  value={payload.brand}
+                  onChange={(e) =>
+                    setPayload({ ...payload, brand: e.target.value })
+                  }
+                />
+                <TextField
+                  label="Part Number"
+                  fullWidth
+                  value={payload.partNumber}
+                  onChange={(e) =>
+                    setPayload({ ...payload, partNumber: e.target.value })
+                  }
+                />
+              </Stack>
+              <TextField
+                label="Compatibility"
+                select
+                fullWidth
+                SelectProps={{
+                  multiple: true,
+                  value: selection.compatibilityOptionIds,
+                  onChange: (e) => {
+                    setSelection({
+                      compatibilityOptionIds: e.target.value as string[],
+                    });
+                  },
+                  renderValue: (selected) => {
+                    const ids = selected as string[];
+                    return ids
+                      .map(
+                        (id) =>
+                          compatibilityOptions.find((o) => o.id === id)?.label,
+                      )
+                      .filter(Boolean)
+                      .join(", ");
+                  },
                 }}
               >
-                {categories?.map((c) => (
-                  <Option key={c.id} value={c.id}>
-                    {c.name}
-                  </Option>
+                {compatibilityOptions.map((opt) => (
+                  <MenuItem key={opt.id} value={opt.id}>
+                    {opt.label}
+                  </MenuItem>
                 ))}
-              </Select>
-            </Form.Item>
+              </TextField>
+            </Stack>
+          </Paper>
 
-            <Divider dashed className="my-6">
-              Compatibility
-            </Divider>
-
-            <Form.Item
-              name="compatibilityOptionIds"
-              label={
-                <span className="font-semibold text-gray-700">
-                  Compatible Vehicles
-                </span>
-              }
-              help="Select all vehicles this part is known to fit."
-            >
-              <Select
-                mode="multiple"
-                loading={compatLoading}
-                placeholder="Choose one or more vehicles..."
-                optionFilterProp="label"
-                className="rounded-xl custom-select-multiple"
-                styles={{
-                  popup: { root: { borderRadius: "12px", padding: "8px" } },
+          <Box className="lg:col-span-4">
+            <Stack spacing={3}>
+              <Paper
+                variant="outlined"
+                sx={{
+                  p: 2,
+                  borderRadius: 2.5,
+                  borderColor: "#ece8de",
+                  bgcolor: "#fafafa",
                 }}
-                tagRender={(props) => (
-                  <Tag
-                    closable={props.closable}
-                    onClose={props.onClose}
-                    className="bg-blue-50 border-blue-100 text-blue-700 rounded-lg px-2 py-1 flex items-center gap-1 my-1"
+              >
+                <Typography variant="subtitle2" fontWeight={800} mb={2}>
+                  Visual Previews
+                </Typography>
+                <Stack direction="row" spacing={2}>
+                  <Button
+                    variant="outlined"
+                    startIcon={<i className="fa-solid fa-id-card" />}
+                    onClick={() => setCardPreviewOpen(true)}
+                    fullWidth
+                    disabled={managedImages.length === 0}
                   >
-                    {props.label}
-                  </Tag>
-                )}
-              >
-                {compatibilityOptions?.map((o) => (
-                  <Option key={o.id} value={o.id} label={o.label}>
-                    <div className="flex justify-between items-center py-1">
-                      <span>{o.label}</span>
-                    </div>
-                  </Option>
-                ))}
-              </Select>
-            </Form.Item>
-          </Card>
-        </div>
+                    Card
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    startIcon={<i className="fa-solid fa-images" />}
+                    onClick={() => setGalleryPreviewOpen(true)}
+                    fullWidth
+                    disabled={managedImages.length === 0}
+                  >
+                    Gallery
+                  </Button>
+                </Stack>
+              </Paper>
 
-        <div className="lg:col-span-4 space-y-8">
-          <Card
-            title={<span className="font-bold">Media Upload</span>}
-            variant="borderless"
-            className="shadow-sm rounded-2xl overflow-hidden border border-gray-100"
-          >
-            <div className="mb-4">
-              <Alert
-                title="Images (Max 6)"
-                description="Upload clear photos from multiple angles. First image is the cover."
-                type="info"
-                showIcon
-                className="rounded-xl border-none bg-blue-50"
+              <Paper
+                variant="outlined"
+                sx={{ p: 2, borderRadius: 2.5, borderColor: "#ece8de" }}
+              >
+                <Stack spacing={2}>
+                  <Box
+                    sx={{
+                      mb: 2,
+                      p: 1.5,
+                      bgcolor: "#f0f7ff",
+                      borderRadius: 2,
+                      border: "1px solid #d0e7ff",
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      color="primary.dark"
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        fontWeight: 700,
+                      }}
+                    >
+                      <i className="fa-solid fa-circle-info" />
+                      Image Requirements:
+                    </Typography>
+                    <ul
+                      style={{
+                        margin: "4px 0 0 16px",
+                        padding: 0,
+                        fontSize: "11px",
+                        color: "#444",
+                      }}
+                    >
+                      <li>
+                        Maximum <b>6 images</b> allowed.
+                      </li>
+                      <li>
+                        Recommended size: At least <b>800x800px</b>.
+                      </li>
+                      <li>
+                        Aspect Ratio: <b>1:1 (Square)</b> is best.
+                      </li>
+                      <li>
+                        First image will be the <b>Main Cover</b>.
+                      </li>
+                    </ul>
+                  </Box>
+
+                  <Stack
+                    direction="row"
+                    justifyContent="space-between"
+                    alignItems="center"
+                  >
+                    <Typography variant="subtitle2" fontWeight={800}>
+                      Gallery ({managedImages.length}/6)
+                    </Typography>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      component="label"
+                      startIcon={<i className="fa-solid fa-plus" />}
+                      disableElevation
+                      disabled={managedImages.length >= 6}
+                    >
+                      Add
+                      <input
+                        hidden
+                        accept="image/*"
+                        multiple
+                        type="file"
+                        onChange={(e) => handleAddNew(e.target.files)}
+                        disabled={managedImages.length >= 6}
+                      />
+                    </Button>
+                  </Stack>
+
+                  <Stack spacing={1}>
+                    {managedImages.map((img, idx) => (
+                      <Paper
+                        key={img.type === "existing" ? img.id : img.tempId}
+                        variant="outlined"
+                        sx={{
+                          p: 1,
+                          borderRadius: 2,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1.5,
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            width: 50,
+                            height: 50,
+                            borderRadius: 1,
+                            overflow: "hidden",
+                            border: "1px solid #eee",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <img
+                            src={img.url}
+                            alt="Preview"
+                            className="h-full w-full object-cover"
+                          />
+                        </Box>
+                        <Box sx={{ flex: 1 }}>
+                          {idx === 0 && (
+                            <Chip
+                              label="Main"
+                              size="small"
+                              color="primary"
+                              sx={{ height: 16, fontSize: 10, fontWeight: 800 }}
+                            />
+                          )}
+                        </Box>
+                        <Stack direction="row" spacing={0}>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleMoveImage(idx, "up")}
+                            disabled={idx === 0}
+                          >
+                            <i className="fa-solid fa-chevron-up text-[10px]" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => handleMoveImage(idx, "down")}
+                            disabled={idx === managedImages.length - 1}
+                          >
+                            <i className="fa-solid fa-chevron-down text-[10px]" />
+                          </IconButton>
+                          <IconButton size="small" component="label">
+                            <i className="fa-solid fa-sync text-[10px]" />
+                            <input
+                              hidden
+                              accept="image/*"
+                              type="file"
+                              onChange={(e) => {
+                                if (e.target.files?.[0])
+                                  handleReplaceImage(idx, e.target.files[0]);
+                              }}
+                            />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            color="error"
+                            onClick={() => handleRemoveImage(idx)}
+                          >
+                            <i className="fa-solid fa-trash text-[10px]" />
+                          </IconButton>
+                        </Stack>
+                      </Paper>
+                    ))}
+                    {managedImages.length === 0 && (
+                      <Box
+                        sx={{
+                          py: 4,
+                          border: "2px dashed #eee",
+                          borderRadius: 2,
+                          textAlign: "center",
+                          cursor: "pointer",
+                          "&:hover": { bgcolor: "#fafafa" },
+                        }}
+                        component="label"
+                      >
+                        <input
+                          hidden
+                          accept="image/*"
+                          multiple
+                          type="file"
+                          onChange={(e) => handleAddNew(e.target.files)}
+                        />
+                        <i className="fa-solid fa-cloud-upload-alt text-2xl text-gray-300 mb-2 block" />
+                        <Typography variant="caption" color="text.secondary">
+                          Upload product images
+                        </Typography>
+                      </Box>
+                    )}
+                  </Stack>
+                </Stack>
+              </Paper>
+            </Stack>
+          </Box>
+        </Box>
+      </Paper>
+
+      {/* Card Preview Modal */}
+      <Dialog
+        open={cardPreviewOpen}
+        onClose={() => setCardPreviewOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>Card Preview</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
+            <div className="h-[320px] w-[240px]">
+              <ProductCard
+                id="preview"
+                name={payload.name || "Product Name"}
+                price={Number(payload.price) || 0}
+                imageUrl={previewUrls[0] || null}
+                stock={Number(payload.stock) || 0}
+                href="#"
               />
             </div>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCardPreviewOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
 
-            <Upload
-              listType="picture-card"
-              fileList={fileList}
-              onChange={handleUploadChange}
-              onPreview={onPreview}
-              beforeUpload={() => false}
-              maxCount={6}
-              multiple
-              className="create-product-upload"
-            >
-              {fileList.length < 6 && (
-                <div className="flex flex-col items-center justify-center">
-                  <PlusOutlined
-                    style={{ fontSize: "24px", color: "#3b82f6" }}
-                  />
-                  <div style={{ marginTop: 8, color: "#64748b" }}>
-                    Add Media
-                  </div>
-                </div>
-              )}
-            </Upload>
-          </Card>
-
-          <Card
-            variant="borderless"
-            className="shadow-sm rounded-2xl overflow-hidden border-l-4 border-l-blue-500 bg-blue-50/50"
-          >
-            <Text className="block font-bold text-lg mb-2">
-              Publishing Tips
-            </Text>
-            <ul className="text-sm space-y-3 text-slate-600 pl-4 list-disc">
-              <li>Use high-quality images with good lighting.</li>
-              <li>Include the OEM part number for better search results.</li>
-              <li>Specify the condition accurately to avoid returns.</li>
-              <li>The price should be competitive for the condition.</li>
-            </ul>
-          </Card>
-
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm sticky top-6">
-            <Button
-              type="primary"
-              onClick={() => form.submit()}
-              size="large"
-              block
-              icon={<SaveOutlined />}
-              loading={createProduct.isPending}
-              className="h-14 rounded-xl font-bold text-lg mb-4"
-            >
-              Create Listing
-            </Button>
-            <Button
-              block
-              size="large"
-              className="h-12 rounded-xl text-gray-500"
-              onClick={() => router.back()}
-            >
-              Back to Inventory
-            </Button>
-          </div>
-        </div>
-      </Form>
-
-      <style jsx global>{`
-        .custom-select :global(.ant-select-selector),
-        .custom-select-multiple :global(.ant-select-selector) {
-          border-radius: 12px !important;
-          border-color: #e2e8f0 !important;
-        }
-        .create-product-upload :global(.ant-upload-select-picture-card) {
-          border-radius: 16px !important;
-          border-style: dashed !important;
-          border-width: 2px !important;
-          background-color: #f8fafc !important;
-          transition: all 0.3s ease;
-        }
-        .create-product-upload :global(.ant-upload-select-picture-card:hover) {
-          border-color: #3b82f6 !important;
-          background-color: #eff6ff !important;
-        }
-        .create-product-upload :global(.ant-upload-list-item) {
-          border-radius: 16px !important;
-          padding: 4px !important;
-        }
-      `}</style>
-    </div>
+      {/* Gallery Preview Modal */}
+      <Dialog
+        open={galleryPreviewOpen}
+        onClose={() => setGalleryPreviewOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 800 }}>Gallery Preview</DialogTitle>
+        <DialogContent dividers>
+          <Box sx={{ py: 2 }}>
+            <ProductGallery
+              name={payload.name || "Product Name"}
+              previewUrls={previewUrls}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setGalleryPreviewOpen(false)}>Close</Button>
+        </DialogActions>
+      </Dialog>
+    </Box>
   );
 }
-

@@ -4,7 +4,6 @@ import { useCatalogStore } from "../stores/useCatalogStore";
 interface Category {
   id: string;
   name: string;
-  label?: string;
   slug?: string;
 }
 
@@ -19,4 +18,3 @@ export function useCategories() {
     initialData: categories.length > 0 ? categories : undefined,
   });
 }
-

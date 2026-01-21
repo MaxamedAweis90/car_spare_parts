@@ -17,6 +17,7 @@ import { logActivity } from "@/lib/server/auditService";
 import {
   getEmailUpdateVerificationTemplate,
   getSellerApprovalEmailTemplate,
+  getAdminInvitationTemplate,
 } from "@/lib/emails/templates";
 
 const appwriteEndpoint = (
@@ -79,7 +80,7 @@ async function getUserById(id: string): Promise<UserDocument> {
   return (await databasesServer.getDocument(
     appwriteConfig.databaseId,
     appwriteConfig.usersCollectionId,
-    id
+    id,
   )) as UserDocument;
 }
 
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
     if (!name || !email || !role || !creatorId || !password) {
       return NextResponse.json(
         { error: "name, email, password, role, creatorId are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -127,14 +128,14 @@ export async function POST(req: NextRequest) {
     if (!isMainAdmin) {
       return NextResponse.json(
         { error: "Only the main admin can create admin accounts" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     if (role !== "admin") {
       return NextResponse.json(
         { error: "Only admin accounts can be created here" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -142,13 +143,18 @@ export async function POST(req: NextRequest) {
     if (existing) {
       return NextResponse.json(
         { error: "User with this email already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
     const passwordHash = await hashPassword(password);
-
     const appwriteUser = await ensureAppwriteUser({ name, email, password });
+
+    // Generate activation token
+    const activationToken = ID.unique();
+    await usersServer.updatePrefs(appwriteUser.$id, {
+      adminActivationToken: activationToken,
+    });
 
     const profile = await createUserProfile({
       name,
@@ -157,6 +163,34 @@ export async function POST(req: NextRequest) {
       passwordHash,
       appwriteUserId: appwriteUser.$id,
     });
+
+    // Send Invitation Email
+    try {
+      const activationLink = `${req.nextUrl.origin}/auth/admin/activate?userId=${appwriteUser.$id}&token=${activationToken}`;
+      const subject = "Invitation to join SomaParts Admin Team";
+      const content = getAdminInvitationTemplate(
+        name,
+        email,
+        password,
+        activationLink,
+      );
+
+      await messagingServer.createEmail(
+        ID.unique(),
+        subject,
+        content,
+        [], // topics
+        [appwriteUser.$id], // users
+        [], // targets
+        [], // cc
+        [], // bcc
+        [], // attachments
+        false, // draft
+        true, // html
+      );
+    } catch (emailErr) {
+      console.error("Failed to send admin invitation email:", emailErr);
+    }
 
     // Log Activity
     if (role === "admin") {
@@ -180,7 +214,7 @@ export async function POST(req: NextRequest) {
     console.error("Create user error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -203,7 +237,7 @@ export async function PUT(req: NextRequest) {
     if (!userId) {
       return NextResponse.json(
         { error: "userId is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -212,8 +246,30 @@ export async function PUT(req: NextRequest) {
     if (updater && updater.role !== "main_admin" && updater.role !== "admin") {
       return NextResponse.json(
         { error: "Only admins can update users" },
-        { status: 403 }
+        { status: 403 },
       );
+    }
+
+    // Protection for Main Admin
+    if (user.role === "main_admin") {
+      if (updater && updater.role !== "main_admin") {
+        return NextResponse.json(
+          { error: "Only the main admin can update a main admin profile" },
+          { status: 403 },
+        );
+      }
+      if (typeof isActive === "boolean" && isActive === false) {
+        return NextResponse.json(
+          { error: "The main admin account cannot be deactivated" },
+          { status: 403 },
+        );
+      }
+      if (role && role !== "main_admin") {
+        return NextResponse.json(
+          { error: "The main admin role cannot be changed" },
+          { status: 403 },
+        );
+      }
     }
 
     const updatedData: Partial<UserDocument> = {};
@@ -244,7 +300,7 @@ export async function PUT(req: NextRequest) {
             const content = getEmailUpdateVerificationTemplate(
               name || user.name,
               email,
-              verifyLink
+              verifyLink,
             );
 
             console.log("📧 Sending verification email to admin:", {
@@ -266,7 +322,7 @@ export async function PUT(req: NextRequest) {
               [], // bcc
               [], // attachments
               false, // draft
-              true // html
+              true, // html
             );
 
             console.log("✅ Admin verification email sent successfully:", {
@@ -277,7 +333,7 @@ export async function PUT(req: NextRequest) {
           } catch (err: any) {
             console.error(
               "Failed to send verification email for admin update",
-              err
+              err,
             );
           }
         }
@@ -288,7 +344,7 @@ export async function PUT(req: NextRequest) {
             error:
               err?.message || "Failed to update email address in Auth system",
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
     }
@@ -312,7 +368,7 @@ export async function PUT(req: NextRequest) {
       appwriteConfig.databaseId,
       appwriteConfig.usersCollectionId,
       userId,
-      updatedData
+      updatedData,
     );
 
     // Send Approval Email if seller is approved
@@ -326,7 +382,7 @@ export async function PUT(req: NextRequest) {
           "Congratulations! Your Seller account has been approved";
         const content = getSellerApprovalEmailTemplate(
           user.name,
-          `${req.nextUrl.origin}/auth/seller/login`
+          `${req.nextUrl.origin}/auth/seller/login`,
         );
 
         await messagingServer.createEmail(
@@ -340,7 +396,7 @@ export async function PUT(req: NextRequest) {
           [], // bcc
           [], // attachments
           false, // draft
-          true // html
+          true, // html
         );
         console.log("Seller approval email sent successfully.");
       } catch (emailErr) {
@@ -376,8 +432,8 @@ export async function PUT(req: NextRequest) {
                 ? "APPROVE_SELLER"
                 : "DEACTIVATE_SELLER" // Re-activating acts like approval/reset
               : isActive
-              ? "UPDATE_PASSWORD_ADMIN"
-              : "DEACTIVATE_ADMIN"; // Re-using UPDATE_PASSWORD_ADMIN as placeholder for 'REACTIVATE' isn't great, let's Stick to checking role.
+                ? "UPDATE_PASSWORD_ADMIN"
+                : "DEACTIVATE_ADMIN"; // Re-using UPDATE_PASSWORD_ADMIN as placeholder for 'REACTIVATE' isn't great, let's Stick to checking role.
 
           // Correct logic:
           let act = "";
@@ -418,7 +474,7 @@ export async function PUT(req: NextRequest) {
     console.error("Update user error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -440,7 +496,7 @@ export async function GET(req: NextRequest) {
     const list = await databasesServer.listDocuments(
       appwriteConfig.databaseId,
       appwriteConfig.usersCollectionId,
-      queries
+      queries,
     );
 
     return NextResponse.json(list);
@@ -448,7 +504,7 @@ export async function GET(req: NextRequest) {
     console.error("List users error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -461,15 +517,29 @@ export async function DELETE(req: NextRequest) {
     if (!userId || !deleterId) {
       return NextResponse.json(
         { error: "userId and deleterId are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const deleter = await getUserById(deleterId);
-    if (deleter.role !== "main_admin") {
+
+    // Check if deleter is main admin (by role or by ID)
+    const mainAdminId = (process.env.APPWRITE_MAIN_ADMIN_USER_ID || "").trim();
+    const isMainAdmin =
+      deleter.role === "main_admin" ||
+      (mainAdminId && deleterId === mainAdminId);
+
+    console.log("Delete Admin Permission Check:", {
+      deleterId,
+      deleterRole: deleter.role,
+      mainAdminId,
+      isMainAdmin,
+    });
+
+    if (!isMainAdmin) {
       return NextResponse.json(
         { error: "Only the main admin can delete admin accounts" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -477,14 +547,14 @@ export async function DELETE(req: NextRequest) {
     if (target.role === "main_admin") {
       return NextResponse.json(
         { error: "The main admin account cannot be deleted" },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     await databasesServer.deleteDocument(
       appwriteConfig.databaseId,
       appwriteConfig.usersCollectionId,
-      userId
+      userId,
     );
 
     // Best-effort: also delete the Appwrite auth user if linked.
@@ -515,8 +585,7 @@ export async function DELETE(req: NextRequest) {
     console.error("Delete user error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-
