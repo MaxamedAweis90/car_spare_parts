@@ -32,12 +32,27 @@ export default function AdminAdminsPage() {
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
 
-  const mainAdminId = (
+  const envMainIdsString = (
     process.env.NEXT_PUBLIC_APPWRITE_MAIN_ADMIN_USER_ID || ""
   ).trim();
-  const isMainAdmin =
-    profile?.role === "main_admin" ||
-    (Boolean(mainAdminId) && profile?.$id === mainAdminId);
+
+  const mainAdminIds = useMemo(() => {
+    return envMainIdsString
+      .split(",")
+      .map((id) => id.trim().replace(/^["'](.+)["']$/, "$1"))
+      .filter(Boolean);
+  }, [envMainIdsString]);
+
+  const isMainAdmin = useMemo(() => {
+    if (!profile) return false;
+    return (
+      profile.role === "main_admin" ||
+      (mainAdminIds.length > 0 &&
+        (mainAdminIds.includes(profile.$id) ||
+          (profile.appwriteUserId &&
+            mainAdminIds.includes(profile.appwriteUserId))))
+    );
+  }, [profile, mainAdminIds]);
 
   useEffect(() => {
     if (!profile) return;
@@ -63,13 +78,14 @@ export default function AdminAdminsPage() {
       allFetched.forEach((a) => uniqueMap.set(a.$id, a));
       const uniqueList = Array.from(uniqueMap.values());
 
-      // Identify main admin: ID matches env OR role is 'main_admin'
+      // Identify main admin: ID matches any in env OR role is 'main_admin'
       let finalMain =
         uniqueList.find(
           (a) =>
-            (mainAdminId &&
-              (a.$id === mainAdminId || a.appwriteUserId === mainAdminId)) ||
-            a.role === "main_admin",
+            a.role === "main_admin" ||
+            (mainAdminIds.length > 0 &&
+              (mainAdminIds.includes(a.$id) ||
+                (a.appwriteUserId && mainAdminIds.includes(a.appwriteUserId)))),
         ) || null;
 
       // Regular admins are everyone else
@@ -95,17 +111,23 @@ export default function AdminAdminsPage() {
   }, [isMainAdmin, screen]);
 
   const sortedAdmins = useMemo(() => {
-    // Filter out the main admin from the regular admin list by ID
-    const regularAdmins = admins.filter(
-      (admin) => admin.$id !== mainAdmin?.$id && admin.$id !== mainAdminId,
-    );
+    // Filter out the main admin from the regular admin list
+    const regularAdmins = admins.filter((admin) => {
+      const isThisMain =
+        admin.$id === mainAdmin?.$id ||
+        (mainAdminIds.length > 0 &&
+          (mainAdminIds.includes(admin.$id) ||
+            (admin.appwriteUserId &&
+              mainAdminIds.includes(admin.appwriteUserId))));
+      return !isThisMain;
+    });
 
     return regularAdmins.sort((a, b) => {
       const aTime = a.createdAt ? Date.parse(a.createdAt) : 0;
       const bTime = b.createdAt ? Date.parse(b.createdAt) : 0;
       return bTime - aTime;
     });
-  }, [admins, mainAdmin, mainAdminId]);
+  }, [admins, mainAdmin, mainAdminIds]);
 
   const startEdit = (u: AdminUser) => {
     setEditingId(u.$id);

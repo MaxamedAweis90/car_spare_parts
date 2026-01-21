@@ -106,12 +106,27 @@ export default function AdminLayoutShell({
   } = theme.useToken();
 
   const isAllowed = authenticated && allowedRoles.has(profile?.role);
-  const mainAdminId = (
+  const envMainIdsString = (
     process.env.NEXT_PUBLIC_APPWRITE_MAIN_ADMIN_USER_ID || ""
   ).trim();
-  const isMainAdmin =
-    profile?.role === "main_admin" ||
-    (Boolean(mainAdminId) && profile?.$id === mainAdminId);
+
+  const mainAdminIds = useMemo(() => {
+    return envMainIdsString
+      .split(",")
+      .map((id) => id.trim().replace(/^["'](.+)["']$/, "$1"))
+      .filter(Boolean);
+  }, [envMainIdsString]);
+
+  const isMainAdmin = useMemo(() => {
+    if (!profile) return false;
+    return (
+      profile.role === "main_admin" ||
+      (mainAdminIds.length > 0 &&
+        (mainAdminIds.includes(profile.$id) ||
+          (profile.appwriteUserId &&
+            mainAdminIds.includes(profile.appwriteUserId))))
+    );
+  }, [profile, mainAdminIds]);
 
   // Client-side redirects removed - handled by Server Layout
   // We only keep basic user data via useSession for UI purposes (Avatar, etc)
@@ -181,7 +196,7 @@ export default function AdminLayoutShell({
 
   // Filter items
   const menuItems = NAV_ITEMS.filter(
-    (item) => !item.mainAdminOnly || isMainAdmin
+    (item) => !item.mainAdminOnly || isMainAdmin,
   ).map((item) => ({
     key: item.key,
     icon: item.icon,
@@ -191,7 +206,7 @@ export default function AdminLayoutShell({
   // Find active key
   const activeKey =
     NAV_ITEMS.filter(
-      (item) => pathname === item.key || pathname.startsWith(`${item.key}/`)
+      (item) => pathname === item.key || pathname.startsWith(`${item.key}/`),
     ).sort((a, b) => b.key.length - a.key.length)[0]?.key || "/admin";
 
   return (
@@ -325,17 +340,17 @@ export default function AdminLayoutShell({
                     resendStatus === "success"
                       ? "bg-green-100 text-green-700 border-green-200"
                       : resendStatus === "error"
-                      ? "bg-red-100 text-red-700 border-red-200"
-                      : "bg-amber-100 text-amber-900 border-amber-200 hover:bg-amber-200"
+                        ? "bg-red-100 text-red-700 border-red-200"
+                        : "bg-amber-100 text-amber-900 border-amber-200 hover:bg-amber-200"
                   }`}
                 >
                   {resending
                     ? "Sending..."
                     : resendStatus === "success"
-                    ? "✓ Link Sent"
-                    : resendStatus === "error"
-                    ? "Failed to send"
-                    : "Resend Link"}
+                      ? "✓ Link Sent"
+                      : resendStatus === "error"
+                        ? "Failed to send"
+                        : "Resend Link"}
                 </button>
               </div>
             </div>
@@ -374,4 +389,3 @@ export default function AdminLayoutShell({
     );
   }
 }
-
