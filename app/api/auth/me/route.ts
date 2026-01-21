@@ -11,6 +11,32 @@ const mainAdminId = (
   ""
 ).trim();
 
+// Parse main admin IDs
+const getMainAdminIds = () => {
+  return mainAdminId
+    .split(",")
+    .map((id) => id.trim().replace(/^["'](.+)["']$/, "$1"))
+    .filter(Boolean);
+};
+
+function checkIsMainAdmin(
+  authId?: string | null,
+  profileDocId?: string | null,
+  profileLinkedAuthId?: string | null,
+  profileRole?: string | null,
+) {
+  const allowedIds = getMainAdminIds();
+  if (allowedIds.length === 0) return profileRole === "main_admin";
+
+  const isMatch =
+    (authId && allowedIds.includes(authId)) ||
+    (profileDocId && allowedIds.includes(profileDocId)) ||
+    (profileLinkedAuthId && allowedIds.includes(profileLinkedAuthId)) ||
+    profileRole === "main_admin";
+
+  return isMatch;
+}
+
 export async function GET(req: NextRequest) {
   const cookieHeader = req.headers.get("cookie");
   const jwtCookie = req.cookies.get("appwrite_jwt")?.value;
@@ -60,13 +86,12 @@ export async function GET(req: NextRequest) {
     const safeProfile = profile ? sanitizeUser(profile) : null;
     const avatarUrl = profile ? buildUserAvatarUrl(profile.avatarId) : null;
 
-    const normalizedEnvId = (mainAdminId || "").trim();
-    const isMainAdminAccount =
-      Boolean(normalizedEnvId) &&
-      (account?.$id === normalizedEnvId ||
-        profile?.appwriteUserId === normalizedEnvId ||
-        profile?.$id === normalizedEnvId ||
-        profile?.role === "main_admin");
+    const isMainAdminAccount = checkIsMainAdmin(
+      account?.$id,
+      profile?.$id,
+      profile?.appwriteUserId,
+      profile?.role,
+    );
     const hydratedProfile =
       safeProfile && isMainAdminAccount
         ? { ...safeProfile, role: "main_admin" as const }

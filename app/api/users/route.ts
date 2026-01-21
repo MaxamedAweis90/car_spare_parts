@@ -36,10 +36,48 @@ const mainAdminId = (
   ""
 ).trim();
 
+// Parse main admin IDs (handles comma-separated and strips quotes)
+const getMainAdminIds = () => {
+  return mainAdminId
+    .split(",")
+    .map((id) => id.trim().replace(/^["'](.+)["']$/, "$1"))
+    .filter(Boolean);
+};
+
 if (!mainAdminId) {
   console.warn(
     "⚠️ APPWRITE_MAIN_ADMIN_USER_ID is not set! Main Admin privileges will be limited to database roles only.",
   );
+}
+
+/**
+ * Robust check to see if a user is the one and only Main Admin.
+ * Checks against the Auth Session, the Profile's linked Auth ID, and the Profile Document ID.
+ */
+function checkIsMainAdmin(
+  authId?: string | null,
+  profileDocId?: string | null,
+  profileLinkedAuthId?: string | null,
+  profileRole?: string | null,
+) {
+  const allowedIds = getMainAdminIds();
+  if (allowedIds.length === 0) return profileRole === "main_admin";
+
+  const isMatch =
+    (authId && allowedIds.includes(authId)) ||
+    (profileDocId && allowedIds.includes(profileDocId)) ||
+    (profileLinkedAuthId && allowedIds.includes(profileLinkedAuthId)) ||
+    profileRole === "main_admin";
+
+  return isMatch;
+}
+
+function getMaskedExpectedIds() {
+  return getMainAdminIds()
+    .map((id) =>
+      id ? `${id.substring(0, 4)}...${id.substring(id.length - 4)}` : "???",
+    )
+    .join(", ");
 }
 
 async function getAppwriteAccountFromRequest(req: NextRequest) {
@@ -119,28 +157,25 @@ export async function POST(req: NextRequest) {
     const account = await getAppwriteAccountFromRequest(req);
     const creator = await getUserById(creatorId);
 
-    // Multi-ID comparison: We check against BOTH the Appwrite Auth ID and the Profile Document ID.
-    // If ANY of these matches the environment variable, the user is authorized.
-    const normalizedEnvId = (mainAdminId || "").trim();
-    const isMainAdmin =
-      (normalizedEnvId && account?.$id === normalizedEnvId) ||
-      (normalizedEnvId && creator.appwriteUserId === normalizedEnvId) ||
-      (normalizedEnvId && creatorId === normalizedEnvId) ||
-      creator.role === "main_admin";
+    const isMainAdmin = checkIsMainAdmin(
+      account?.$id,
+      creatorId,
+      creator.appwriteUserId,
+      creator.role,
+    );
 
     console.log("Create Admin Permission Check (Production Diagnostics):", {
       isAuthorized: isMainAdmin,
-      mainAdminIdFromEnv: normalizedEnvId || "NOT_SET",
+      expectedIds_Masked: getMaskedExpectedIds(),
       currentUser_AuthId: account?.$id || "none",
       currentUser_DocId: creatorId,
       profile_LinkedAuthId: creator.appwriteUserId || "none",
-      profile_Role: creator.role,
     });
 
     if (!isMainAdmin) {
       return NextResponse.json(
         {
-          error: `Only the main admin can create admin accounts. Identified as: ${account?.$id || creatorId}`,
+          error: `Only the main admin can create admin accounts. Identified as: ${account?.$id || creatorId}. Expected one of: ${getMaskedExpectedIds()}`,
         },
         { status: 403 },
       );
@@ -272,21 +307,18 @@ export async function PUT(req: NextRequest) {
 
     // Authorize Check: Is the updater the Main Admin?
     const account = await getAppwriteAccountFromRequest(req);
-    const normalizedEnvId = (mainAdminId || "").trim();
-    const isMainAdminUpdater =
-      (normalizedEnvId && account?.$id === normalizedEnvId) ||
-      (updater &&
-        normalizedEnvId &&
-        updater.appwriteUserId === normalizedEnvId) ||
-      (normalizedEnvId && updaterId === normalizedEnvId) ||
-      (updater && updater.role === "main_admin");
+    const isMainAdminUpdater = checkIsMainAdmin(
+      account?.$id,
+      updaterId,
+      updater?.appwriteUserId,
+      updater?.role,
+    );
 
     console.log("Update User Permission Check (Production Diagnostics):", {
       isAuthorized: isMainAdminUpdater,
-      mainAdminIdFromEnv: normalizedEnvId || "NOT_SET",
+      expectedIds_Masked: getMaskedExpectedIds(),
       updater_AuthId: account?.$id || "none",
       updater_DocId: updaterId,
-      updater_ProfileLinkedAuthId: updater?.appwriteUserId || "none",
     });
 
     if (updater && !isMainAdminUpdater && updater.role !== "admin") {
@@ -297,10 +329,12 @@ export async function PUT(req: NextRequest) {
     }
 
     // Protection for Main Admin profile
-    const isTargetMainAdmin =
-      (mainAdminId && user.appwriteUserId === mainAdminId) ||
-      (mainAdminId && userId === mainAdminId) ||
-      user.role === "main_admin";
+    const isTargetMainAdmin = checkIsMainAdmin(
+      user.appwriteUserId,
+      userId,
+      null, // we don't need linked auth here as we have both
+      user.role,
+    );
 
     if (isTargetMainAdmin) {
       if (!isMainAdminUpdater) {
@@ -579,36 +613,36 @@ export async function DELETE(req: NextRequest) {
     const account = await getAppwriteAccountFromRequest(req);
     const deleter = await getUserById(deleterId);
 
-    const normalizedEnvId = (mainAdminId || "").trim();
-    const isMainAdmin =
-      (normalizedEnvId && account?.$id === normalizedEnvId) ||
-      (normalizedEnvId && deleter.appwriteUserId === normalizedEnvId) ||
-      (normalizedEnvId && deleterId === normalizedEnvId) ||
-      deleter.role === "main_admin";
+    const isMainAdmin = checkIsMainAdmin(
+      account?.$id,
+      deleterId,
+      deleter.appwriteUserId,
+      deleter.role,
+    );
 
     console.log("Delete Admin Permission Check (Production Diagnostics):", {
       isAuthorized: isMainAdmin,
-      mainAdminIdFromEnv: normalizedEnvId || "NOT_SET",
+      expectedIds_Masked: getMaskedExpectedIds(),
       currentUser_AuthId: account?.$id || "none",
       currentUser_DocId: deleterId,
-      profile_LinkedAuthId: deleter.appwriteUserId || "none",
-      profile_Role: deleter.role,
     });
 
     if (!isMainAdmin) {
       return NextResponse.json(
         {
-          error: `Only the main admin can delete admin accounts. Identified as: ${account?.$id || deleterId}`,
+          error: `Only the main admin can delete admin accounts. Identified as: ${account?.$id || deleterId}. Expected one of: ${getMaskedExpectedIds()}`,
         },
         { status: 403 },
       );
     }
 
     const target = await getUserById(userId);
-    const isTargetMainAdmin =
-      (mainAdminId && target.appwriteUserId === mainAdminId) ||
-      (mainAdminId && userId === mainAdminId) ||
-      target.role === "main_admin";
+    const isTargetMainAdmin = checkIsMainAdmin(
+      target.appwriteUserId,
+      userId,
+      null,
+      target.role,
+    );
 
     if (isTargetMainAdmin) {
       return NextResponse.json(
