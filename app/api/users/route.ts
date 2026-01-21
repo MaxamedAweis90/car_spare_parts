@@ -177,7 +177,14 @@ export async function POST(req: NextRequest) {
         activationLink,
       );
 
-      await messagingServer.createEmail(
+      console.log("📧 Attempting to send admin invitation email...", {
+        userId: appwriteUser.$id,
+        toEmail: email,
+        origin: req.nextUrl.origin,
+        activationLink,
+      });
+
+      const messageRes = await messagingServer.createEmail(
         ID.unique(),
         subject,
         content,
@@ -190,8 +197,13 @@ export async function POST(req: NextRequest) {
         false, // draft
         true, // html
       );
+
+      console.log(
+        "✅ Admin invitation email sent successfully:",
+        messageRes.$id,
+      );
     } catch (emailErr) {
-      console.error("Failed to send admin invitation email:", emailErr);
+      console.error("❌ Failed to send admin invitation email:", emailErr);
     }
 
     // Log Activity
@@ -523,12 +535,14 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
+    // Authorize: Check if the requester is the main admin
+    const account = await getAppwriteAccountFromRequest(req);
     const deleter = await getUserById(deleterId);
 
-    // Check if deleter is main admin (by role or by ID)
-    const mainAdminId = (process.env.APPWRITE_MAIN_ADMIN_USER_ID || "").trim();
+    // Check main admin by role in DB OR by ID in env
     const isMainAdmin =
       deleter.role === "main_admin" ||
+      (account?.$id && mainAdminId && account.$id === mainAdminId) ||
       (mainAdminId && deleterId === mainAdminId);
 
     console.log("Delete Admin Permission Check:", {
