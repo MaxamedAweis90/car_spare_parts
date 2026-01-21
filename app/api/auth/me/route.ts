@@ -60,11 +60,12 @@ export async function GET(req: NextRequest) {
     const safeProfile = profile ? sanitizeUser(profile) : null;
     const avatarUrl = profile ? buildUserAvatarUrl(profile.avatarId) : null;
 
+    const normalizedEnvId = (mainAdminId || "").trim();
     const isMainAdminAccount =
-      Boolean(mainAdminId) &&
-      (account?.$id === mainAdminId ||
-        profile?.appwriteUserId === mainAdminId ||
-        profile?.$id === mainAdminId ||
+      Boolean(normalizedEnvId) &&
+      (account?.$id === normalizedEnvId ||
+        profile?.appwriteUserId === normalizedEnvId ||
+        profile?.$id === normalizedEnvId ||
         profile?.role === "main_admin");
     const hydratedProfile =
       safeProfile && isMainAdminAccount

@@ -116,33 +116,32 @@ export async function POST(req: NextRequest) {
     }
 
     // Authorize: Is the requester the one and only Main Admin?
-    // Per USER: Main admin is identified by ID in .env, not necessarily a 'main_admin' role.
     const account = await getAppwriteAccountFromRequest(req);
     const creator = await getUserById(creatorId);
 
-    // Redundant ID Check for maximum reliability in production:
-    // 1. Appwrite Auth Session ID matches env
-    // 2. Profile's appwriteUserId field matches env
-    // 3. Profile's Document ID matches env
-    // 4. Fallback: Role is 'main_admin' (for runtime profile compatibility)
+    // Multi-ID comparison: We check against BOTH the Appwrite Auth ID and the Profile Document ID.
+    // If ANY of these matches the environment variable, the user is authorized.
+    const normalizedEnvId = (mainAdminId || "").trim();
     const isMainAdmin =
-      (mainAdminId && account?.$id === mainAdminId) ||
-      (mainAdminId && creator.appwriteUserId === mainAdminId) ||
-      (mainAdminId && creatorId === mainAdminId) ||
+      (normalizedEnvId && account?.$id === normalizedEnvId) ||
+      (normalizedEnvId && creator.appwriteUserId === normalizedEnvId) ||
+      (normalizedEnvId && creatorId === normalizedEnvId) ||
       creator.role === "main_admin";
 
-    console.log("Create Admin Permission Check:", {
-      isMainAdmin,
-      mainAdminIdEnv: mainAdminId || "MISSING",
-      creatorDocId: creatorId,
-      creatorAppwriteId: creator.appwriteUserId || "none",
-      sessionAuthId: account?.$id || "none",
-      creatorRole: creator.role,
+    console.log("Create Admin Permission Check (Production Diagnostics):", {
+      isAuthorized: isMainAdmin,
+      mainAdminIdFromEnv: normalizedEnvId || "NOT_SET",
+      currentUser_AuthId: account?.$id || "none",
+      currentUser_DocId: creatorId,
+      profile_LinkedAuthId: creator.appwriteUserId || "none",
+      profile_Role: creator.role,
     });
 
     if (!isMainAdmin) {
       return NextResponse.json(
-        { error: "Only the main admin can create admin accounts" },
+        {
+          error: `Only the main admin can create admin accounts. Identified as: ${account?.$id || creatorId}`,
+        },
         { status: 403 },
       );
     }
@@ -273,11 +272,22 @@ export async function PUT(req: NextRequest) {
 
     // Authorize Check: Is the updater the Main Admin?
     const account = await getAppwriteAccountFromRequest(req);
+    const normalizedEnvId = (mainAdminId || "").trim();
     const isMainAdminUpdater =
-      (mainAdminId && account?.$id === mainAdminId) ||
-      (updater && mainAdminId && updater.appwriteUserId === mainAdminId) ||
-      (mainAdminId && updaterId === mainAdminId) ||
+      (normalizedEnvId && account?.$id === normalizedEnvId) ||
+      (updater &&
+        normalizedEnvId &&
+        updater.appwriteUserId === normalizedEnvId) ||
+      (normalizedEnvId && updaterId === normalizedEnvId) ||
       (updater && updater.role === "main_admin");
+
+    console.log("Update User Permission Check (Production Diagnostics):", {
+      isAuthorized: isMainAdminUpdater,
+      mainAdminIdFromEnv: normalizedEnvId || "NOT_SET",
+      updater_AuthId: account?.$id || "none",
+      updater_DocId: updaterId,
+      updater_ProfileLinkedAuthId: updater?.appwriteUserId || "none",
+    });
 
     if (updater && !isMainAdminUpdater && updater.role !== "admin") {
       return NextResponse.json(
@@ -569,24 +579,27 @@ export async function DELETE(req: NextRequest) {
     const account = await getAppwriteAccountFromRequest(req);
     const deleter = await getUserById(deleterId);
 
-    // Flexible ID check
+    const normalizedEnvId = (mainAdminId || "").trim();
     const isMainAdmin =
-      (mainAdminId && account?.$id === mainAdminId) ||
-      (mainAdminId && deleter.appwriteUserId === mainAdminId) ||
-      (mainAdminId && deleterId === mainAdminId) ||
+      (normalizedEnvId && account?.$id === normalizedEnvId) ||
+      (normalizedEnvId && deleter.appwriteUserId === normalizedEnvId) ||
+      (normalizedEnvId && deleterId === normalizedEnvId) ||
       deleter.role === "main_admin";
 
-    console.log("Delete Admin Permission Check:", {
-      isMainAdmin,
-      mainAdminIdEnv: mainAdminId || "MISSING",
-      deleterDocId: deleterId,
-      deleterAppwriteId: deleter.appwriteUserId || "none",
-      sessionAuthId: account?.$id || "none",
+    console.log("Delete Admin Permission Check (Production Diagnostics):", {
+      isAuthorized: isMainAdmin,
+      mainAdminIdFromEnv: normalizedEnvId || "NOT_SET",
+      currentUser_AuthId: account?.$id || "none",
+      currentUser_DocId: deleterId,
+      profile_LinkedAuthId: deleter.appwriteUserId || "none",
+      profile_Role: deleter.role,
     });
 
     if (!isMainAdmin) {
       return NextResponse.json(
-        { error: "Only the main admin can delete admin accounts" },
+        {
+          error: `Only the main admin can delete admin accounts. Identified as: ${account?.$id || deleterId}`,
+        },
         { status: 403 },
       );
     }
