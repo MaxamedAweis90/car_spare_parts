@@ -36,6 +36,12 @@ const mainAdminId = (
   ""
 ).trim();
 
+if (!mainAdminId) {
+  console.warn(
+    "⚠️ APPWRITE_MAIN_ADMIN_USER_ID is not set! Main Admin privileges will be limited to database roles only.",
+  );
+}
+
 async function getAppwriteAccountFromRequest(req: NextRequest) {
   if (!appwriteEndpoint || !appwriteProjectId) return null;
 
@@ -109,22 +115,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 
-    // Authorize: Check if the requester is the main admin
+    // Authorize: Is the requester the one and only Main Admin?
+    // Per USER: Main admin is identified by ID in .env, not necessarily a 'main_admin' role.
     const account = await getAppwriteAccountFromRequest(req);
     const creator = await getUserById(creatorId);
 
-    // Check main admin by role in DB OR by ID in env
-    let isMainAdmin =
-      creator.role === "main_admin" ||
-      (account?.$id && mainAdminId && account.$id === mainAdminId) ||
-      (mainAdminId && creatorId === mainAdminId);
+    // Redundant ID Check for maximum reliability in production:
+    // 1. Appwrite Auth Session ID matches env
+    // 2. Profile's appwriteUserId field matches env
+    // 3. Profile's Document ID matches env
+    // 4. Fallback: Role is 'main_admin' (for runtime profile compatibility)
+    const isMainAdmin =
+      (mainAdminId && account?.$id === mainAdminId) ||
+      (mainAdminId && creator.appwriteUserId === mainAdminId) ||
+      (mainAdminId && creatorId === mainAdminId) ||
+      creator.role === "main_admin";
 
     console.log("Create Admin Permission Check:", {
-      creatorId,
-      creatorRole: creator.role,
-      mainAdminId,
       isMainAdmin,
-      appwriteSessionId: account?.$id || "none",
+      mainAdminIdEnv: mainAdminId || "MISSING",
+      creatorDocId: creatorId,
+      creatorAppwriteId: creator.appwriteUserId || "none",
+      sessionAuthId: account?.$id || "none",
+      creatorRole: creator.role,
     });
 
     if (!isMainAdmin) {
@@ -257,16 +270,30 @@ export async function PUT(req: NextRequest) {
 
     const user = await getUserById(userId);
     const updater = updaterId ? await getUserById(updaterId) : null;
-    if (updater && updater.role !== "main_admin" && updater.role !== "admin") {
+
+    // Authorize Check: Is the updater the Main Admin?
+    const account = await getAppwriteAccountFromRequest(req);
+    const isMainAdminUpdater =
+      (mainAdminId && account?.$id === mainAdminId) ||
+      (updater && mainAdminId && updater.appwriteUserId === mainAdminId) ||
+      (mainAdminId && updaterId === mainAdminId) ||
+      (updater && updater.role === "main_admin");
+
+    if (updater && !isMainAdminUpdater && updater.role !== "admin") {
       return NextResponse.json(
         { error: "Only admins can update users" },
         { status: 403 },
       );
     }
 
-    // Protection for Main Admin
-    if (user.role === "main_admin") {
-      if (updater && updater.role !== "main_admin") {
+    // Protection for Main Admin profile
+    const isTargetMainAdmin =
+      (mainAdminId && user.appwriteUserId === mainAdminId) ||
+      (mainAdminId && userId === mainAdminId) ||
+      user.role === "main_admin";
+
+    if (isTargetMainAdmin) {
+      if (!isMainAdminUpdater) {
         return NextResponse.json(
           { error: "Only the main admin can update a main admin profile" },
           { status: 403 },
@@ -278,9 +305,12 @@ export async function PUT(req: NextRequest) {
           { status: 403 },
         );
       }
-      if (role && role !== "main_admin") {
+      if (role && role !== "admin" && role !== "main_admin") {
         return NextResponse.json(
-          { error: "The main admin role cannot be changed" },
+          {
+            error:
+              "The main admin role cannot be changed to anything other than admin",
+          },
           { status: 403 },
         );
       }
@@ -535,21 +565,23 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Authorize: Check if the requester is the main admin
+    // Authorize: Is the requester the Main Admin?
     const account = await getAppwriteAccountFromRequest(req);
     const deleter = await getUserById(deleterId);
 
-    // Check main admin by role in DB OR by ID in env
+    // Flexible ID check
     const isMainAdmin =
-      deleter.role === "main_admin" ||
-      (account?.$id && mainAdminId && account.$id === mainAdminId) ||
-      (mainAdminId && deleterId === mainAdminId);
+      (mainAdminId && account?.$id === mainAdminId) ||
+      (mainAdminId && deleter.appwriteUserId === mainAdminId) ||
+      (mainAdminId && deleterId === mainAdminId) ||
+      deleter.role === "main_admin";
 
     console.log("Delete Admin Permission Check:", {
-      deleterId,
-      deleterRole: deleter.role,
-      mainAdminId,
       isMainAdmin,
+      mainAdminIdEnv: mainAdminId || "MISSING",
+      deleterDocId: deleterId,
+      deleterAppwriteId: deleter.appwriteUserId || "none",
+      sessionAuthId: account?.$id || "none",
     });
 
     if (!isMainAdmin) {
@@ -560,7 +592,12 @@ export async function DELETE(req: NextRequest) {
     }
 
     const target = await getUserById(userId);
-    if (target.role === "main_admin") {
+    const isTargetMainAdmin =
+      (mainAdminId && target.appwriteUserId === mainAdminId) ||
+      (mainAdminId && userId === mainAdminId) ||
+      target.role === "main_admin";
+
+    if (isTargetMainAdmin) {
       return NextResponse.json(
         { error: "The main admin account cannot be deleted" },
         { status: 403 },

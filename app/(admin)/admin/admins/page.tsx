@@ -16,6 +16,7 @@ type AdminUser = {
   role?: string;
   isActive?: boolean;
   createdAt?: string;
+  appwriteUserId?: string;
 };
 
 export default function AdminAdminsPage() {
@@ -53,17 +54,29 @@ export default function AdminAdminsPage() {
         getUsers({ role: "admin" }),
         getUsers({ role: "main_admin" }),
       ]);
-      const mainByRole = (mainRes?.documents || [])[0] || null;
-      const allAdmins = (adminsRes?.documents || []) as AdminUser[];
+      const fetchedAdmins = (adminsRes?.documents || []) as AdminUser[];
+      const fetchedMain = (mainRes?.documents || []) as AdminUser[];
 
-      // Identify main admin: either by role or by ID from env
-      let finalMain = mainByRole as AdminUser | null;
-      if (!finalMain && mainAdminId) {
-        finalMain = allAdmins.find((a) => a.$id === mainAdminId) || null;
-      }
+      const allFetched = [...fetchedAdmins, ...fetchedMain];
+      // Deduplicate by $id
+      const uniqueMap = new Map<string, AdminUser>();
+      allFetched.forEach((a) => uniqueMap.set(a.$id, a));
+      const uniqueList = Array.from(uniqueMap.values());
+
+      // Identify main admin: ID matches env OR role is 'main_admin'
+      let finalMain =
+        uniqueList.find(
+          (a) =>
+            (mainAdminId &&
+              (a.$id === mainAdminId || a.appwriteUserId === mainAdminId)) ||
+            a.role === "main_admin",
+        ) || null;
+
+      // Regular admins are everyone else
+      const others = uniqueList.filter((a) => a.$id !== finalMain?.$id);
 
       setMainAdmin(finalMain);
-      setAdmins(allAdmins);
+      setAdmins(others);
       setEditingId(null);
     } catch (error: unknown) {
       const msg =

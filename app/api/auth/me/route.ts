@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
         appwriteConfig.databaseId,
         appwriteConfig.usersCollectionId,
         profile.$id,
-        { status: "active", isActive: true }
+        { status: "active", isActive: true },
       );
       // Fetch fresh profile after update
       profile = await findUserByEmail(account.email);
@@ -61,7 +61,11 @@ export async function GET(req: NextRequest) {
     const avatarUrl = profile ? buildUserAvatarUrl(profile.avatarId) : null;
 
     const isMainAdminAccount =
-      Boolean(mainAdminId) && account?.$id === mainAdminId;
+      Boolean(mainAdminId) &&
+      (account?.$id === mainAdminId ||
+        profile?.appwriteUserId === mainAdminId ||
+        profile?.$id === mainAdminId ||
+        profile?.role === "main_admin");
     const hydratedProfile =
       safeProfile && isMainAdminAccount
         ? { ...safeProfile, role: "main_admin" as const }
@@ -77,4 +81,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 }
-
