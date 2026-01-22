@@ -46,7 +46,7 @@ export async function findUserByEmail(email: string) {
   const list = await databasesServer.listDocuments<UserProfile>(
     appwriteConfig.databaseId,
     appwriteConfig.usersCollectionId,
-    [Query.equal("email", email)]
+    [Query.equal("email", email)],
   );
 
   return list.total > 0 ? (list.documents[0] as UserProfile) : undefined;
@@ -86,7 +86,7 @@ export async function createUserProfile(params: {
       passwordHash,
       appwriteUserId,
       sellerApproved,
-    }
+    },
   );
 
   return profile as UserProfile;
@@ -100,13 +100,18 @@ export async function ensureAppwriteUser(params: {
   const { name, email, password } = params;
 
   // Create Appwrite auth user with admin key; errors if user already exists with the same email.
+  // emailVerification: false prevents Appwrite from sending automatic verification emails
+  // We handle verification manually via custom emails
   const appwriteUser = await usersServer.create(
     ID.unique(),
     email,
     undefined,
     password,
-    name
+    name,
   );
+
+  // Manually set emailVerification to false to prevent automatic emails
+  await usersServer.updateEmailVerification(appwriteUser.$id, false);
 
   return appwriteUser;
 }
@@ -122,4 +127,3 @@ export async function ensureUserProfile(params: {
   if (existing) return existing;
   return createUserProfile(params);
 }
-

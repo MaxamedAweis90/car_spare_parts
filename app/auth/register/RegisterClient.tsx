@@ -32,6 +32,10 @@ function RegisterContent() {
   const [message, setMessage] = useState(
     intent === "follow" ? "Join us to follow your favorite stores!" : "",
   );
+  const [verified, setVerified] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState("");
+  const [registeredEmail, setRegisteredEmail] = useState("");
   const shouldHide = sessionLoading || authenticated;
 
   useEffect(() => {
@@ -91,13 +95,12 @@ function RegisterContent() {
       }
 
       if (body.mustVerify) {
-        router.push(`/auth/verify-notice?email=${encodeURIComponent(email)}`);
+        setRegisteredEmail(email);
+        setSuccess(true);
         return;
       }
 
       setSuccess(true);
-      // Let the user see the success screen, then they can click to continue or we redirect after a delay
-      // For now, let's keep it on the success screen as requested.
     } catch (error) {
       console.error(error);
       setMessage("Server error");
@@ -105,6 +108,57 @@ function RegisterContent() {
       setSubmitting(false);
     }
   };
+
+  const handleResend = async () => {
+    setResending(true);
+    setResendMessage("");
+    try {
+      const res = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: registeredEmail }),
+      });
+
+      if (res.ok) {
+        setResendMessage("✓ Verification email sent!");
+        setTimeout(() => setResendMessage(""), 3000);
+      } else {
+        setResendMessage("Failed to send email. Please try again.");
+      }
+    } catch (error) {
+      setResendMessage("Failed to send email. Please try again.");
+    } finally {
+      setResending(false);
+    }
+  };
+
+  // Poll for verification status every 5 seconds
+  useEffect(() => {
+    if (!success || !registeredEmail || verified) return;
+
+    const checkVerification = async () => {
+      try {
+        const res = await fetch("/api/auth/me", {
+          credentials: "include",
+        });
+        const data = await res.json();
+
+        if (data.authenticated && data.account?.emailVerification) {
+          setVerified(true);
+          // Auto-login is already done by the verify-link endpoint
+          // Just redirect to home
+          setTimeout(() => {
+            router.push("/");
+          }, 1500);
+        }
+      } catch (error) {
+        console.error("Error checking verification:", error);
+      }
+    };
+
+    const interval = setInterval(checkVerification, 5000);
+    return () => clearInterval(interval);
+  }, [success, registeredEmail, verified, router]);
 
   const handleGoogleSignup = async () => {
     try {
@@ -135,31 +189,66 @@ function RegisterContent() {
         <BackToHome />
         <div className="w-full max-w-2xl overflow-hidden rounded-3xl bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)] p-10 text-center">
           <div className="mb-6 flex justify-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-50 shadow-sm border border-green-100">
-              <i className="fa-solid fa-party-horn text-4xl text-green-500"></i>
+            <div
+              className={`flex h-20 w-20 items-center justify-center rounded-full shadow-sm border ${
+                verified
+                  ? "bg-green-50 border-green-100"
+                  : "bg-blue-50 border-blue-100"
+              }`}
+            >
+              <i
+                className={`text-4xl ${
+                  verified
+                    ? "fa-solid fa-circle-check text-green-500"
+                    : "fa-solid fa-envelope text-blue-500"
+                }`}
+              ></i>
             </div>
           </div>
           <h1 className="text-3xl font-extrabold text-slate-900 mb-4">
-            Welcome to SomaParts!
+            {verified ? "Email Verified!" : "Check Your Email"}
           </h1>
-          <p className="text-slate-600 mb-8 max-w-sm mx-auto">
-            Your account has been successfully created. We&apos;re excited to
-            have you join our community of car enthusiasts.
+          <p className="text-slate-600 mb-4 max-w-md mx-auto">
+            {verified
+              ? "Your email has been verified successfully. Redirecting you to the home page..."
+              : `We've sent a verification email to:`}
           </p>
-          <div className="flex flex-col gap-3 max-w-xs mx-auto">
-            <a
-              href={returnUrl || "/"}
-              className="w-full rounded-xl bg-green-600 px-6 py-4 text-sm font-bold text-white shadow-md transition hover:bg-green-700"
-            >
-              Continue to {returnUrl ? "Previous Page" : "Home"}
-            </a>
-            <a
-              href="/auth/login"
-              className="w-full rounded-xl bg-slate-50 border border-slate-200 px-6 py-4 text-sm font-bold text-slate-700 transition hover:bg-slate-100"
-            >
-              Sign In
-            </a>
-          </div>
+          {!verified && (
+            <>
+              <p className="text-lg font-semibold text-slate-900 mb-6">
+                {registeredEmail}
+              </p>
+              <p className="text-sm text-slate-500 mb-8 max-w-md mx-auto">
+                Click the verification link in the email to activate your
+                account. We're checking for verification automatically...
+              </p>
+              <div className="flex flex-col gap-3 max-w-xs mx-auto">
+                <button
+                  onClick={handleResend}
+                  disabled={resending}
+                  className="w-full rounded-xl bg-blue-600 px-6 py-4 text-sm font-bold text-white shadow-md transition hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {resending ? "Sending..." : "Resend Verification Email"}
+                </button>
+                {resendMessage && (
+                  <p
+                    className={`text-sm ${
+                      resendMessage.startsWith("✓")
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {resendMessage}
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+          {verified && (
+            <div className="mt-6 flex justify-center">
+              <div className="animate-spin h-8 w-8 border-4 border-green-500 border-t-transparent rounded-full"></div>
+            </div>
+          )}
         </div>
       </div>
     );

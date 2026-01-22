@@ -16,64 +16,87 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL("/auth/login", req.url));
   }
 
-  // 1. Determine User Role
-  // We need to fetch the local user doc to know where to send them
-  let role = "customer";
   try {
-    const list = await usersServer.list([Query.equal("$id", userId)]);
-    const appwriteUser = list.users[0];
+    // 1. Verify the token
+    const appwriteUser = await usersServer.get(userId);
+    const prefs = await usersServer.getPrefs(userId);
 
-    if (appwriteUser) {
-      // Try to find local user doc by email
-      const dbUsers = await databasesServer.listDocuments(
+    if (prefs.emailVerificationToken !== token) {
+      return NextResponse.redirect(
+        new URL("/auth/login?error=invalid_token", req.url),
+      );
+    }
+
+    // 2. Mark user as verified
+    await usersServer.updateEmailVerification(userId, true);
+
+    // 3. Clear the verification token
+    await usersServer.updatePrefs(userId, {
+      ...prefs,
+      emailVerificationToken: null,
+    });
+
+    // 4. Update database status to active
+    const dbUsers = await databasesServer.listDocuments(
+      appwriteConfig.databaseId,
+      appwriteConfig.usersCollectionId,
+      [Query.equal("email", appwriteUser.email)],
+    );
+    const userDoc = dbUsers.documents[0];
+
+    if (userDoc && userDoc.status === "deactivated") {
+      await databasesServer.updateDocument(
         appwriteConfig.databaseId,
         appwriteConfig.usersCollectionId,
-        [Query.equal("email", appwriteUser.email)]
+        userDoc.$id,
+        { status: "active", isActive: true },
       );
-      const userDoc = dbUsers.documents[0];
-      if (userDoc) {
-        role = userDoc.role;
-      }
     }
-  } catch (error) {
-    console.error("Failed to fetch user role for redirect", error);
-  }
 
-  // 2. Determine Routes
-  let dashboardPath = "/account"; // Default customer
-  let loginPath = "/auth/login";
+    const role = userDoc?.role || "customer";
 
-  if (role === "seller") {
-    dashboardPath = "/seller";
-    loginPath = "/auth/seller/login";
-  } else if (role === "admin" || role === "main_admin") {
-    dashboardPath = "/admin";
-    loginPath = "/auth/admin/login";
-  }
+    // 5. For customers only: Create session and auto-login
+    if (role === "customer") {
+      // Create a magic URL token for auto-login
+      const { createAdminClient } = await import("@/lib/server/appwrite-admin");
+      const { users } = createAdminClient();
 
-  const finalDestination = `${dashboardPath}?userId=${userId}&token=${token}`;
+      // Create a magic URL token
+      const magicToken = await users.createToken(userId);
 
-  // 3. Check Session
-  const cookieStore = await cookies();
-  const jwtCookie = cookieStore.get("appwrite_jwt");
-  const sessionCookie = cookieStore
-    .getAll()
-    .find((c) => c.name.startsWith("a_session_"));
+      // Set the session cookie with the token secret
+      const cookieStore = await cookies();
+      cookieStore.set(
+        `a_session_${appwriteConfig.projectId}`,
+        magicToken.secret,
+        {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 365, // 1 year
+        },
+      );
 
-  if (jwtCookie || sessionCookie) {
-    // Optimistic: Assume logged in, redirect to dashboard
-    // If session is invalid, the Dashboard Guard (Layout or Middleware) will kick them to login
-    // BUT we must ensure the guard PRESERVES the params.
-    // Since we know our guards are simple, sending them to dashboard might loop if expired.
-    // Ideally we check session validity here, but that's expensive/complex.
+      // Redirect to home page
+      return NextResponse.redirect(new URL("/", req.url));
+    }
 
-    return NextResponse.redirect(new URL(finalDestination, req.url));
-  } else {
-    // Definite: Not logged in
-    const callbackUrl = encodeURIComponent(finalDestination);
+    // 6. For sellers and admins: redirect to their respective login pages
+    let loginPath = "/auth/login";
+    if (role === "seller") {
+      loginPath = "/auth/seller/login";
+    } else if (role === "admin" || role === "main_admin") {
+      loginPath = "/auth/admin/login";
+    }
+
     return NextResponse.redirect(
-      new URL(`${loginPath}?callbackUrl=${callbackUrl}`, req.url)
+      new URL(`${loginPath}?verified=true`, req.url),
+    );
+  } catch (error) {
+    console.error("Verification error:", error);
+    return NextResponse.redirect(
+      new URL("/auth/login?error=verification_failed", req.url),
     );
   }
 }
-
