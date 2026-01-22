@@ -33,6 +33,7 @@ import { useSession } from "@/lib/auth/useSession";
 import { performLogout } from "@/lib/logout";
 import { useUIStore } from "@/stores/ui-store";
 import { getImageUrl } from "@/lib/appwrite/storage";
+import AdminOnboarding from "@/components/admin/AdminOnboarding";
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -211,6 +212,7 @@ export default function AdminLayoutShell({
 
   return (
     <Layout style={{ minHeight: "100vh" }}>
+      <AdminOnboarding />
       {/* Sidebar for Desktop */}
       {!isMobile && (
         <Sider
