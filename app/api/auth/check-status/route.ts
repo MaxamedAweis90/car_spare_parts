@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 
     // 2. If already active, return immediately
     if (user.status === "active") {
-      return NextResponse.json({ status: "active" });
+      return NextResponse.json({ status: "active", verified: true });
     }
 
     // 3. Lazy Sync Check: Check Appwrite Auth directly
@@ -35,22 +35,21 @@ export async function POST(req: NextRequest) {
             appwriteConfig.databaseId,
             appwriteConfig.usersCollectionId,
             user.$id,
-            { status: "active", isActive: true }
+            { status: "active", isActive: true },
           );
-          return NextResponse.json({ status: "active" });
+          return NextResponse.json({ status: "active", verified: true });
         }
       } catch (err) {
         console.warn("Failed to check Appwrite status:", err);
       }
     }
 
-    return NextResponse.json({ status: user.status });
+    return NextResponse.json({ status: user.status, verified: false });
   } catch (error) {
     console.error("Check status error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

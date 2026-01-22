@@ -36,6 +36,9 @@ function RegisterContent() {
   const [resending, setResending] = useState(false);
   const [resendMessage, setResendMessage] = useState("");
   const [registeredEmail, setRegisteredEmail] = useState("");
+  const [registeredPassword, setRegisteredPassword] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [checkMessage, setCheckMessage] = useState("");
   const shouldHide = sessionLoading || authenticated;
 
   useEffect(() => {
@@ -96,6 +99,7 @@ function RegisterContent() {
 
       if (body.mustVerify) {
         setRegisteredEmail(email);
+        setRegisteredPassword(password);
         setSuccess(true);
         return;
       }
@@ -106,6 +110,53 @@ function RegisterContent() {
       setMessage("Server error");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleCheckVerification = async () => {
+    setChecking(true);
+    setCheckMessage("");
+    try {
+      // Check verification status by email
+      const res = await fetch("/api/auth/check-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: registeredEmail }),
+      });
+      const data = await res.json();
+
+      if (res.ok && data.verified) {
+        // Email is verified, now login
+        setCheckMessage("✓ Verified! Logging you in...");
+        setVerified(true);
+
+        // Auto-login
+        const loginRes = await fetch("/api/auth/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: registeredEmail,
+            password: registeredPassword,
+          }),
+        });
+
+        if (loginRes.ok) {
+          setTimeout(() => {
+            router.push("/");
+          }, 1000);
+        } else {
+          setCheckMessage(
+            "Verified but login failed. Please sign in manually.",
+          );
+        }
+      } else {
+        setCheckMessage("⚠ Still not verified. Please check your email.");
+      }
+    } catch (error) {
+      console.error("Error checking verification:", error);
+      setCheckMessage("Failed to check status. Please try again.");
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -131,34 +182,6 @@ function RegisterContent() {
       setResending(false);
     }
   };
-
-  // Poll for verification status every 5 seconds
-  useEffect(() => {
-    if (!success || !registeredEmail || verified) return;
-
-    const checkVerification = async () => {
-      try {
-        const res = await fetch("/api/auth/me", {
-          credentials: "include",
-        });
-        const data = await res.json();
-
-        if (data.authenticated && data.account?.emailVerification) {
-          setVerified(true);
-          // Auto-login is already done by the verify-link endpoint
-          // Just redirect to home
-          setTimeout(() => {
-            router.push("/");
-          }, 1500);
-        }
-      } catch (error) {
-        console.error("Error checking verification:", error);
-      }
-    };
-
-    const interval = setInterval(checkVerification, 5000);
-    return () => clearInterval(interval);
-  }, [success, registeredEmail, verified, router]);
 
   const handleGoogleSignup = async () => {
     try {
@@ -220,9 +243,31 @@ function RegisterContent() {
               </p>
               <p className="text-sm text-slate-500 mb-8 max-w-md mx-auto">
                 Click the verification link in the email to activate your
-                account. We're checking for verification automatically...
+                account.
               </p>
               <div className="flex flex-col gap-3 max-w-xs mx-auto">
+                <button
+                  onClick={handleCheckVerification}
+                  disabled={checking || verified}
+                  className="w-full rounded-xl bg-green-600 px-6 py-4 text-sm font-bold text-white shadow-md transition hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {checking
+                    ? "Checking..."
+                    : verified
+                      ? "✓ Verified!"
+                      : "Check Verification Status"}
+                </button>
+                {checkMessage && (
+                  <p
+                    className={`text-sm ${
+                      checkMessage.startsWith("✓")
+                        ? "text-green-600"
+                        : "text-amber-600"
+                    }`}
+                  >
+                    {checkMessage}
+                  </p>
+                )}
                 <button
                   onClick={handleResend}
                   disabled={resending}

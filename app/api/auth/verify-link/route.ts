@@ -78,8 +78,8 @@ export async function GET(req: NextRequest) {
         },
       );
 
-      // Redirect to home page
-      return NextResponse.redirect(new URL("/", req.url));
+      // Redirect to success page instead of directly to home
+      return NextResponse.redirect(new URL("/auth/verify-success", req.url));
     }
 
     // 6. For sellers and admins: redirect to their respective login pages
