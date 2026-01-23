@@ -35,10 +35,9 @@ export async function POST(req: NextRequest) {
       updates.phone = parseInt(cleanPhone, 10);
     }
 
-    // Update avatar - ensure we're setting it properly
+    // Update avatar
     if (avatarId) {
       updates.avatarId = avatarId;
-      updates.avatarSource = "user";
     }
 
     console.log("Updating profile with:", updates);
