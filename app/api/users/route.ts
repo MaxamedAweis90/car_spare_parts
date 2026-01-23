@@ -217,12 +217,7 @@ export async function POST(req: NextRequest) {
     try {
       const activationLink = `${req.nextUrl.origin}/auth/admin/activate?userId=${appwriteUser.$id}&token=${activationToken}`;
       const subject = "Invitation to join SomaParts Admin Team";
-      const content = getAdminInvitationTemplate(
-        name,
-        email,
-        password,
-        activationLink,
-      );
+      const content = getAdminInvitationTemplate(name, email, activationLink);
 
       console.log("📧 Attempting to send admin invitation email...", {
         userId: appwriteUser.$id,

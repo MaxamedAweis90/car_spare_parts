@@ -128,7 +128,6 @@ export function getSellerApprovalEmailTemplate(
 export function getAdminInvitationTemplate(
   userName: string,
   userEmail: string,
-  tempPass: string,
   activationLink: string,
 ): string {
   return `
@@ -148,8 +147,8 @@ export function getAdminInvitationTemplate(
     .button { display: inline-block; padding: 16px 32px; background-color: #0f172a; color: #ffffff !important; text-decoration: none; border-radius: 12px; font-weight: bold; margin-top: 25px; box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.2); }
     h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.025em; }
     p { margin-bottom: 20px; font-size: 16px; }
-    .credentials { background: #f8fafc; border-radius: 16px; padding: 25px; margin: 30px 0; border: 1px solid #e2e8f0; }
-    .cred-item { margin-bottom: 10px; font-family: monospace; font-size: 15px; }
+    .info-box { background: #f8fafc; border-radius: 16px; padding: 25px; margin: 30px 0; border: 1px solid #e2e8f0; }
+    .info-item { margin-bottom: 10px; font-size: 15px; }
   </style>
 </head>
 <body>
@@ -163,23 +162,23 @@ export function getAdminInvitationTemplate(
       <div class="content">
         <p>Hello <strong>${userName}</strong>,</p>
         
-        <p>You have been invited to join the <strong>SomaParts Administration Team</strong>. Your account has been prepared, and you can now activate it to get started.</p>
+        <p>You have been invited to join the <strong>SomaParts Administration Team</strong>. We're excited to have you on board!</p>
         
-        <p>Below are your temporary login credentials:</p>
-        
-        <div class="credentials">
-          <div class="cred-item"><strong>Email:</strong> ${userEmail}</div>
-          <div class="cred-item"><strong>Temp Password:</strong> ${tempPass}</div>
+        <div class="info-box">
+          <div class="info-item"><strong>Your Email:</strong> ${userEmail}</div>
+          <div class="info-item" style="color: #64748b; font-size: 14px; margin-top: 15px;">
+            ℹ️ You'll set your own secure password during the activation process
+          </div>
         </div>
 
-        <p>For security reasons, you will be required to change your password during the activation process.</p>
+        <p>Click the button below to activate your account and set your password. This link will expire in 24 hours for security reasons.</p>
         
         <p style="text-align: center;">
           <a href="${activationLink}" class="button">Activate Admin Account</a>
         </p>
         
         <p style="margin-top: 40px; font-size: 14px; text-align: center; color: #94a3b8;">
-          If you were not expecting this invitation, please ignore this email.
+          If you were not expecting this invitation, please ignore this email or contact support.
         </p>
       </div>
       <div class="footer">
