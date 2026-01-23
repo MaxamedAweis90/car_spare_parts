@@ -80,6 +80,11 @@ export async function POST(req: NextRequest) {
     });
   } catch (error: any) {
     console.error("Profile update error:", error);
+    console.error("Error details:", {
+      message: error?.message,
+      code: error?.code,
+      response: error?.response,
+    });
     return NextResponse.json(
       { error: error?.message || error?.response?.message || "Server error" },
       { status: 500 },

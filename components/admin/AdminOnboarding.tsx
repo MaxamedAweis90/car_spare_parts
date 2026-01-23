@@ -95,12 +95,22 @@ export default function AdminOnboarding() {
 
   const onFinish = async (values: any) => {
     setSubmitting(true);
+    let uploadedAvatarId: string | null = null;
+    
     try {
       let avatarId = profile?.avatarId;
 
       // Handle Image Upload if selected
       if (selectedFile) {
-        avatarId = await handleUpload(selectedFile);
+        try {
+          avatarId = await handleUpload(selectedFile);
+          uploadedAvatarId = avatarId; // Track successful upload
+        } catch (uploadError) {
+          console.error("Avatar upload failed:", uploadError);
+          message.error("Failed to upload avatar. Please try again.");
+          setSubmitting(false);
+          return; // Stop here if upload fails
+        }
       }
 
       // Now update profile with the avatarId
@@ -115,15 +125,37 @@ export default function AdminOnboarding() {
         body: formData,
       });
 
-      if (!res.ok) throw new Error("Failed to update profile");
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        console.error("Profile update failed:", errorData);
+        
+        // If avatar was uploaded successfully, still proceed
+        if (uploadedAvatarId) {
+          message.warning("Profile updated with avatar, but some details may not have saved.");
+          setShowSuccess(true);
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          setIsModalOpen(false);
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          refresh();
+          router.refresh();
+          return;
+        }
+        
+        throw new Error(errorData.error || "Failed to update profile");
+      }
 
       // Log activity
-      logMutation.mutate({
-        action: "UPDATE_PROFILE",
-        details: { name: values.name, phone: values.phone },
-        targetId: profile.$id,
-        targetType: "admin",
-      });
+      try {
+        logMutation.mutate({
+          action: "UPDATE_PROFILE",
+          details: { name: values.name, phone: values.phone },
+          targetId: profile.$id,
+          targetType: "admin",
+        });
+      } catch (logError) {
+        console.warn("Activity logging failed:", logError);
+        // Don't fail the whole operation if logging fails
+      }
 
       // Show success animation
       setShowSuccess(true);
@@ -134,7 +166,7 @@ export default function AdminOnboarding() {
       setIsModalOpen(false);
 
       // Small delay to ensure DB propagation
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Refresh session to reflect changes
       refresh();
@@ -142,7 +174,7 @@ export default function AdminOnboarding() {
 
       message.success("Welcome! Your profile is all set up! 🎉");
     } catch (error) {
-      console.error(error);
+      console.error("Onboarding error:", error);
       message.error("Failed to update profile. Please try again.");
       setShowSuccess(false);
     } finally {

@@ -17,13 +17,15 @@ export async function GET(req: NextRequest) {
     const collectionId =
       process.env.NEXT_PUBLIC_APPWRITE_ACTIVITIES_COLLECTION_ID || "activities";
 
+    // Support limit parameter from query
+    const { searchParams } = new URL(req.url);
+    const limit = parseInt(searchParams.get("limit") || "100", 10);
+
     // Default queries
     const queries = [
       Query.orderDesc("createdAt"),
-      Query.limit(100), // Simple limit for now
+      Query.limit(Math.min(limit, 100)), // Cap at 100
     ];
-
-    // TODO: Implement real filtering if needed using request queries
 
     const list = await databasesServer.listDocuments(
       appwriteConfig.databaseId,
@@ -31,16 +33,16 @@ export async function GET(req: NextRequest) {
       queries,
     );
 
-    return NextResponse.json(list);
+    return NextResponse.json({ items: list.documents, total: list.total });
   } catch (error: any) {
-    if (error.code === 404) {
-      // Collection might not exist yet if no activities logged
+    console.error("Fetch activities error:", error);
+    
+    // If collection doesn't exist yet, return empty array
+    if (error.code === 404 || error.message?.includes("not found")) {
       return NextResponse.json({ items: [], total: 0 });
     }
-    console.error("Fetch activities error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch activities" },
-      { status: 500 },
-    );
+    
+    // For other errors, return empty array to prevent UI breaking
+    return NextResponse.json({ items: [], total: 0 });
   }
 }
