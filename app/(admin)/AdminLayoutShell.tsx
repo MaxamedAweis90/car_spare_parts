@@ -15,6 +15,7 @@ import {
   Typography,
   Drawer,
   Grid,
+  Popover,
 } from "antd";
 import type { MenuProps } from "antd";
 const { useBreakpoint } = Grid;
@@ -29,12 +30,14 @@ import {
   MenuUnfoldOutlined,
   LockOutlined,
   HistoryOutlined,
+  BellOutlined,
 } from "@ant-design/icons";
 import { useSession } from "@/lib/auth/useSession";
 import { performLogout } from "@/lib/logout";
 import { useUIStore } from "@/stores/ui-store";
 import { getImageUrl } from "@/lib/appwrite/storage";
 import AdminOnboarding from "@/components/admin/AdminOnboarding";
+import NotificationsPopover from "@/components/admin/NotificationsPopover";
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -298,6 +301,20 @@ export default function AdminLayoutShell({
           />
 
           <div className="flex items-center gap-4">
+            <Popover
+              content={<NotificationsPopover />}
+              trigger="click"
+              placement="bottomRight"
+              arrow={false}
+              overlayInnerStyle={{ padding: 0 }}
+            >
+              <Button
+                type="text"
+                icon={<BellOutlined />}
+                className="text-lg flex items-center justify-center w-10 h-10 rounded-full hover:bg-slate-100 text-slate-600"
+              />
+            </Popover>
+
             <Dropdown menu={userMenu} trigger={["click"]}>
               <div className="cursor-pointer flex items-center gap-2 hover:bg-gray-100 px-3 py-1 rounded-md transition-colors">
                 <Avatar

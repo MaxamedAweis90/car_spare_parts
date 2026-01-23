@@ -49,10 +49,15 @@ function AdminSettingsContent() {
   const [passError, setPassError] = useState("");
 
   // Profile State
-  const [profileForm, setProfileForm] = useState({ name: "", email: "" });
+  const [profileForm, setProfileForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+  });
   const [initialProfileForm, setInitialProfileForm] = useState({
     name: "",
     email: "",
+    phone: "",
   });
   const [profileMessage, setProfileMessage] = useState("");
   const [profileError, setProfileError] = useState("");
@@ -75,7 +80,8 @@ function AdminSettingsContent() {
   const hasProfileChanges = useMemo(() => {
     return (
       profileForm.name !== initialProfileForm.name ||
-      profileForm.email !== initialProfileForm.email
+      profileForm.email !== initialProfileForm.email ||
+      profileForm.phone !== initialProfileForm.phone
     );
   }, [profileForm, initialProfileForm]);
 
@@ -108,6 +114,7 @@ function AdminSettingsContent() {
       const data = {
         name: profile.name || "",
         email: profile.email || "",
+        phone: profile.phone ? String(profile.phone) : "",
       };
       setProfileForm(data);
       setInitialProfileForm(data);
@@ -221,6 +228,15 @@ function AdminSettingsContent() {
       updatedFields.push("Email");
     }
 
+    if (profileForm.phone.trim() !== initialProfileForm.phone) {
+      // Clean non-digits
+      const digits = profileForm.phone.replace(/\D/g, "");
+      if (digits.length > 0) {
+        changes.phone = parseInt(digits, 10);
+        updatedFields.push("Phone");
+      }
+    }
+
     if (updatedFields.length === 0) return;
 
     try {
@@ -243,6 +259,18 @@ function AdminSettingsContent() {
         successMsg += ". Verification email sent to new address.";
       }
       setProfileMessage(successMsg);
+
+      // Log activity
+      await fetch("/api/activities/log", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "UPDATE_PROFILE",
+          details: { fields: updatedFields },
+          targetId: profile.$id,
+          targetType: "admin",
+        }),
+      });
+
       window.dispatchEvent(new Event("session-changed"));
     } catch (err) {
       setProfileError("Server error");
@@ -408,16 +436,22 @@ function AdminSettingsContent() {
               )}
             </div>
 
-            {/* Phone Number Display */}
+            {/* Phone Number Input */}
             <div className="space-y-1">
               <label className="text-sm font-semibold text-slate-700">
                 Phone Number
               </label>
-              <div className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm bg-slate-50 text-slate-600">
-                {profile?.phone || "Not set"}
-              </div>
+              <input
+                type="text"
+                className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm outline-none focus:border-slate-900"
+                value={profileForm.phone}
+                onChange={(e) =>
+                  setProfileForm({ ...profileForm, phone: e.target.value })
+                }
+                placeholder="61234567"
+              />
               <p className="text-xs text-slate-500 mt-1">
-                Phone number can be updated during onboarding
+                Enter your phone number (8-9 digits without country code).
               </p>
             </div>
 
@@ -439,7 +473,7 @@ function AdminSettingsContent() {
                   : "bg-slate-100 text-slate-400 cursor-not-allowed"
               }`}
             >
-              Save Changes
+              Save Profile
             </button>
           </form>
         </div>

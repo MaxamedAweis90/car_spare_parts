@@ -23,20 +23,28 @@ export interface ActivityPayload {
 
 export async function logActivity(payload: ActivityPayload) {
   try {
-    // Only attempt if the collection ID is provided in env
-    if (!process.env.APPWRITE_ACTIVITIES_COLLECTION_ID) {
-      console.warn("APPWRITE_ACTIVITIES_COLLECTION_ID not set, skipping log.");
-      return;
-    }
+    const collectionId =
+      process.env.APPWRITE_ACTIVITIES_COLLECTION_ID ||
+      process.env.NEXT_PUBLIC_APPWRITE_ACTIVITIES_COLLECTION_ID ||
+      "activities";
 
     const activityId = payload.activityId || ID.unique();
+
+    // Ensure details is a string if it's an object, or keep as is
+    const details =
+      typeof payload.details === "object"
+        ? JSON.stringify(payload.details)
+        : payload.details;
+
     await databasesServer.createDocument(
       appwriteConfig.databaseId,
-      process.env.APPWRITE_ACTIVITIES_COLLECTION_ID,
+      collectionId,
       activityId,
       {
         ...payload,
+        details,
         activityId: activityId,
+        createdAt: new Date().toISOString(), // Ensure timestamp
       },
     );
   } catch (error) {
