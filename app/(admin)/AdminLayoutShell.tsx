@@ -28,6 +28,7 @@ import {
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   LockOutlined,
+  HistoryOutlined,
 } from "@ant-design/icons";
 import { useSession } from "@/lib/auth/useSession";
 import { performLogout } from "@/lib/logout";
@@ -55,6 +56,12 @@ const NAV_ITEMS = [
     key: "/admin/admins",
     label: "Admin accounts",
     icon: <UserOutlined />,
+    mainAdminOnly: true,
+  },
+  {
+    key: "/admin/activities",
+    label: "Activities",
+    icon: <HistoryOutlined />,
     mainAdminOnly: true,
   },
   {

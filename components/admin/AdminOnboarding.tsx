@@ -12,6 +12,7 @@ import { useSession } from "@/lib/auth/useSession";
 import { useRouter } from "next/navigation";
 import { uploadImage, getImageUrl } from "@/lib/appwrite/storage";
 import type { UploadFile, UploadProps } from "antd/es/upload/interface";
+import { useActivityLog } from "@/hooks/useActivityLog";
 
 export default function AdminOnboarding() {
   const { profile, refresh } = useSession();
@@ -20,6 +21,7 @@ export default function AdminOnboarding() {
   const [form] = Form.useForm();
   const [fileList, setFileList] = useState<UploadFile[]>([]);
   const router = useRouter();
+  const logMutation = useActivityLog();
 
   useEffect(() => {
     // Trigger if profile exists but phone is missing
@@ -66,6 +68,15 @@ export default function AdminOnboarding() {
       if (!res.ok) throw new Error("Failed to update profile");
 
       message.success("Profile updated successfully!");
+
+      // Log activity
+      logMutation.mutate({
+        action: "UPDATE_PROFILE",
+        details: { name: values.name, phone: values.phone },
+        targetId: profile.$id,
+        targetType: "admin",
+      });
+
       setIsModalOpen(false);
 
       // Refresh session to reflect changes
