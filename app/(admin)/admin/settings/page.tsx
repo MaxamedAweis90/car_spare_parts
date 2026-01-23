@@ -182,7 +182,7 @@ function AdminSettingsContent() {
   const revokeAllSessions = async () => {
     if (
       !confirm(
-        "Are you sure you want to revoke ALL sessions? You will be logged out."
+        "Are you sure you want to revoke ALL sessions? You will be logged out.",
       )
     )
       return;
@@ -408,6 +408,19 @@ function AdminSettingsContent() {
               )}
             </div>
 
+            {/* Phone Number Display */}
+            <div className="space-y-1">
+              <label className="text-sm font-semibold text-slate-700">
+                Phone Number
+              </label>
+              <div className="w-full rounded-xl border border-slate-200 px-4 py-2 text-sm bg-slate-50 text-slate-600">
+                {profile?.phone || "Not set"}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Phone number can be updated during onboarding
+              </p>
+            </div>
+
             {profileMessage && (
               <p className="text-sm text-green-600 font-medium">
                 {profileMessage}
@@ -575,4 +588,3 @@ function AdminSettingsContent() {
     </div>
   );
 }
-

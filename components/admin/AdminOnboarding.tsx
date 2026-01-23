@@ -154,12 +154,16 @@ export default function AdminOnboarding() {
           label="Phone Number"
           rules={[
             { required: true, message: "Please input your phone number!" },
-            { pattern: /^\d+$/, message: "Phone number must be digits only" },
+            {
+              pattern: /^\d{8,9}$/,
+              message: "Phone number must be 8-9 digits (without country code)",
+            },
           ]}
         >
           <Input
             prefix={<PhoneOutlined />}
-            placeholder="1234567890"
+            addonBefore="+252"
+            placeholder="61234567"
             size="large"
           />
         </Form.Item>

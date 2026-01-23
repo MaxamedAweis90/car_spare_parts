@@ -27,11 +27,23 @@ export async function POST(req: NextRequest) {
     // 2. Prepare updates
     const updates: any = {};
     if (name) updates.name = name;
-    if (phone) updates.phone = parseInt(phone.replace(/\D/g, ""), 10) || null; // Store as number
-    if (avatarId) updates.avatarId = avatarId;
+
+    // Store phone with +252 prefix as string
+    if (phone) {
+      const cleanPhone = phone.replace(/\D/g, "");
+      updates.phone = `+252${cleanPhone}`;
+    }
+
+    // Update avatar - ensure we're setting it properly
+    if (avatarId) {
+      updates.avatarId = avatarId;
+      updates.avatarSource = "user";
+    }
+
+    console.log("Updating profile with:", updates);
 
     // 3. Update Database
-    await databasesServer.updateDocument(
+    const updatedDoc = await databasesServer.updateDocument(
       appwriteConfig.databaseId,
       appwriteConfig.usersCollectionId,
       userDoc.$id,
@@ -48,9 +60,17 @@ export async function POST(req: NextRequest) {
     }
 
     // 5. Update Appwrite Auth Phone if changed
-    // Phone in Appwrite Auth requires E.164 format (+1234567890)
-    // We'll skip updating Auth phone for now to avoid validation hell,
-    // unless strictly needed for 2FA. We store it in DB mainly.
+    if (phone && userDoc.appwriteUserId) {
+      try {
+        const cleanPhone = phone.replace(/\D/g, "");
+        await usersServer.updatePhone(
+          userDoc.appwriteUserId,
+          `+252${cleanPhone}`,
+        );
+      } catch (e) {
+        console.warn("Failed to update Appwrite Auth phone:", e);
+      }
+    }
 
     return NextResponse.json({
       success: true,
