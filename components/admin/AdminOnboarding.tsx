@@ -79,6 +79,9 @@ export default function AdminOnboarding() {
 
       setIsModalOpen(false);
 
+      // Small delay to ensure DB propagation before fetching fresh session
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Refresh session to reflect changes
       refresh(); // Sync updated profile data
       router.refresh(); // Refresh server components if any

@@ -51,6 +51,7 @@ import relativeTime from "dayjs/plugin/relativeTime";
 
 dayjs.extend(relativeTime);
 import { useAdminStats } from "@/hooks/queries/useAdminStats";
+import RecentActivityList from "@/components/admin/RecentActivityList";
 
 const { Title, Text } = Typography;
 
@@ -65,7 +66,7 @@ ChartJS.register(
   ChartTitle,
   Tooltip,
   Legend,
-  Filler
+  Filler,
 );
 
 export default function AdminPage() {
@@ -78,7 +79,7 @@ export default function AdminPage() {
   // Revenue Chart Data
   const revenueData = {
     labels: (stats?.revenueHistory || []).map((d) =>
-      new Date(d.date).toLocaleDateString("en-US", { weekday: "short" })
+      new Date(d.date).toLocaleDateString("en-US", { weekday: "short" }),
     ),
     datasets: [
       {
@@ -97,7 +98,7 @@ export default function AdminPage() {
   // Transaction Volume Data
   const volumeData = {
     labels: (stats?.revenueHistory || []).map((d) =>
-      new Date(d.date).toLocaleDateString("en-US", { weekday: "short" })
+      new Date(d.date).toLocaleDateString("en-US", { weekday: "short" }),
     ),
     datasets: [
       {
@@ -140,7 +141,7 @@ export default function AdminPage() {
             Real-time analytics and platform oversight.{" "}
             {stats?.generatedAt &&
               `Last updated: ${new Date(
-                stats.generatedAt
+                stats.generatedAt,
               ).toLocaleTimeString()}`}
           </Text>
         </div>
@@ -365,105 +366,19 @@ export default function AdminPage() {
             variant="borderless"
             className="shadow-md rounded-xl h-full"
             extra={
-              <Badge
-                count={stats?.activities?.length || 0}
-                className="bg-blue-500"
-              />
+              <Link
+                href="/admin/activities"
+                className="text-xs text-blue-600 hover:underline"
+              >
+                View All
+              </Link>
             }
           >
             <div
               style={{ height: 350, overflowY: "auto" }}
               className="custom-scrollbar"
             >
-              {showSkeleton ? (
-                <Skeleton active />
-              ) : !stats?.activities || stats.activities.length === 0 ? (
-                <Empty
-                  description="No recent activity"
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
-                />
-              ) : (
-                <List
-                  itemLayout="horizontal"
-                  dataSource={stats.activities}
-                  renderItem={(item) => (
-                    <List.Item className="px-0 py-3 border-b border-gray-50 last:border-0">
-                      <List.Item.Meta
-                        avatar={
-                          <div
-                            className={`p-2 rounded-full ${
-                              item.action.includes("DELETE")
-                                ? "bg-red-50 text-red-500"
-                                : item.action.includes("DEACTIVATE")
-                                ? "bg-orange-50 text-orange-500"
-                                : item.action.includes("APPROVE")
-                                ? "bg-emerald-50 text-emerald-500"
-                                : "bg-blue-50 text-blue-500"
-                            }`}
-                          >
-                            {item.action === "INVITE_ADMIN" && (
-                              <UserAddOutlined />
-                            )}
-                            {item.action === "DELETE_ADMIN" && (
-                              <UserDeleteOutlined />
-                            )}
-                            {item.action === "DELETE_SELLER" && (
-                              <UserDeleteOutlined />
-                            )}
-                            {item.action === "APPROVE_SELLER" && (
-                              <CheckCircleOutlined />
-                            )}
-                            {item.action === "DEACTIVATE_SELLER" && (
-                              <StopOutlined />
-                            )}
-                            {item.action === "DEACTIVATE_ADMIN" && (
-                              <StopOutlined />
-                            )}
-                            {item.action === "UPDATE_PASSWORD_ADMIN" && (
-                              <KeyOutlined />
-                            )}
-                            {item.action === "LOGIN_ADMIN" && <LoginOutlined />}
-                            {/* Fallback */}
-                            {![
-                              "INVITE_ADMIN",
-                              "DELETE_ADMIN",
-                              "DELETE_SELLER",
-                              "APPROVE_SELLER",
-                              "DEACTIVATE_SELLER",
-                              "DEACTIVATE_ADMIN",
-                              "UPDATE_PASSWORD_ADMIN",
-                              "LOGIN_ADMIN",
-                            ].includes(item.action) && (
-                              <SafetyCertificateOutlined />
-                            )}
-                          </div>
-                        }
-                        title={
-                          <Text className="text-sm">
-                            <Text strong>{item.adminName}</Text>{" "}
-                            <Text
-                              type="secondary"
-                              className="text-xs lowercase"
-                            >
-                              {item.action.replace(/_/g, " ")}
-                            </Text>
-                          </Text>
-                        }
-                        description={
-                          <div className="flex flex-col">
-                            <Text strong className="text-xs text-slate-700">
-                              {item.targetName || item.details}
-                            </Text>
-                            <Text type="secondary" className="text-[10px]">
-                              {dayjs(item.createdAt).fromNow()}
-                            </Text>
-                          </div>
-                        }
-                      />
-                    </List.Item>
-                  )}
-                />
-              )}
+              <RecentActivityList limit={10} />
             </div>
           </Card>
         </Col>
@@ -566,4 +481,3 @@ export default function AdminPage() {
     </div>
   );
 }
-
