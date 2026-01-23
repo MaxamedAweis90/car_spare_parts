@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useRef, useState, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useSession } from "@/lib/auth/useSession";
 import { performLogout } from "@/lib/logout";
 import Button from "@/components/ui/Button";
@@ -78,6 +78,7 @@ const PRODUCT_TYPES = [
 
 export default function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
   const { authenticated, profile, loading } = useSession();
   const {
     count: cartCount,
@@ -86,6 +87,16 @@ export default function Navbar() {
     closeCart,
     isOpen: cartOpen,
   } = useCart();
+
+  // Check if we're on a store detail page (e.g., /stores/some-store-slug)
+  const isStoreDetailPage = useMemo(() => {
+    return (
+      pathname?.startsWith("/stores/") &&
+      pathname !== "/stores" &&
+      pathname !== "/stores/"
+    );
+  }, [pathname]);
+
   const searchRef = useRef<HTMLDivElement | null>(null);
   const [query, setQuery] = useState("");
   const [language, setLanguage] = useState<(typeof LANG_OPTIONS)[number]>("EN");
@@ -337,10 +348,22 @@ export default function Navbar() {
 
   return (
     <>
-      {/* Main Header - Yellow - Sticky */}
-      <div className="sticky top-0 z-30 shadow-sm bg-(--color-primary) py-2">
+      {/* Main Header - Yellow 
+          - On regular pages: Sticky at top
+          - On store detail pages: Fixed (to allow sliding out without affecting layout gap), slides up to hide
+      */}
+      <div
+        className={`
+          z-40 shadow-sm bg-(--color-primary) py-2 transition-all duration-500 ease-in-out
+          ${
+            isStoreDetailPage
+              ? "fixed top-0 left-0 right-0 -translate-y-full opacity-0 pointer-events-none"
+              : "sticky top-0 translate-y-0 opacity-100"
+          }
+        `}
+      >
         <nav className="mx-auto flex w-full max-w-full sm:max-w-10/12 items-center gap-4 px-4 sm:px-6">
-          {/* Mobile: Cart + Search (left), Logo (right) */}
+          {/* Header content remains same */}
           <div className="flex w-full items-center justify-between sm:hidden">
             <Link href="/" className="block">
               <img
@@ -416,7 +439,6 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Desktop: Logo */}
           <div className="hidden shrink-0 items-center sm:flex">
             <Link href="/" className="block">
               <img
@@ -427,7 +449,6 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Desktop: Search */}
           <div className="ml-8 hidden min-w-0 flex-1 items-center sm:flex">
             <div className="relative w-full max-w-2xl" ref={searchRef}>
               <form
@@ -448,7 +469,6 @@ export default function Navbar() {
                   className="w-full bg-transparent px-4 py-3 text-sm text-slate-900 placeholder:text-slate-500 focus:outline-none"
                 />
 
-                {/* Filter Button */}
                 <div className="relative mr-1">
                   <Dropdown
                     open={showFilters}
@@ -500,7 +520,6 @@ export default function Navbar() {
                 </div>
               </form>
 
-              {/* Autocomplete Dropdown */}
               <Dropdown
                 open={showSuggestions && suggestions.length > 0}
                 onOpenChange={setShowSuggestions}
@@ -536,7 +555,6 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* Desktop: Lang + Cart + Avatar */}
           <div className="hidden items-center gap-3 sm:flex sm:gap-6">
             <Dropdown
               trigger={["click"]}
@@ -592,7 +610,6 @@ export default function Navbar() {
               </button>
             </Dropdown>
 
-            {/* Right: Cart + Avatar */}
             <div className="flex items-center gap-4">
               <NotificationBell />
 
@@ -669,10 +686,26 @@ export default function Navbar() {
         </nav>
       </div>
 
-      {/* Bottom Nav - White */}
-      <div className="hidden border-b border-slate-200 bg-white sm:block">
+      {/* Bottom Nav - White 
+          - On regular pages: Sticky at top (but below the header, assuming header is ~80px? Wait, header is sticky!) 
+            Actually, commonly one makes the header sticky and the nav below it sticky. 
+            However, simpler approach: Just make this block normal flow or sticky. 
+            If header is sticky, this should probably just follow flow. 
+            The previous code had this just in flow. I will keep it in flow for normal pages.
+          - On store detail pages: Fixed top-0 z-30
+      */}
+      <div
+        className={`hidden border-b border-slate-200 bg-white sm:block transition-all duration-500 ease-in-out
+          ${
+            isStoreDetailPage ? "fixed top-0 left-0 right-0 z-30" : "relative" // or stick if desired, but original seems to be just flow
+          }
+        `}
+      >
         <NavLinks />
       </div>
+
+      {/* Spacer to prevent content from going under fixed navbar - ONLY on store pages where NavLinks is fixed */}
+      {isStoreDetailPage && <div className="hidden sm:block h-[45px]" />}
       {/* Header End Removed */}
 
       {/* Mobile bottom navigation */}

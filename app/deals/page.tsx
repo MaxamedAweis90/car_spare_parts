@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import ProductCard from "@/components/features/products/ProductCard";
 import Skeleton from "@mui/material/Skeleton";
+import { useProducts } from "@/hooks/queries/useProducts";
 
 type Product = {
   $id: string;
@@ -21,70 +22,31 @@ type Product = {
 };
 
 export default function DealsPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use TanStack Query with onSale filter
+  const {
+    data,
+    isLoading,
+    error: queryError,
+  } = useProducts({
+    limit: 100,
+  });
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch("/api/products?limit=100&onSale=true", {
-          cache: "no-store",
-        });
-        const body = await res.json();
-        if (!res.ok) throw new Error(body?.error || "Failed to load products");
-        const items: any[] = Array.isArray(body?.items) ? body.items : [];
-        const normalized: Product[] = items
-          .filter((p) => p && typeof p === "object")
-          .map((p) => ({
-            $id: String(p.$id),
-            name: String(p.name ?? ""),
-            price:
-              typeof p.price === "number"
-                ? p.price
-                : p.price != null
-                ? Number(p.price)
-                : null,
-            originalPrice:
-              typeof p.originalPrice === "number"
-                ? p.originalPrice
-                : p.originalPrice != null
-                ? Number(p.originalPrice)
-                : null,
-            onSale: !!p.onSale,
-            discountStartDate: p.discountStartDate ?? null,
-            discountExpiry: p.discountExpiry ?? null,
-            stock:
-              typeof p.stock === "number"
-                ? p.stock
-                : p.stock != null
-                ? Number(p.stock)
-                : null,
-            imageId: p.imageId ?? null,
-            imageUrl: p.imageUrl ?? null,
-            active: p.isActive ?? p.active,
-          }));
+  const products = useMemo(() => {
+    if (!data?.products) return [];
+    // Filter for on-sale products only
+    return data.products.filter(
+      (p: any) => p.active !== false && p.published !== false && p.onSale,
+    );
+  }, [data?.products]);
 
-        const activeOnSaleItems = normalized.filter(
-          (p) =>
-            p.active !== false && (p as any).published !== false && p.onSale
-        );
-        setProducts(activeOnSaleItems);
-      } catch (err: any) {
-        setError(err?.message || "Failed to load products");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
+  const error = queryError ? String(queryError) : null;
 
   const dealItems = useMemo(() => {
     if (!products.length) return [];
     // Sort by largest discount percentage
     return [...products]
       .filter(
-        (p) => (p.price ?? 0) > 0 && (p.originalPrice ?? 0) > (p.price ?? 0)
+        (p) => (p.price ?? 0) > 0 && (p.originalPrice ?? 0) > (p.price ?? 0),
       )
       .sort((a, b) => {
         const discountA = (a.originalPrice! - a.price!) / a.originalPrice!;
@@ -109,7 +71,7 @@ export default function DealsPage() {
               Hand-picked offers on the most popular parts.
             </p>
           </div>
-          {!loading && (
+          {!isLoading && (
             <span className="text-sm font-semibold text-(--color-muted)">
               {dealItems.length} items
             </span>
@@ -119,7 +81,7 @@ export default function DealsPage() {
         {error && <p className="mb-4 text-sm text-(--color-danger)">{error}</p>}
 
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
-          {loading && !error && products.length === 0
+          {isLoading && !error && products.length === 0
             ? Array.from({ length: 12 }).map((_, index) => (
                 <div
                   key={`skeleton-${index}`}
@@ -160,7 +122,7 @@ export default function DealsPage() {
               ))}
         </div>
 
-        {!loading && !error && dealItems.length === 0 && (
+        {!isLoading && !error && dealItems.length === 0 && (
           <div className="py-20 text-center">
             <p className="text-lg font-medium text-(--color-muted)">
               No deals available right now. Check back later!
@@ -171,4 +133,3 @@ export default function DealsPage() {
     </div>
   );
 }
-

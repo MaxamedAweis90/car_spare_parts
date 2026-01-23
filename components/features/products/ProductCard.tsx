@@ -108,7 +108,7 @@ export default function ProductCard({
         )}
       </div>
 
-      <div className="flex flex-1 flex-col gap-2 px-3 py-3 sm:px-4 sm:py-4">
+      <div className="flex flex-1 flex-col gap-2 px-3 py-3 sm:px-4 sm:py-4 bg-white">
         <h3 className="line-clamp-2 text-sm sm:text-base font-bold leading-snug text-(--color-text) group-hover:text-(--color-primary)">
           {name}
         </h3>

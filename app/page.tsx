@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useMemo, useRef, type RefObject, useEffect } from "react";
 import ProductCard from "@/components/features/products/ProductCard";
 import Skeleton from "@mui/material/Skeleton";
 import { HeroSection } from "@/components/features/landing/HeroSection";
 import { TopDealsSection } from "@/components/features/landing/TopDealsSection";
+import { useProducts } from "@/hooks/queries/useProducts";
 
 type Product = {
   $id: string;
@@ -29,7 +30,7 @@ function buildPublicProductImageUrl(fileId?: string | null) {
   const bucket = process.env.NEXT_PUBLIC_APPWRITE_PRODUCT_BUCKET_ID;
   if (!endpoint || !project || !bucket) return null;
   const url = new URL(
-    `${endpoint}/storage/buckets/${bucket}/files/${fileId}/view`
+    `${endpoint}/storage/buckets/${bucket}/files/${fileId}/view`,
   );
   url.searchParams.set("project", project);
   return url.toString();
@@ -70,9 +71,11 @@ function useSwiper(ref: RefObject<HTMLDivElement | null>) {
 }
 
 export default function Home() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use TanStack Query for automatic caching - fetch all products
+  const { data, isLoading, error: queryError } = useProducts({ limit: 100 });
+  const products = data?.products || [];
+  const error = queryError ? String(queryError) : null;
+
   const sliderRef = useRef<HTMLDivElement>(null);
   const heroImage = "/heroimages/brakes.png";
   const heroPromos = [
@@ -94,64 +97,11 @@ export default function Home() {
 
   useSwiper(sliderRef);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch("/api/products?limit=24", {
-          cache: "no-store",
-        });
-        const body = await res.json();
-        if (!res.ok) throw new Error(body?.error || "Failed to load products");
-        const items: any[] = Array.isArray(body?.items) ? body.items : [];
-        const normalized: Product[] = items
-          .filter((p) => p && typeof p === "object")
-          .map((p) => ({
-            $id: String(p.$id),
-            name: String(p.name ?? ""),
-            description: p.description ?? null,
-            price:
-              typeof p.price === "number"
-                ? p.price
-                : p.price != null
-                ? Number(p.price)
-                : null,
-            originalPrice:
-              typeof p.originalPrice === "number"
-                ? p.originalPrice
-                : p.originalPrice != null
-                ? Number(p.originalPrice)
-                : null,
-            onSale: !!p.onSale,
-            discountStartDate: p.discountStartDate ?? null,
-            discountExpiry: p.discountExpiry ?? null,
-            stock:
-              typeof p.stock === "number"
-                ? p.stock
-                : p.stock != null
-                ? Number(p.stock)
-                : null,
-            category: p.category ?? null,
-            sellerId: String(p.sellerId ?? ""),
-            imageId: p.imageId ?? null,
-            imageUrl: p.imageUrl ?? null,
-          }))
-          .filter((p) => p.name && p.sellerId);
-
-        setProducts(normalized);
-      } catch (err: any) {
-        setError(err?.message || "Failed to load products");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, []);
-
   const featured = useMemo(() => products.slice(0, 4), [products]);
   const categories = useMemo(() => groupByCategory(products), [products]);
   const categoryList = useMemo(
     () => Object.keys(categories).sort(),
-    [categories]
+    [categories],
   );
 
   const sliderItems = useMemo(() => {
@@ -188,7 +138,7 @@ export default function Home() {
           imageUrl: p.imageUrl,
           moq: (index % 3) + 1,
         })),
-    [products]
+    [products],
   );
 
   return (
@@ -198,7 +148,7 @@ export default function Home() {
           <HeroSection imageUrl={heroImage} promos={heroPromos} />
           <TopDealsSection
             deals={topDeals}
-            loading={loading && !products.length}
+            loading={isLoading && !products.length}
             viewMoreHref="/deals#top"
           />
         </div>
@@ -217,7 +167,7 @@ export default function Home() {
               </p>
             )}
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 ">
-              {loading && !error && products.length === 0
+              {isLoading && !error && products.length === 0
                 ? Array.from({ length: 12 }).map((_, index) => (
                     <div
                       key={`skeleton-${index}`}
@@ -241,24 +191,22 @@ export default function Home() {
                       </div>
                     </div>
                   ))
-                : products
-                    .slice(0, 12)
-                    .map((product) => (
-                      <ProductCard
-                        key={product.$id}
-                        id={product.$id}
-                        name={product.name}
-                        price={product.price ?? null}
-                        originalPrice={product.originalPrice ?? null}
-                        onSale={product.onSale}
-                        discountStartDate={product.discountStartDate}
-                        discountExpiry={product.discountExpiry}
-                        stock={product.stock ?? null}
-                        imageId={product.imageId ?? null}
-                        imageUrl={product.imageUrl ?? null}
-                        href={`/products/${product.$id}`}
-                      />
-                    ))}
+                : products.map((product: any) => (
+                    <ProductCard
+                      key={product.$id}
+                      id={product.$id}
+                      name={product.name}
+                      price={product.price ?? null}
+                      originalPrice={product.originalPrice ?? null}
+                      onSale={product.onSale}
+                      discountStartDate={product.discountStartDate}
+                      discountExpiry={product.discountExpiry}
+                      stock={product.stock ?? null}
+                      imageId={product.imageId ?? null}
+                      imageUrl={product.imageUrl ?? null}
+                      href={`/products/${product.$id}`}
+                    />
+                  ))}
             </div>
           </div>
         </div>
@@ -266,4 +214,3 @@ export default function Home() {
     </div>
   );
 }
-

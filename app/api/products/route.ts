@@ -81,8 +81,8 @@ export async function POST(req: NextRequest) {
       typeof body?.originalPrice === "number"
         ? body.originalPrice
         : body?.originalPrice
-        ? Number(body.originalPrice)
-        : priceValue; // DEFAULT TO PRICE
+          ? Number(body.originalPrice)
+          : priceValue; // DEFAULT TO PRICE
 
     const discountStartDate =
       typeof body?.discountStartDate === "string"
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
         Permission.read(Role.user(targetSellerId)),
         Permission.update(Role.user(targetSellerId)),
         Permission.delete(Role.user(targetSellerId)),
-      ]
+      ],
     );
 
     const response: ProductResponse = {
@@ -173,6 +173,7 @@ export async function GET(req: NextRequest) {
     const categoryId =
       searchParams.get("categoryId") || searchParams.get("category");
     const onSale = searchParams.get("onSale") === "true";
+    const sellerId = searchParams.get("sellerId");
 
     // Compatibility filters
     const make = searchParams.get("make");
@@ -191,6 +192,9 @@ export async function GET(req: NextRequest) {
     }
     if (categoryId) {
       queries.push(Query.equal("mainCategoryId", categoryId));
+    }
+    if (sellerId) {
+      queries.push(Query.equal("sellerId", sellerId));
     }
 
     // Compatibility filtering (requires querying the compatibility collection first)
@@ -214,7 +218,7 @@ export async function GET(req: NextRequest) {
         const compatList = await databasesServer.listDocuments(
           appwriteConfig.databaseId,
           compatCollectionId,
-          compatQueries
+          compatQueries,
         );
         const productIds = compatList.documents
           .map((doc: any) => doc.productId)
@@ -238,7 +242,7 @@ export async function GET(req: NextRequest) {
     const list = await databasesServer.listDocuments<ProductDocument>(
       appwriteConfig.databaseId,
       appwriteConfig.productsCollectionId,
-      queries
+      queries,
     );
 
     let items: ProductResponse[] = list.documents.map((doc) => {
@@ -267,11 +271,23 @@ export async function GET(req: NextRequest) {
       items = items.filter((item) => (item as any).onSale === true);
     }
 
-    return NextResponse.json({
-      items: items,
-      products: items,
-      total: items.length,
-    });
+    // Filter out inactive products for public view (customers)
+    // Only show products where isActive is true
+    items = items.filter((item) => (item as any).isActive !== false);
+
+    return NextResponse.json(
+      {
+        items: items,
+        products: items,
+        total: items.length,
+      },
+      {
+        headers: {
+          // Cache for 60 seconds, allow stale content for 5 minutes while revalidating
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        },
+      },
+    );
   } catch (error: any) {
     console.error("Products GET error", error);
     return jsonError(error?.message || "Server error", error?.status || 500);
@@ -295,7 +311,7 @@ export async function PUT(req: NextRequest) {
     const existingProduct = await databasesServer.getDocument<ProductDocument>(
       appwriteConfig.databaseId,
       appwriteConfig.productsCollectionId,
-      productId
+      productId,
     );
 
     if (!existingProduct) {
@@ -346,7 +362,7 @@ export async function PUT(req: NextRequest) {
       appwriteConfig.databaseId,
       appwriteConfig.productsCollectionId,
       productId,
-      payload
+      payload,
     );
 
     return NextResponse.json({ success: true, product: updated });
@@ -355,4 +371,3 @@ export async function PUT(req: NextRequest) {
     return jsonError(error?.message || "Server error", error?.status || 500);
   }
 }
-

@@ -20,7 +20,7 @@ function ensureCategoriesCollectionId() {
 
   if (!id) {
     throw new Error(
-      "Missing Appwrite categories collection id (APPWRITE_CATEGORIES_COLLECTION_ID)"
+      "Missing Appwrite categories collection id (APPWRITE_CATEGORIES_COLLECTION_ID)",
     );
   }
 
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     const list = await databasesServer.listDocuments<CategoryDocument>(
       appwriteConfig.databaseId,
       categoriesCollectionId,
-      [Query.orderAsc("name"), Query.limit(500)]
+      [Query.orderAsc("name"), Query.limit(500)],
     );
 
     const items = list.documents.map((doc) => ({
@@ -44,10 +44,18 @@ export async function GET(req: NextRequest) {
       type: doc.type?.toLowerCase() || null,
     }));
 
-    return NextResponse.json({ items });
+    return NextResponse.json(
+      { items },
+      {
+        headers: {
+          // Categories are relatively static - cache for 1 hour, stale for 24 hours
+          "Cache-Control":
+            "public, s-maxage=3600, stale-while-revalidate=86400",
+        },
+      },
+    );
   } catch (error: any) {
     console.error("Public categories GET error", error);
     return jsonError(error?.message || "Server error", error?.status || 500);
   }
 }
-

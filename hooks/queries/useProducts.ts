@@ -15,6 +15,7 @@ interface UseProductsParams {
   sellerId?: string;
   search?: string;
   category?: string | null;
+  onSale?: boolean;
   minPrice?: number;
   maxPrice?: number;
   page?: number;
@@ -25,6 +26,7 @@ export function useProducts({
   sellerId,
   search,
   category,
+  onSale,
   minPrice,
   maxPrice,
   page = 1,
@@ -33,74 +35,35 @@ export function useProducts({
   return useQuery({
     queryKey: [
       "products",
-      { sellerId, search, category, minPrice, maxPrice, page, limit },
+      { sellerId, search, category, onSale, minPrice, maxPrice, page, limit },
     ],
     queryFn: async () => {
-      // If sellerId is provided, we use our secure server-side API
-      if (sellerId) {
-        const url = new URL("/api/seller/products", window.location.origin);
-        if (search) url.searchParams.append("search", search);
-        if (category) url.searchParams.append("category", category);
-        url.searchParams.append("page", page.toString());
-        url.searchParams.append("limit", limit.toString());
-
-        const res = await fetch(url.toString());
-        if (!res.ok) {
-          const error = await res.json();
-          throw new Error(error.error || "Failed to fetch seller products");
-        }
-        const data = await res.json();
-        return {
-          products: data.items.map((item: any) => ({
-            ...item,
-            imageUrl: getProductImageUrl(
-              item.imageId || (item.imageIds && item.imageIds[0]) || null,
-            ),
-          })),
-          total: data.total || data.items.length,
-        };
-      }
-
-      // Public listing logic remains using client SDK (or could also be refactored later)
-      const queries = [];
-      if (category) queries.push(Query.equal("mainCategoryId", category));
-      if (minPrice !== undefined)
-        queries.push(Query.greaterThanEqual("price", minPrice));
-      if (maxPrice !== undefined)
-        queries.push(Query.lessThanEqual("price", maxPrice));
-
-      queries.push(Query.limit(limit));
-      queries.push(Query.offset((page - 1) * limit));
-      queries.push(Query.orderDesc("$createdAt"));
-
-      const response = await databasesClient.listDocuments<ProductDocument>(
-        appwriteClientConfig.databaseId,
-        appwriteClientConfig.productsCollectionId,
-        queries,
+      // Build URL for API endpoint
+      const url = new URL(
+        sellerId ? "/api/seller/products" : "/api/products",
+        window.location.origin,
       );
 
-      let documents = response.documents;
+      if (search) url.searchParams.append("search", search);
+      if (category) url.searchParams.append("category", category);
+      if (onSale) url.searchParams.append("onSale", "true");
+      if (minPrice !== undefined)
+        url.searchParams.append("minPrice", minPrice.toString());
+      if (maxPrice !== undefined)
+        url.searchParams.append("maxPrice", maxPrice.toString());
+      url.searchParams.append("page", page.toString());
+      url.searchParams.append("limit", limit.toString());
 
-      if (search) {
-        const lowerSearch = search.toLowerCase();
-        documents = documents.filter(
-          (doc) =>
-            doc.name.toLowerCase().includes(lowerSearch) ||
-            (doc.description &&
-              doc.description.toLowerCase().includes(lowerSearch)),
-        );
+      const res = await fetch(url.toString());
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to fetch products");
       }
 
-      const productsWithImages = documents.map((doc) => ({
-        ...doc,
-        imageUrl: getProductImageUrl(
-          doc.imageId || (doc.imageIds && doc.imageIds[0]) || null,
-        ),
-      }));
-
+      const data = await res.json();
       return {
-        products: productsWithImages,
-        total: search ? documents.length : response.total,
+        products: data.items || data.products || [],
+        total: data.total || (data.items || data.products || []).length,
       };
     },
     placeholderData: (previousData: any) => previousData,

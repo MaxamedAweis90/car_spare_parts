@@ -28,10 +28,11 @@ export async function POST(req: NextRequest) {
     const updates: any = {};
     if (name) updates.name = name;
 
-    // Store phone with +252 prefix as string
+    // Store phone - DB likely expects Number (Integer) based on TS type, but Auth needs E.164 String
     if (phone) {
       const cleanPhone = phone.replace(/\D/g, "");
-      updates.phone = `+252${cleanPhone}`;
+      // Schema likely Integer: store just the digits as number
+      updates.phone = parseInt(cleanPhone, 10);
     }
 
     // Update avatar - ensure we're setting it properly
@@ -63,6 +64,7 @@ export async function POST(req: NextRequest) {
     if (phone && userDoc.appwriteUserId) {
       try {
         const cleanPhone = phone.replace(/\D/g, "");
+        // Auth requires E.164 format (+252...)
         await usersServer.updatePhone(
           userDoc.appwriteUserId,
           `+252${cleanPhone}`,
@@ -79,7 +81,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("Profile update error:", error);
     return NextResponse.json(
-      { error: error?.message || "Server error" },
+      { error: error?.message || error?.response?.message || "Server error" },
       { status: 500 },
     );
   }

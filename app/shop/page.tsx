@@ -1,12 +1,13 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProductCard from "@/components/features/products/ProductCard";
 import Skeleton from "@mui/material/Skeleton";
 import Link from "next/link";
 import { SearchFilters } from "@/components/features/products/SearchFilters";
 import { useCategories } from "@/hooks/queries/useCategories";
+import { useProducts } from "@/hooks/queries/useProducts";
 import { Drawer, Button as AntButton } from "antd";
 import { FilterOutlined } from "@ant-design/icons";
 
@@ -29,9 +30,6 @@ type Product = {
 function ShopPageContent() {
   const router = useRouter();
   const { data: categories } = useCategories();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
   const searchParams = useSearchParams();
@@ -43,6 +41,35 @@ function ShopPageContent() {
   const makeFilter = searchParams.get("make");
   const modelFilter = searchParams.get("model");
   const yearFilter = searchParams.get("year");
+
+  // Use TanStack Query hook for automatic caching
+  const {
+    data,
+    isLoading,
+    error: queryError,
+  } = useProducts({
+    category: categoryFilter || undefined,
+    search: searchQuery || undefined,
+    onSale: onSaleFilter === "true" ? true : undefined,
+    minPrice: minPriceFilter ? Number(minPriceFilter) : undefined,
+    maxPrice: maxPriceFilter ? Number(maxPriceFilter) : undefined,
+    limit: 100,
+  });
+
+  const products = useMemo(() => {
+    if (!data?.products) return [];
+
+    let filtered = data.products;
+
+    // Filter by active/published status
+    filtered = filtered.filter(
+      (p: any) => p.active !== false && p.published !== false,
+    );
+
+    return filtered;
+  }, [data?.products, onSaleFilter]);
+
+  const error = queryError ? String(queryError) : null;
 
   const activeCategory = useMemo(() => {
     if (!categoryFilter || !categories) return null;
@@ -63,96 +90,6 @@ function ShopPageContent() {
 
     return { ...part, fullLabel: names.join(" > ") };
   }, [categoryFilter, categories]);
-
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      try {
-        const params = new URLSearchParams();
-        params.set("limit", "100"); // Increase limit to fetch more for accurate client-side search/sale filters
-        if (categoryFilter) params.set("category", categoryFilter);
-        if (searchQuery) params.set("search", searchQuery);
-        if (onSaleFilter === "true") params.set("onSale", "true");
-        if (minPriceFilter) params.set("minPrice", minPriceFilter);
-        if (maxPriceFilter) params.set("maxPrice", maxPriceFilter);
-        if (makeFilter) params.set("make", makeFilter);
-        if (modelFilter) params.set("model", modelFilter);
-        if (yearFilter) params.set("year", yearFilter);
-
-        const res = await fetch(`/api/products?${params.toString()}`, {
-          cache: "no-store",
-        });
-        const body = await res.json();
-        if (!res.ok) throw new Error(body?.error || "Failed to load products");
-        const items: any[] = Array.isArray(body?.items) ? body.items : [];
-
-        const normalized: Product[] = items
-          .filter((p) => p && typeof p === "object")
-          .map((p) => ({
-            $id: String(p.$id),
-            name: String(p.name ?? ""),
-            price:
-              typeof p.price === "number"
-                ? p.price
-                : p.price != null
-                ? Number(p.price)
-                : null,
-            originalPrice:
-              typeof p.originalPrice === "number"
-                ? p.originalPrice
-                : p.originalPrice != null
-                ? Number(p.originalPrice)
-                : null,
-            onSale: !!p.onSale,
-            discountStartDate: p.discountStartDate ?? null,
-            discountExpiry: p.discountExpiry ?? null,
-            stock:
-              typeof p.stock === "number"
-                ? p.stock
-                : p.stock != null
-                ? Number(p.stock)
-                : null,
-            imageId: p.imageId ?? null,
-            imageUrl: p.imageUrl ?? null,
-            active: p.isActive ?? p.active,
-            published: p.published ?? true,
-          }));
-
-        // Log for debugging (user can check browser console)
-        console.log(
-          "Fetched products:",
-          normalized.length,
-          "Filtering results..."
-        );
-
-        const activeItems = normalized.filter((p) => {
-          const isVisible = p.active !== false && p.published !== false;
-          if (!isVisible) {
-            console.log(
-              `Product hidden: ${p.name} (ID: ${p.$id}) - Active: ${p.active}, Published: ${p.published}`
-            );
-          }
-          return isVisible;
-        });
-
-        setProducts(activeItems);
-      } catch (err: any) {
-        setError(err?.message || "Failed to load products");
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-  }, [
-    categoryFilter,
-    searchQuery,
-    onSaleFilter,
-    minPriceFilter,
-    maxPriceFilter,
-    makeFilter,
-    modelFilter,
-    yearFilter,
-  ]);
 
   const handleFiltersChange = (newFilters: any) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -296,7 +233,7 @@ function ShopPageContent() {
                     : "Find brakes, accessories, electronics, and more."}
                 </p>
               </div>
-              {!loading && (
+              {!isLoading && (
                 <span className="text-sm font-semibold text-(--color-muted)">
                   {products.length} items found
                 </span>
@@ -308,7 +245,7 @@ function ShopPageContent() {
             )}
 
             <div className="grid grid-cols-2 gap-4 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {loading
+              {isLoading
                 ? Array.from({ length: 12 }).map((_, index) => (
                     <div
                       key={`skeleton-${index}`}
@@ -332,7 +269,7 @@ function ShopPageContent() {
                       </div>
                     </div>
                   ))
-                : visibleProducts.map((p) => (
+                : visibleProducts.map((p: any) => (
                     <ProductCard
                       key={`shop-${p.$id}`}
                       id={p.$id}
@@ -349,7 +286,7 @@ function ShopPageContent() {
                   ))}
             </div>
 
-            {!loading && !error && visibleProducts.length === 0 && (
+            {!isLoading && !error && visibleProducts.length === 0 && (
               <div className="py-20 text-center">
                 <i className="fa-solid fa-box-open mb-4 block text-5xl text-(--color-border-strong)"></i>
                 <p className="text-lg font-medium text-(--color-muted)">
@@ -385,4 +322,3 @@ export default function ShopPage() {
     </Suspense>
   );
 }
-
