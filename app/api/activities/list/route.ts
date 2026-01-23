@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     if (
       !session.authenticated ||
       !session.profile ||
-      session.profile.role !== "main_admin"
+      !session.profile.role.includes("admin")
     ) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }

@@ -71,11 +71,22 @@ export default function AdminOnboarding() {
     setSelectedFile(file);
   };
 
-  const handleUpload = async (file: File) => {
+  const handleUpload = async (file: File): Promise<string> => {
     try {
-      const bucketId = "avatars";
-      const newFile = await uploadImage(bucketId, file);
-      return newFile.$id;
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/admin/upload-avatar", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        throw new Error("Upload failed");
+      }
+
+      const data = await res.json();
+      return data.fileId;
     } catch (error) {
       console.error("Upload failed", error);
       throw error;
@@ -92,6 +103,7 @@ export default function AdminOnboarding() {
         avatarId = await handleUpload(selectedFile);
       }
 
+      // Now update profile with the avatarId
       const formData = new FormData();
       formData.append("email", profile?.email || "");
       formData.append("name", values.name);
