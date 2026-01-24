@@ -33,7 +33,7 @@ export const sendStatusNotification = async (params: {
   if (!template) return;
 
   // MOCK: In practice, you'd trigger your email provider here.
-  console.log(`[EMAIL DISPATCH] 
+  console.warn(`[EMAIL DISPATCH] 
     TO: ${email}
     SUBJECT: ${template.subject}
     CONTENT: ${template.body}
@@ -49,10 +49,9 @@ export const sendWelcomeEmail = async (params: {
 }) => {
   const { email, name } = params;
 
-  console.log(`[EMAIL DISPATCH] 
+  console.warn(`[EMAIL DISPATCH] 
     TO: ${email}
     SUBJECT: Welcome to SomaAutoPart!
     CONTENT: Hello ${name}, your email has been verified. Welcome to SomaAutoPart using Appwrite!
   `);
 };
-

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Query } from "node-appwrite";
 import { databasesServer, appwriteConfig } from "@/lib/api/appwrite-server";
 import { requireAdmin } from "@/lib/server/requireAdmin";
+import { cache } from "@/lib/utils/cache";
 
 function startOfUtcDay(date: Date) {
   return new Date(
@@ -51,6 +52,13 @@ async function countOrdersSince(isoStart: string) {
 export async function GET(req: NextRequest) {
   try {
     const { profile } = await requireAdmin(req);
+
+    // Check cache first (5 minute TTL)
+    const cacheKey = `dashboard:stats`;
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
 
     const [
       usersTotal,
@@ -198,7 +206,7 @@ export async function GET(req: NextRequest) {
       console.warn("Failed to fetch activities", err);
     }
 
-    return NextResponse.json({
+    const response = {
       users: {
         total: usersTotal,
         active: usersActive,
@@ -219,7 +227,12 @@ export async function GET(req: NextRequest) {
       activities,
       revenueHistory,
       generatedAt: new Date().toISOString(),
-    });
+    };
+
+    // Cache for 5 minutes (300 seconds)
+    cache.set(cacheKey, response, 300);
+
+    return NextResponse.json(response);
   } catch (error: unknown) {
     const status =
       typeof (error as { status?: unknown })?.status === "number"

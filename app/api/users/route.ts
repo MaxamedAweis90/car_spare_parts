@@ -36,13 +36,14 @@ const mainAdminId = (
   ""
 ).trim();
 
-// Parse main admin IDs (handles comma-separated and strips quotes)
 const getMainAdminIds = () => {
   return mainAdminId
     .split(",")
     .map((id) => id.trim().replace(/^["'](.+)["']$/, "$1"))
     .filter(Boolean);
 };
+
+import { getImageUrl } from "@/lib/appwrite/storage";
 
 if (!mainAdminId) {
   console.warn(
@@ -582,7 +583,28 @@ export async function GET(req: NextRequest) {
       queries,
     );
 
-    return NextResponse.json(list);
+    const search = searchParams.get("search")?.toLowerCase();
+
+    // Transform documents to include avatarUrl
+    const documents = list.documents.map((doc: any) => ({
+      ...doc,
+      avatarUrl: doc.avatarId ? getImageUrl("avatars", doc.avatarId) : null,
+    }));
+
+    let filtered = documents;
+    if (search) {
+      filtered = documents.filter((doc: any) => {
+        const name = doc.name?.toLowerCase() || "";
+        const email = doc.email?.toLowerCase() || "";
+        return name.includes(search) || email.includes(search);
+      });
+    }
+
+    return NextResponse.json({
+      ...list,
+      documents: filtered,
+      total: search ? filtered.length : list.total,
+    });
   } catch (error: unknown) {
     console.error("List users error:", error);
     return NextResponse.json(

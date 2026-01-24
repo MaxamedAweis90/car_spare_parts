@@ -1,10 +1,25 @@
 import { randomUUID } from "crypto";
 import { Buffer } from "node:buffer";
 import { Permission, Role } from "node-appwrite";
-import { appwriteConfig, databasesServer, storageServer } from "@/lib/api/appwrite-server";
+import {
+  appwriteConfig,
+  databasesServer,
+  storageServer,
+} from "@/lib/api/appwrite-server";
 import type { UserProfile } from "@/lib/auth/auth-utils";
+import {
+  validateFileSize,
+  optimizeAvatar,
+} from "@/lib/utils/imageOptimization";
 
-const { databaseId, usersCollectionId, avatarBucketId, endpoint, projectId, apiKey } = appwriteConfig;
+const {
+  databaseId,
+  usersCollectionId,
+  avatarBucketId,
+  endpoint,
+  projectId,
+  apiKey,
+} = appwriteConfig;
 
 function ensureAvatarBucketId() {
   if (!avatarBucketId) {
@@ -15,18 +30,32 @@ function ensureAvatarBucketId() {
 
 function ensureUploadBasics() {
   if (!endpoint || !projectId || !apiKey) {
-    throw new Error("Missing Appwrite endpoint, project id, or API key for uploads");
+    throw new Error(
+      "Missing Appwrite endpoint, project id, or API key for uploads",
+    );
   }
   return { endpoint, projectId, apiKey } as const;
 }
 
 export async function getUserProfileById(userId: string) {
-  const document = await databasesServer.getDocument<UserProfile>(databaseId, usersCollectionId, userId);
+  const document = await databasesServer.getDocument<UserProfile>(
+    databaseId,
+    usersCollectionId,
+    userId,
+  );
   return document as UserProfile;
 }
 
-export async function updateUserProfileDocument(userId: string, payload: Partial<UserProfile>) {
-  const updated = await databasesServer.updateDocument<UserProfile>(databaseId, usersCollectionId, userId, payload);
+export async function updateUserProfileDocument(
+  userId: string,
+  payload: Partial<UserProfile>,
+) {
+  const updated = await databasesServer.updateDocument<UserProfile>(
+    databaseId,
+    usersCollectionId,
+    userId,
+    payload,
+  );
   return updated as UserProfile;
 }
 
@@ -40,15 +69,35 @@ export async function deleteUserAvatar(fileId: string) {
   }
 }
 
-export async function uploadUserAvatar(fileBytes: Uint8Array, filename: string, accountId: string) {
+export async function uploadUserAvatar(
+  fileBytes: Uint8Array,
+  filename: string,
+  accountId: string,
+) {
+  // Validate file size before processing
+  validateFileSize(fileBytes, "avatar");
+
+  // Optimize avatar (resize to 400x400 + convert to WebP)
+  const optimizedBuffer = await optimizeAvatar(fileBytes);
+
   const bucketId = ensureAvatarBucketId();
-  const { endpoint: apiEndpoint, projectId: project, apiKey: key } = ensureUploadBasics();
+  const {
+    endpoint: apiEndpoint,
+    projectId: project,
+    apiKey: key,
+  } = ensureUploadBasics();
   const uploadUrl = `${apiEndpoint}/storage/buckets/${bucketId}/files`;
   const form = new FormData();
-  const blob = new Blob([Buffer.from(fileBytes)], { type: "application/octet-stream" });
+
+  // Use optimized image with .webp extension
+  const webpFilename =
+    filename.replace(/\.[^.]+$/, ".webp") || `user-avatar-${randomUUID()}.webp`;
+  const blob = new Blob([new Uint8Array(optimizedBuffer)], {
+    type: "image/webp",
+  });
 
   form.append("fileId", "unique()");
-  form.append("file", blob, filename || `user-avatar-${randomUUID()}`);
+  form.append("file", blob, webpFilename);
   form.append("permissions[]", Permission.read(Role.any()));
   form.append("permissions[]", Permission.update(Role.user(accountId)));
   form.append("permissions[]", Permission.delete(Role.user(accountId)));
@@ -70,7 +119,9 @@ export async function uploadUserAvatar(fileBytes: Uint8Array, filename: string, 
 
   const uploadedId: unknown = payload?.$id ?? payload?.fileId ?? payload?.id;
   if (typeof uploadedId !== "string" || !uploadedId) {
-    throw new Error("Appwrite upload succeeded but returned an invalid file id");
+    throw new Error(
+      "Appwrite upload succeeded but returned an invalid file id",
+    );
   }
 
   return uploadedId;
@@ -87,7 +138,10 @@ export function buildUserAvatarUrl(fileId: string | null | undefined) {
   }
   try {
     const base = endpoint.endsWith("/") ? endpoint : `${endpoint}/`;
-    const url = new URL(`storage/buckets/${bucketId}/files/${fileId}/view`, base);
+    const url = new URL(
+      `storage/buckets/${bucketId}/files/${fileId}/view`,
+      base,
+    );
     url.searchParams.set("project", projectId);
     url.searchParams.set("mode", "admin");
     return url.toString();
@@ -96,4 +150,3 @@ export function buildUserAvatarUrl(fileId: string | null | undefined) {
     return null;
   }
 }
-

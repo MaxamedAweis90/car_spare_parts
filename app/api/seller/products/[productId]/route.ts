@@ -310,11 +310,12 @@ export async function PATCH(
         nextImageIds.push(fileId);
       }
 
-      for (const oldId of imageIds) {
-        if (!nextImageIds.includes(oldId)) {
-          await deleteProductImage(oldId);
-        }
-      }
+      // Delete old images in parallel
+      await Promise.all(
+        imageIds
+          .filter((oldId) => !nextImageIds.includes(oldId))
+          .map((oldId) => deleteProductImage(oldId)),
+      );
 
       imageIds = nextImageIds;
       updates.imageIds = imageIds;
@@ -347,12 +348,12 @@ export async function PATCH(
         }
       }
 
-      // Cleanup dropped images
-      for (const oldId of imageIds) {
-        if (!resultImageIds.includes(oldId)) {
-          await deleteProductImage(oldId);
-        }
-      }
+      // Cleanup dropped images in parallel
+      await Promise.all(
+        imageIds
+          .filter((oldId) => !resultImageIds.includes(oldId))
+          .map((oldId) => deleteProductImage(oldId)),
+      );
 
       imageIds = resultImageIds;
       updates.imageIds = imageIds;
@@ -442,10 +443,8 @@ export async function DELETE(
       productId,
     );
 
-    // Best-effort cleanup.
-    for (const id of imageIds) {
-      await deleteProductImage(id);
-    }
+    // Best-effort cleanup - delete all images in parallel
+    await Promise.all(imageIds.map((id) => deleteProductImage(id)));
 
     return NextResponse.json({ ok: true });
   } catch (error: any) {

@@ -1,7 +1,6 @@
 import { Query, ID, Permission, Role } from "node-appwrite";
 import { databasesServer, appwriteConfig } from "@/lib/api/appwrite-server";
 import { FollowDocument } from "@/lib/types/follow";
-import { sendStatusNotification } from "@/lib/notifications"; // Mock email service
 
 export async function notifyFollowers(params: {
   storeId: string;
@@ -11,58 +10,58 @@ export async function notifyFollowers(params: {
   message: string;
   link: string;
 }) {
-  const { storeId, storeName, type, title, message: msg, link } = params;
+  const { storeId, type, title, message: msg, link } = params;
 
   try {
     // 1. Get all followers of this store
     const follows = await databasesServer.listDocuments<FollowDocument>(
       appwriteConfig.databaseId,
       appwriteConfig.followsCollectionId,
-      [Query.equal("storeId", storeId), Query.equal("isFollowing", true)]
+      [Query.equal("storeId", storeId), Query.equal("isFollowing", true)],
     );
 
     if (follows.total === 0) return;
 
-    for (const follow of follows.documents) {
-      const userId = follow.userId;
+    // Prepare all notification creation promises
+    const notificationPromises = follows.documents
+      .filter((follow) => follow.inAppEnabled)
+      .map((follow) =>
+        databasesServer
+          .createDocument(
+            appwriteConfig.databaseId,
+            appwriteConfig.notificationsCollectionId,
+            ID.unique(),
+            {
+              userId: follow.userId,
+              storeId,
+              type,
+              title,
+              message: msg,
+              link,
+              isRead: false,
+            },
+            [
+              Permission.read(Role.user(follow.userId)),
+              Permission.update(Role.user(follow.userId)),
+              Permission.delete(Role.user(follow.userId)),
+            ],
+          )
+          .catch((error) => {
+            // Log error but don't fail entire batch
+            console.error(
+              `Failed to create notification for user ${follow.userId}:`,
+              error,
+            );
+            return null;
+          }),
+      );
 
-      // 2. Send In-App Notification if enabled
-      if (follow.inAppEnabled) {
-        await databasesServer.createDocument(
-          appwriteConfig.databaseId,
-          appwriteConfig.notificationsCollectionId,
-          ID.unique(),
-          {
-            userId,
-            storeId,
-            type,
-            title,
-            message: msg,
-            link,
-            isRead: false,
-          },
-          [
-            Permission.read(Role.user(userId)),
-            Permission.update(Role.user(userId)),
-            Permission.delete(Role.user(userId)),
-          ]
-        );
-      }
+    // Execute all notifications in parallel (fixes N+1 query problem)
+    await Promise.all(notificationPromises);
 
-      // 3. Send Email Notification if enabled (Mocked)
-      if (follow.emailEnabled && type === "new_deal") {
-        // Fetch user email if needed, but for now we just use the mock service
-        // In a real app, you'd fetch the user's email from the users collection
-        console.log(
-          `[EMAIL] Dispatching deal alert from ${storeName} to user ${userId}`
-        );
-
-        // Example of calling the mock notification service:
-        // await sendStatusNotification({ email: userEmail, name: userName, status: 'active' });
-      }
-    }
+    // TODO: Implement email notifications properly
+    // Email notification feature is currently not implemented
   } catch (error) {
     console.error("Failed to notify followers", error);
   }
 }
-

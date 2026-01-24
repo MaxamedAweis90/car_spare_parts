@@ -36,11 +36,19 @@ export async function POST(req: NextRequest) {
         : (file as File).name || "admin-avatar";
 
     const newFileId = await uploadUserAvatar(bytes, filename, account.$id);
-    await updateUserProfileDocument(profile.$id, { avatarId: newFileId });
 
-    // Clean up old avatar if exists
-    if (profile.avatarId && profile.avatarId !== newFileId) {
-      await deleteUserAvatar(profile.avatarId);
+    try {
+      // Update database with new avatar ID
+      await updateUserProfileDocument(profile.$id, { avatarId: newFileId });
+
+      // Clean up old avatar if exists (only after successful update)
+      if (profile.avatarId && profile.avatarId !== newFileId) {
+        await deleteUserAvatar(profile.avatarId);
+      }
+    } catch (error) {
+      // Rollback: Delete the newly uploaded file if database update fails
+      await deleteUserAvatar(newFileId);
+      throw error;
     }
 
     const updated = await getUserProfileById(profile.$id);
@@ -65,4 +73,3 @@ export async function POST(req: NextRequest) {
     return jsonError(error?.message || "Failed to upload avatar", status);
   }
 }
-

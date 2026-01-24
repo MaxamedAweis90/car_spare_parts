@@ -15,10 +15,13 @@ import CircularProgress from "@mui/material/CircularProgress";
 import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import ShoppingBagIcon from "@mui/icons-material/ShoppingBag";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import ProcessPaymentModal from "@/components/payment/ProcessPaymentModal";
 
 import { useSession } from "@/lib/auth/useSession";
 import { BreadcrumbTrail } from "@/components/ui/BreadcrumbTrail";
 import { client, appwriteClientConfig } from "@/lib/api/appwrite";
+import { getStatusLabel } from "@/lib/utils/orderStatusTransitions";
 
 interface Order {
   $id: string;
@@ -36,6 +39,13 @@ export default function CustomerOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+
+  const handlePayClick = (order: Order) => {
+    setSelectedOrder(order);
+    setPaymentModalOpen(true);
+  };
 
   useEffect(() => {
     if (authLoading) return;
@@ -90,7 +100,7 @@ export default function CustomerOrdersPage() {
         setOrders((prev) => [payload, ...prev]);
       } else if (event.endsWith(".update")) {
         setOrders((prev) =>
-          prev.map((o) => (o.$id === payload.$id ? payload : o))
+          prev.map((o) => (o.$id === payload.$id ? payload : o)),
         );
       } else if (event.endsWith(".delete")) {
         setOrders((prev) => prev.filter((o) => o.$id !== payload.$id));
@@ -104,14 +114,20 @@ export default function CustomerOrdersPage() {
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
-      case "pending":
+      case "pending_verification":
         return "warning";
+      case "awaiting_payment":
+        return "info";
       case "paid":
+      case "approved_for_fulfillment":
+      case "delivered":
+      case "completed":
+        return "success";
+      case "packing":
         return "info";
       case "shipped":
         return "primary";
-      case "completed":
-        return "success";
+      case "rejected":
       case "cancelled":
         return "error";
       default:
@@ -152,9 +168,19 @@ export default function CustomerOrdersPage() {
             <Typography variant="h4" fontWeight={800} color="slate.900">
               My Orders
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              {orders.length} orders total
-            </Typography>
+            <Stack direction="row" spacing={2} alignItems="center">
+              <Typography variant="body2" color="text.secondary">
+                {orders.length} orders total
+              </Typography>
+              <Button
+                variant="outlined"
+                startIcon={<AccountBalanceWalletIcon />}
+                onClick={() => router.push("/customer/wallet")}
+                size="small"
+              >
+                Manage Wallet
+              </Button>
+            </Stack>
           </Box>
 
           {orders.length === 0 ? (
@@ -185,7 +211,7 @@ export default function CustomerOrdersPage() {
                     day: "numeric",
                     month: "short",
                     year: "numeric",
-                  }
+                  },
                 );
 
                 let orderItems: any[] = [];
@@ -296,11 +322,7 @@ export default function CustomerOrdersPage() {
                             fontWeight={800}
                             gutterBottom
                           >
-                            {order.status === "shipped"
-                              ? "On the way"
-                              : order.status === "completed"
-                              ? "Delivered"
-                              : "Order Processing"}
+                            {getStatusLabel(order.status as any)}
                           </Typography>
                           <Stack
                             direction="row"
@@ -311,12 +333,20 @@ export default function CustomerOrdersPage() {
                               sx={{ fontSize: 18, color: "text.secondary" }}
                             />
                             <Typography variant="body2" color="text.secondary">
-                              Tracking information will be updated soon.
+                              {order.status === "shipped"
+                                ? "Your package is on the way."
+                                : order.status === "awaiting_payment"
+                                  ? "Please complete payment to proceed."
+                                  : order.status === "pending_verification"
+                                    ? "Seller is reviewing your order."
+                                    : "Check status updates below."}
                             </Typography>
                           </Stack>
                         </Box>
                         <Chip
-                          label={order.status.toUpperCase()}
+                          label={getStatusLabel(
+                            order.status as any,
+                          ).toUpperCase()}
                           color={getStatusColor(order.status) as any}
                           sx={{ fontWeight: 800, borderRadius: 1 }}
                         />
@@ -381,6 +411,21 @@ export default function CustomerOrdersPage() {
                       </Stack>
 
                       <Box sx={{ mt: 4, display: "flex", gap: 2 }}>
+                        {order.status === "awaiting_payment" && (
+                          <Button
+                            variant="contained"
+                            color="success"
+                            fullWidth
+                            sx={{
+                              borderRadius: 2,
+                              textTransform: "none",
+                              py: 1,
+                            }}
+                            onClick={() => handlePayClick(order)}
+                          >
+                            Pay Now (${order.totalPrice.toFixed(2)})
+                          </Button>
+                        )}
                         <Button
                           variant="outlined"
                           color="inherit"
@@ -406,7 +451,16 @@ export default function CustomerOrdersPage() {
           )}
         </Stack>
       </Box>
+
+      <ProcessPaymentModal
+        open={paymentModalOpen}
+        onCancel={() => {
+          setPaymentModalOpen(false);
+          setSelectedOrder(null);
+        }}
+        orderId={selectedOrder?.$id || ""}
+        amount={selectedOrder?.totalPrice || 0}
+      />
     </Box>
   );
 }
-

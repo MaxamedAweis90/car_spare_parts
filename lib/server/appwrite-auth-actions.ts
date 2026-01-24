@@ -13,7 +13,7 @@ function buildCookieHeader(cookies: any[]) {
  */
 export async function createAppwriteEmailSession(
   email: string,
-  password: string
+  password: string,
 ) {
   const loginRes = await fetch(`${endpoint}/account/sessions/email`, {
     method: "POST",
@@ -34,7 +34,7 @@ export async function createAppwriteEmailSession(
   const rawSetCookie = loginRes.headers.get("set-cookie") || "";
   const split = (setCookieParser as any).splitCookiesString(rawSetCookie);
   const parsed = split.map((cookieStr: string) =>
-    (setCookieParser as any).parseString(cookieStr)
+    (setCookieParser as any).parseString(cookieStr),
   );
 
   let jwt: string | undefined;
@@ -64,14 +64,14 @@ export async function createAppwriteEmailSession(
  */
 export async function triggerAppwriteVerification(
   cookieHeader: string,
-  origin: string
+  origin: string,
 ) {
   const cleanOrigin = origin.endsWith("/") ? origin.slice(0, -1) : origin;
   const url = `${cleanOrigin}/auth/verify`;
 
   if (process.env.NODE_ENV !== "production") {
     console.info(
-      `[Auth] Triggering verification email with redirect URL: ${url}`
+      `[Auth] Triggering verification email with redirect URL: ${url}`,
     );
   }
 
@@ -88,10 +88,9 @@ export async function triggerAppwriteVerification(
 
   if (!res.ok) {
     const body = await res.json().catch(() => null);
-    console.error("Verification trigger failed:", body);
+    console.warn("Verification trigger failed:", body);
     return false;
   }
 
   return true;
 }
-

@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
           Query.equal("userId", userId),
           Query.orderDesc("$createdAt"),
           Query.limit(20),
-        ]
+        ],
       );
 
     // Get unread count
@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
         Query.equal("userId", userId),
         Query.equal("isRead", false),
         Query.limit(1),
-      ]
+      ],
     );
 
     return NextResponse.json({
@@ -65,24 +65,27 @@ export async function PATCH(req: NextRequest) {
       const unread = await databasesServer.listDocuments<NotificationDocument>(
         appwriteConfig.databaseId,
         appwriteConfig.notificationsCollectionId,
-        [Query.equal("userId", userId), Query.equal("isRead", false)]
+        [Query.equal("userId", userId), Query.equal("isRead", false)],
       );
 
-      for (const doc of unread.documents) {
-        await databasesServer.updateDocument(
-          appwriteConfig.databaseId,
-          appwriteConfig.notificationsCollectionId,
-          doc.$id,
-          { isRead: true }
-        );
-      }
+      // Batch update all notifications in parallel (fixes N+1 query problem)
+      await Promise.all(
+        unread.documents.map((doc) =>
+          databasesServer.updateDocument(
+            appwriteConfig.databaseId,
+            appwriteConfig.notificationsCollectionId,
+            doc.$id,
+            { isRead: true },
+          ),
+        ),
+      );
     } else if (notificationId) {
       // Mark single as read
       await databasesServer.updateDocument(
         appwriteConfig.databaseId,
         appwriteConfig.notificationsCollectionId,
         notificationId,
-        { isRead: true }
+        { isRead: true },
       );
     }
 
@@ -92,4 +95,3 @@ export async function PATCH(req: NextRequest) {
     return jsonError(error?.message || "Server error", 500);
   }
 }
-

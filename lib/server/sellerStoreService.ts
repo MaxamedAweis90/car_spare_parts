@@ -6,6 +6,11 @@ import {
   storageServer,
 } from "@/lib/api/appwrite-server";
 import { slugify } from "@/lib/utils/slugify";
+import {
+  validateFileSize,
+  optimizeAvatar,
+  optimizeBanner,
+} from "@/lib/utils/imageOptimization";
 import type {
   SellerStoreDocument,
   SellerStorePayload,
@@ -25,7 +30,7 @@ const {
 function ensureUploadBasics() {
   if (!endpoint || !projectId || !apiKey) {
     throw new Error(
-      "Missing Appwrite endpoint, project id, or API key for uploads"
+      "Missing Appwrite endpoint, project id, or API key for uploads",
     );
   }
   return { endpoint, projectId, apiKey } as const;
@@ -44,7 +49,7 @@ export async function findStoreBySellerId(sellerId: string) {
     const document = await databasesServer.getDocument<SellerStoreDocument>(
       databaseId,
       collectionId,
-      sellerId
+      sellerId,
     );
     return document as SellerStoreDocument;
   } catch (error) {
@@ -52,7 +57,7 @@ export async function findStoreBySellerId(sellerId: string) {
       const list = await databasesServer.listDocuments<SellerStoreDocument>(
         databaseId,
         collectionId,
-        [Query.equal("sellerId", sellerId)]
+        [Query.equal("sellerId", sellerId)],
       );
       return list.total > 0 ? (list.documents[0] as SellerStoreDocument) : null;
     }
@@ -65,7 +70,7 @@ export async function findStoreBySlug(storeSlug: string) {
   const list = await databasesServer.listDocuments<SellerStoreDocument>(
     databaseId,
     collectionId,
-    [Query.equal("storeSlug", storeSlug)]
+    [Query.equal("storeSlug", storeSlug)],
   );
   return list.total > 0 ? (list.documents[0] as SellerStoreDocument) : null;
 }
@@ -75,7 +80,7 @@ export async function listActiveStores() {
   const list = await databasesServer.listDocuments<SellerStoreDocument>(
     databaseId,
     collectionId,
-    [Query.equal("isActive", true), Query.equal("isOnboarded", true)]
+    [Query.equal("isActive", true), Query.equal("isOnboarded", true)],
   );
   return list.documents.map(serializeStore);
 }
@@ -118,7 +123,7 @@ export async function createStoreForSeller({
         Permission.read(Role.user(accountId)),
         Permission.update(Role.user(accountId)),
         Permission.delete(Role.user(accountId)),
-      ]
+      ],
     );
 
     return serializeStore(document as SellerStoreDocument);
@@ -135,7 +140,7 @@ export async function createStoreForSeller({
 
 export async function updateStoreDocument(
   documentId: string,
-  payload: SellerStorePayload
+  payload: SellerStorePayload,
 ) {
   const delta: Partial<SellerStoreDocument> = {
     ...payload,
@@ -145,7 +150,7 @@ export async function updateStoreDocument(
     databaseId,
     collectionId,
     documentId,
-    delta
+    delta,
   );
   return serializeStore(updated as SellerStoreDocument);
 }
@@ -187,8 +192,16 @@ export async function deleteStoreBanner(fileId: string) {
 export async function uploadStoreAvatar(
   fileBuffer: Buffer,
   filename: string,
-  accountId: string
+  accountId: string,
 ) {
+  const bytes = Uint8Array.from(fileBuffer);
+
+  // Validate file size before processing
+  validateFileSize(bytes, "avatar");
+
+  // Optimize avatar (resize to 400x400 + convert to WebP)
+  const optimizedBuffer = await optimizeAvatar(bytes);
+
   const bucketId = ensureStoreAvatarBucketId();
   const {
     endpoint: apiEndpoint,
@@ -197,10 +210,17 @@ export async function uploadStoreAvatar(
   } = ensureUploadBasics();
   const uploadUrl = `${apiEndpoint}/storage/buckets/${bucketId}/files`;
   const form = new FormData();
-  const bytes = Uint8Array.from(fileBuffer);
-  const blob = new Blob([bytes], { type: "application/octet-stream" });
+
+  // Use optimized image with .webp extension
+  const webpFilename =
+    filename.replace(/\.[^.]+$/, ".webp") ||
+    `store-avatar-${randomUUID()}.webp`;
+  const blob = new Blob([new Uint8Array(optimizedBuffer)], {
+    type: "image/webp",
+  });
+
   form.append("fileId", "unique()");
-  form.append("file", blob, filename || `store-avatar-${randomUUID()}`);
+  form.append("file", blob, webpFilename);
   form.append("permissions[]", Permission.read(Role.any()));
   form.append("permissions[]", Permission.update(Role.user(accountId)));
   form.append("permissions[]", Permission.delete(Role.user(accountId)));
@@ -223,7 +243,7 @@ export async function uploadStoreAvatar(
   const uploadedId: unknown = payload?.$id ?? payload?.fileId ?? payload?.id;
   if (typeof uploadedId !== "string" || !uploadedId) {
     throw new Error(
-      "Appwrite upload succeeded but returned an invalid file id"
+      "Appwrite upload succeeded but returned an invalid file id",
     );
   }
 
@@ -233,8 +253,16 @@ export async function uploadStoreAvatar(
 export async function uploadStoreBanner(
   fileBuffer: Buffer,
   filename: string,
-  accountId: string
+  accountId: string,
 ) {
+  const bytes = Uint8Array.from(fileBuffer);
+
+  // Validate file size before processing
+  validateFileSize(bytes, "banner");
+
+  // Optimize banner (resize to 1920x600 + convert to WebP)
+  const optimizedBuffer = await optimizeBanner(bytes);
+
   const bucketId = ensureStoreBannerBucketId();
   const {
     endpoint: apiEndpoint,
@@ -243,10 +271,17 @@ export async function uploadStoreBanner(
   } = ensureUploadBasics();
   const uploadUrl = `${apiEndpoint}/storage/buckets/${bucketId}/files`;
   const form = new FormData();
-  const bytes = Uint8Array.from(fileBuffer);
-  const blob = new Blob([bytes], { type: "application/octet-stream" });
+
+  // Use optimized image with .webp extension
+  const webpFilename =
+    filename.replace(/\.[^.]+$/, ".webp") ||
+    `store-banner-${randomUUID()}.webp`;
+  const blob = new Blob([new Uint8Array(optimizedBuffer)], {
+    type: "image/webp",
+  });
+
   form.append("fileId", "unique()");
-  form.append("file", blob, filename || `store-banner-${randomUUID()}`);
+  form.append("file", blob, webpFilename);
   form.append("permissions[]", Permission.read(Role.any()));
   form.append("permissions[]", Permission.update(Role.user(accountId)));
   form.append("permissions[]", Permission.delete(Role.user(accountId)));
@@ -269,7 +304,7 @@ export async function uploadStoreBanner(
   const uploadedId: unknown = payload?.$id ?? payload?.fileId ?? payload?.id;
   if (typeof uploadedId !== "string" || !uploadedId) {
     throw new Error(
-      "Appwrite upload succeeded but returned an invalid file id"
+      "Appwrite upload succeeded but returned an invalid file id",
     );
   }
 
@@ -279,4 +314,3 @@ export async function uploadStoreBanner(
 export function serializeStoreDocument(doc: SellerStoreDocument) {
   return serializeStore(doc);
 }
-

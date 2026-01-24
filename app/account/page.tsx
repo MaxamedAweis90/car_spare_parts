@@ -44,7 +44,7 @@ function AccountContent() {
     if (loading) return;
     if (authenticated && account?.emailVerification === false) {
       const target = `/auth/verify-notice?email=${encodeURIComponent(
-        profile?.email || ""
+        profile?.email || "",
       )}`;
       const targetPathname = target.split("?")[0];
       // Only redirect if we aren't already there (avoids infinite loops)
@@ -90,7 +90,7 @@ function AccountContent() {
           ? ""
           : String(profile.phone),
     }),
-    [profile?.name, profile?.email, profile?.phone]
+    [profile?.name, profile?.email, profile?.phone],
   );
 
   useEffect(() => {
@@ -127,7 +127,7 @@ function AccountContent() {
       const data = await res.json();
       if (res.ok) {
         setProfileMessage(
-          "✓ Verification email sent! Please check your inbox."
+          "✓ Verification email sent! Please check your inbox.",
         );
       } else {
         setError(data.error || "Failed to send email");
@@ -507,6 +507,24 @@ function AccountContent() {
       </div>
 
       <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-slate-900">
+              Payment Methods
+            </h2>
+            <p className="mt-1 text-xs font-semibold text-slate-600">
+              Manage your saved cards and mobile money accounts.
+            </p>
+          </div>
+          <Link href="/customer/wallet">
+            <Button type="button" variant="secondary" rounded="full">
+              Manage Wallet
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      <div className="mt-8 rounded-2xl border border-slate-200 bg-white p-6">
         <h2 className="text-lg font-bold text-slate-900">Security</h2>
         <p className="mt-1 text-xs font-semibold text-slate-600">
           Update your password to keep your account secure.
@@ -598,4 +616,3 @@ function AccountContent() {
     </div>
   );
 }
-

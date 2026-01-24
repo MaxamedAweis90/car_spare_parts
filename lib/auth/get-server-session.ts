@@ -3,6 +3,7 @@ import { findUserByEmail, sanitizeUser } from "@/lib/auth/auth-utils";
 import { createAdminClient } from "@/lib/server/appwrite-admin";
 import { appwriteConfig, databasesServer } from "@/lib/api/appwrite-server";
 import { Query } from "node-appwrite";
+import { log } from "@/lib/utils/logger";
 
 const endpoint = process.env.APPWRITE_ENDPOINT!;
 const projectId = process.env.APPWRITE_PROJECT_ID!;
@@ -13,7 +14,7 @@ const mainAdminId = (
 ).trim();
 
 export async function getServerSession() {
-  console.log("[getServerSession] Starting...");
+  log.debug("Starting server session check");
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("session_id")?.value;
 
@@ -23,16 +24,13 @@ export async function getServerSession() {
     .join("; ");
   const jwtCookie = cookieStore.get("appwrite_jwt")?.value;
 
-  console.log(
-    `[getServerSession] Cookies: count=${
-      allCookies.length
-    }, hasJWT=${!!jwtCookie}, headerLen=${cookieHeader.length}`
-  );
+  log.debug("Session cookies retrieved", {
+    cookieCount: allCookies.length,
+    hasJWT: !!jwtCookie,
+  });
 
   if (!cookieHeader && !jwtCookie) {
-    console.log(
-      "[getServerSession] No cookies/JWT found. Returning unauthenticated."
-    );
+    log.debug("No authentication cookies found");
     return { authenticated: false, account: null, profile: null };
   }
 
@@ -57,20 +55,22 @@ export async function getServerSession() {
     });
 
     if (!accountRes.ok) {
-      console.error(
-        `[getServerSession] Account fetch failed: ${accountRes.status} ${accountRes.statusText}`
-      );
+      log.error("Account fetch failed", {
+        status: accountRes.status,
+        statusText: accountRes.statusText,
+      });
       try {
         const text = await accountRes.text();
-        console.error(`[getServerSession] Error Body: ${text.slice(0, 200)}`);
+        log.debug("Error response body", { body: text.slice(0, 200) });
       } catch {}
       return { authenticated: false, account: null, profile: null };
     }
 
     const account = await accountRes.json();
-    console.log(
-      `[getServerSession] Account OK: ${account.$id} (${account.email})`
-    );
+    log.debug("Account authenticated", {
+      userId: account.$id,
+      email: account.email,
+    });
 
     let profile = account?.email
       ? await findUserByEmail(account.email)
@@ -83,16 +83,16 @@ export async function getServerSession() {
       profile.status === "deactivated"
     ) {
       try {
-        console.log("[getServerSession] Syncing activated profile status...");
+        log.debug("Syncing activated profile status");
         await databasesServer.updateDocument(
           appwriteConfig.databaseId,
           appwriteConfig.usersCollectionId,
           profile.$id,
-          { status: "active", isActive: true }
+          { status: "active", isActive: true },
         );
         profile = await findUserByEmail(account.email);
       } catch (err) {
-        console.warn("[getServerSession] Failed to sync profile status", err);
+        log.warn("Failed to sync profile status", { error: err });
       }
     }
 
@@ -104,9 +104,7 @@ export async function getServerSession() {
       safeProfile.role = "main_admin";
     }
 
-    console.log(
-      `[getServerSession] Returning success. Role: ${safeProfile?.role}`
-    );
+    log.debug("Session check complete", { role: safeProfile?.role });
 
     return {
       authenticated: true,
@@ -114,8 +112,7 @@ export async function getServerSession() {
       profile: safeProfile,
     };
   } catch (error) {
-    console.error("[getServerSession] Unexpected error:", error);
+    log.error("Unexpected error in session check", error);
     return { authenticated: false, account: null, profile: null };
   }
 }
-

@@ -12,54 +12,43 @@ import {
   Popconfirm,
   App,
 } from "antd";
-import { ExclamationCircleOutlined } from "@ant-design/icons";
+import {
+  ExclamationCircleOutlined,
+  CheckCircleOutlined,
+} from "@ant-design/icons";
 import { useSellerStore } from "@/lib/providers/SellerStoreProvider";
 import { useOrders, useUpdateOrder } from "@/hooks/queries/useOrders";
 import { client, appwriteClientConfig } from "@/lib/api/appwrite";
 import { useQueryClient } from "@tanstack/react-query";
 
+import {
+  getStatusLabel,
+  getStatusColor,
+  getAllowedNextStatuses,
+} from "@/lib/utils/orderStatusTransitions";
+import type { OrderStatus } from "@/lib/types/order";
+
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-type Status = "New" | "Accepted" | "Shipped" | "Completed" | "Cancelled";
-
-// Logic from previous implementation
-function mapStatus(dbStatus: string): Status {
-  if (dbStatus === "pending") return "New";
-  if (dbStatus === "paid") return "Accepted";
-  if (dbStatus === "shipped") return "Shipped";
-  if (dbStatus === "completed") return "Completed";
-  if (dbStatus === "cancelled") return "Cancelled";
-  return "New";
+// Map database status to display label
+function getDisplayStatus(dbStatus: OrderStatus): string {
+  return getStatusLabel(dbStatus);
 }
 
-function mapStatusToDb(status: Status): string {
-  if (status === "New") return "pending";
-  if (status === "Accepted") return "paid";
-  if (status === "Shipped") return "shipped";
-  if (status === "Completed") return "completed";
-  if (status === "Cancelled") return "cancelled";
-  return "pending";
-}
-
-function nextActions(status: Status): Status[] {
-  switch (status) {
-    case "New":
-      return ["Accepted", "Cancelled"];
-    case "Accepted":
-      return ["Shipped", "Cancelled"];
-    case "Shipped":
-      return ["Completed"];
-    default:
-      return [];
-  }
+// Get allowed next statuses for current status
+function getNextActions(
+  dbStatus: OrderStatus,
+  userRole: string = "seller",
+): OrderStatus[] {
+  return getAllowedNextStatuses(dbStatus, userRole as any);
 }
 
 export default function SellerOrdersPage() {
   const { store } = useSellerStore();
   const sellerId = store?.sellerId;
   const { message } = App.useApp();
-  const [statusFilter, setStatusFilter] = useState<Status | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
 
   const { data: ordersData, isLoading } = useOrders({ sellerId });
   const updateOrder = useUpdateOrder();
@@ -91,21 +80,23 @@ export default function SellerOrdersPage() {
   const handleUpdateStatus = (
     orderId: string,
     fullId: string,
-    newStatus: Status
+    newStatus: OrderStatus,
   ) => {
     updateOrder.mutate(
       {
         orderId: fullId,
-        status: mapStatusToDb(newStatus),
+        status: newStatus,
       },
       {
         onSuccess: () => {
-          message.success(`Order #${orderId} updated to ${newStatus}`);
+          message.success(
+            `Order #${orderId} updated to ${getDisplayStatus(newStatus)}`,
+          );
         },
         onError: (err) => {
           message.error(`Failed to update order: ${err.message}`);
         },
-      }
+      },
     );
   };
 
@@ -131,10 +122,12 @@ export default function SellerOrdersPage() {
         buyer: o.customerId.slice(-6),
         qty: quantity,
         total: o.totalPrice,
-        status: mapStatus(o.status),
+        status: o.status as OrderStatus,
+        statusLabel: getDisplayStatus(o.status as OrderStatus),
         date: new Date(o.$createdAt).toLocaleDateString(),
         rawItems: items,
         shippingAddress: o.parsedShippingAddress,
+        paymentMethod: o.paymentMethod,
       };
     });
 
@@ -179,45 +172,52 @@ export default function SellerOrdersPage() {
     },
     {
       title: "Status",
-      dataIndex: "status",
+      dataIndex: "statusLabel",
       key: "status",
-      render: (status: Status) => {
-        let color = "default";
-        if (status === "New") color = "blue";
-        if (status === "Accepted") color = "orange";
-        if (status === "Shipped") color = "purple";
-        if (status === "Completed") color = "green";
-        if (status === "Cancelled") color = "red";
-        return <Tag color={color}>{status}</Tag>;
+      render: (_: string, record: any) => {
+        const color = getStatusColor(record.status);
+        return <Tag color={color}>{record.statusLabel}</Tag>;
       },
     },
     {
       title: "Action",
       key: "action",
+      width: 200,
       render: (_: any, record: any) => {
-        const actions = nextActions(record.status);
-        if (actions.length === 0) return <Text type="secondary">Locked</Text>;
+        const isTerminal = ["delivered", "cancelled", "rejected"].includes(
+          record.status,
+        );
+        const actions = getNextActions(record.status);
+
+        if (isTerminal) {
+          if (record.status === "delivered") {
+            return (
+              <Tag icon={<CheckCircleOutlined />} color="success">
+                Completed
+              </Tag>
+            );
+          }
+          return <Text type="secondary">Closed</Text>;
+        }
 
         return (
-          <Space>
-            {actions.map((action) => (
-              <Popconfirm
-                key={action}
-                title={`Mark as ${action}?`}
-                onConfirm={() =>
-                  handleUpdateStatus(record.id, record.fullId, action)
-                }
-              >
-                <Button
-                  size="small"
-                  type={action === "Cancelled" ? "default" : "primary"}
-                  danger={action === "Cancelled"}
-                >
-                  {action}
-                </Button>
-              </Popconfirm>
-            ))}
-          </Space>
+          <Select
+            placeholder="Change Status"
+            style={{ width: "100%" }}
+            onChange={(value) =>
+              value &&
+              handleUpdateStatus(record.id, record.fullId, value as OrderStatus)
+            }
+            value={undefined} // Reset after selection to show placeholder
+            options={actions.map((status) => ({
+              label: getDisplayStatus(status),
+              value: status,
+              className:
+                status === "cancelled" || status === "rejected"
+                  ? "text-red-500"
+                  : "",
+            }))}
+          />
         );
       },
     },
@@ -236,15 +236,21 @@ export default function SellerOrdersPage() {
         <div className="mb-4">
           <Select
             defaultValue="all"
-            style={{ width: 200 }}
-            onChange={(val) => setStatusFilter(val as Status | "all")}
+            style={{ width: 250 }}
+            onChange={(val) => setStatusFilter(val as OrderStatus | "all")}
           >
             <Option value="all">All Statuses</Option>
-            <Option value="New">New</Option>
-            <Option value="Accepted">Accepted</Option>
-            <Option value="Shipped">Shipped</Option>
-            <Option value="Completed">Completed</Option>
-            <Option value="Cancelled">Cancelled</Option>
+            <Option value="pending_verification">Needs Verification</Option>
+            <Option value="awaiting_payment">Awaiting Payment</Option>
+            <Option value="paid">Paid</Option>
+            <Option value="approved_for_fulfillment">
+              Approved for Fulfillment
+            </Option>
+            <Option value="packing">Packing</Option>
+            <Option value="shipped">Shipped</Option>
+            <Option value="delivered">Delivered</Option>
+            <Option value="cancelled">Cancelled</Option>
+            <Option value="rejected">Rejected</Option>
           </Select>
         </div>
 
@@ -279,4 +285,3 @@ export default function SellerOrdersPage() {
     </div>
   );
 }
-

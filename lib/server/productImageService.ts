@@ -1,11 +1,19 @@
 import { randomUUID } from "crypto";
 import { Buffer } from "node:buffer";
 import { Permission, Role } from "node-appwrite";
+import {
+  validateFileSize,
+  optimizeProductImage,
+} from "@/lib/utils/imageOptimization";
 
 function ensureProductBucketId() {
-  const bucketId = process.env.APPWRITE_PRODUCT_BUCKET_ID || process.env.NEXT_PUBLIC_APPWRITE_PRODUCT_BUCKET_ID;
+  const bucketId =
+    process.env.APPWRITE_PRODUCT_BUCKET_ID ||
+    process.env.NEXT_PUBLIC_APPWRITE_PRODUCT_BUCKET_ID;
   if (!bucketId) {
-    throw new Error("Missing Appwrite product bucket id (APPWRITE_PRODUCT_BUCKET_ID)");
+    throw new Error(
+      "Missing Appwrite product bucket id (APPWRITE_PRODUCT_BUCKET_ID)",
+    );
   }
   return bucketId;
 }
@@ -16,22 +24,41 @@ function ensureUploadBasics() {
   const apiKey = process.env.APPWRITE_API_KEY;
 
   if (!endpoint || !projectId || !apiKey) {
-    throw new Error("Missing Appwrite endpoint, project id, or API key for uploads");
+    throw new Error(
+      "Missing Appwrite endpoint, project id, or API key for uploads",
+    );
   }
 
   return { endpoint, projectId, apiKey } as const;
 }
 
-export async function uploadProductImage(fileBytes: Uint8Array, filename: string, accountId?: string) {
+export async function uploadProductImage(
+  fileBytes: Uint8Array,
+  filename: string,
+  accountId?: string,
+) {
+  // Validate file size before processing
+  validateFileSize(fileBytes, "product");
+
+  // Optimize image (resize + convert to WebP)
+  const optimizedBuffer = await optimizeProductImage(fileBytes);
+
   const bucketId = ensureProductBucketId();
   const { endpoint, projectId, apiKey } = ensureUploadBasics();
 
   const uploadUrl = `${endpoint}/storage/buckets/${bucketId}/files`;
   const form = new FormData();
-  const blob = new Blob([Buffer.from(fileBytes)], { type: "application/octet-stream" });
+
+  // Use optimized image with .webp extension
+  const webpFilename =
+    filename.replace(/\.[^.]+$/, ".webp") ||
+    `product-image-${randomUUID()}.webp`;
+  const blob = new Blob([new Uint8Array(optimizedBuffer)], {
+    type: "image/webp",
+  });
 
   form.append("fileId", "unique()");
-  form.append("file", blob, filename || `product-image-${randomUUID()}`);
+  form.append("file", blob, webpFilename);
 
   // Public read so products can be rendered on storefront.
   form.append("permissions[]", Permission.read(Role.any()));
@@ -58,7 +85,9 @@ export async function uploadProductImage(fileBytes: Uint8Array, filename: string
 
   const uploadedId: unknown = payload?.$id ?? payload?.fileId ?? payload?.id;
   if (typeof uploadedId !== "string" || !uploadedId) {
-    throw new Error("Appwrite upload succeeded but returned an invalid file id");
+    throw new Error(
+      "Appwrite upload succeeded but returned an invalid file id",
+    );
   }
 
   return uploadedId;
@@ -72,7 +101,9 @@ export async function deleteProductImage(fileId: string) {
   const apiKey = process.env.APPWRITE_API_KEY;
   if (!endpoint || !projectId || !apiKey) return;
 
-  const bucketId = process.env.APPWRITE_PRODUCT_BUCKET_ID || process.env.NEXT_PUBLIC_APPWRITE_PRODUCT_BUCKET_ID;
+  const bucketId =
+    process.env.APPWRITE_PRODUCT_BUCKET_ID ||
+    process.env.NEXT_PUBLIC_APPWRITE_PRODUCT_BUCKET_ID;
   if (!bucketId) return;
 
   try {
@@ -88,4 +119,3 @@ export async function deleteProductImage(fileId: string) {
     console.error("Failed to delete product image", error);
   }
 }
-

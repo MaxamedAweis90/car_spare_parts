@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { List, Avatar, Typography, Empty, Skeleton } from "antd";
+import { Avatar, Typography, Empty, Skeleton } from "antd";
 import {
   UserOutlined,
   ShopOutlined,
@@ -70,53 +70,47 @@ export default function RecentActivityList({
   }
 
   return (
-    <List
-      className={className}
-      itemLayout="horizontal"
-      dataSource={data.items}
-      renderItem={(item: any) => (
-        <List.Item className="px-0 py-3 border-b border-gray-50 last:border-0 hover:bg-slate-50 transition-colors px-2 rounded-lg">
-          <List.Item.Meta
-            avatar={
-              <div
-                className={`p-2 rounded-full flex items-center justify-center ${getColor(item.action)}`}
+    <div className={className}>
+      {data.items.map((item: any, index: number) => (
+        <div
+          key={item.$id || index}
+          className="px-2 py-3 border-b border-gray-50 last:border-0 hover:bg-slate-50 transition-colors rounded-lg flex items-start gap-3"
+        >
+          <div
+            className={`p-2 rounded-full flex items-center justify-center flex-shrink-0 ${getColor(item.action)}`}
+          >
+            {getIcon(item.action)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex justify-between items-start">
+              <Text strong className="text-sm">
+                {item.adminName || item.userName}
+              </Text>
+              <Text
+                type="secondary"
+                className="text-[10px] whitespace-nowrap ml-2"
               >
-                {getIcon(item.action)}
-              </div>
-            }
-            title={
-              <div className="flex justify-between items-start">
-                <Text strong className="text-sm">
-                  {item.adminName || item.userName}
-                </Text>
-                <Text
-                  type="secondary"
-                  className="text-[10px] whitespace-nowrap ml-2"
-                >
-                  {dayjs(item.createdAt).fromNow()}
-                </Text>
-              </div>
-            }
-            description={
-              <div className="flex flex-col">
-                <Text className="text-xs text-slate-600 capitalize">
-                  {item.action.replace(/_/g, " ").toLowerCase()}
-                </Text>
-                <Text
-                  type="secondary"
-                  className="text-[10px] truncate max-w-[200px]"
-                  title={item.details}
-                >
-                  {item.targetName ||
-                    (typeof item.details === "string"
-                      ? item.details
-                      : JSON.stringify(item.details))}
-                </Text>
-              </div>
-            }
-          />
-        </List.Item>
-      )}
-    />
+                {dayjs(item.createdAt).fromNow()}
+              </Text>
+            </div>
+            <div className="flex flex-col mt-1">
+              <Text className="text-xs text-slate-600 capitalize">
+                {item.action.replace(/_/g, " ").toLowerCase()}
+              </Text>
+              <Text
+                type="secondary"
+                className="text-[10px] truncate max-w-[200px]"
+                title={item.details}
+              >
+                {item.targetName ||
+                  (typeof item.details === "string"
+                    ? item.details
+                    : JSON.stringify(item.details))}
+              </Text>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }

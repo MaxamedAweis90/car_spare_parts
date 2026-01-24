@@ -32,5 +32,8 @@ export const appwriteConfig = {
   notificationsCollectionId: process.env.APPWRITE_NOTIFICATIONS_COLLECTION_ID!,
   activitiesCollectionId:
     process.env.APPWRITE_ACTIVITIES_COLLECTION_ID || "activities",
+  paymentMethodsCollectionId:
+    process.env.APPWRITE_PAYMENT_METHODS_COLLECTION_ID || "payment_methods",
+  paymentsCollectionId:
+    process.env.APPWRITE_PAYMENTS_COLLECTION_ID || "payments",
 };
-
