@@ -55,7 +55,6 @@ export function useAdminStats() {
   return useQuery({
     queryKey: ["adminStats"],
     queryFn: fetchAdminStats,
-    refetchInterval: 1000 * 60 * 5, // Refresh every 5 mins
+    refetchInterval: 30000, // Refresh every 30 seconds for real-time feel
   });
 }
-

@@ -44,7 +44,6 @@ export async function logActivity(payload: ActivityPayload) {
         ...payload,
         details,
         activityId: activityId,
-        createdAt: new Date().toISOString(), // Ensure timestamp
       },
     );
   } catch (error) {

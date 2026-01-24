@@ -12,8 +12,8 @@ function startOfUtcDay(date: Date) {
       0,
       0,
       0,
-      0
-    )
+      0,
+    ),
   );
 }
 
@@ -34,7 +34,7 @@ async function countUsers(queries: string[]) {
   const list = await databasesServer.listDocuments(
     appwriteConfig.databaseId,
     appwriteConfig.usersCollectionId,
-    [...queries, Query.limit(1)]
+    [...queries, Query.limit(1)],
   );
   return list.total;
 }
@@ -43,7 +43,7 @@ async function countOrdersSince(isoStart: string) {
   const list = await databasesServer.listDocuments(
     appwriteConfig.databaseId,
     appwriteConfig.ordersCollectionId,
-    [Query.greaterThanEqual("$createdAt", isoStart), Query.limit(1)]
+    [Query.greaterThanEqual("$createdAt", isoStart), Query.limit(1)],
   );
   return list.total;
 }
@@ -103,7 +103,7 @@ export async function GET(req: NextRequest) {
       [
         Query.greaterThanEqual("$createdAt", sevenDaysAgo.toISOString()),
         Query.limit(100),
-      ]
+      ],
     );
 
     const revenueHistory: { date: string; revenue: number; count: number }[] =
@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
       const dateStr = d.toISOString().split("T")[0];
 
       const dayOrders = recentOrdersRaw.documents.filter((doc) =>
-        doc.$createdAt.startsWith(dateStr)
+        doc.$createdAt.startsWith(dateStr),
       );
 
       revenueHistory.push({
@@ -124,59 +124,78 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // FETCH PENDING ADMINS (Invited but not yet active)
-    const pendingAdminsRaw = await databasesServer.listDocuments(
-      appwriteConfig.databaseId,
-      appwriteConfig.usersCollectionId,
-      [Query.equal("status", "deactivated"), Query.limit(50)]
-    );
-    const pendingAdmins = pendingAdminsRaw.documents
-      .filter((doc) => doc.role === "admin" || doc.role === "main_admin")
-      .map((doc) => ({
-        name: doc.name,
-        email: doc.email,
-      }));
+    // FETCH PENDING ADMINS (Only for main_admin)
+    let pendingAdmins: any[] = [];
+
+    // Check if user is main admin by ID
+    const envMainIdsString = (
+      process.env.APPWRITE_MAIN_ADMIN_USER_ID ||
+      process.env.NEXT_PUBLIC_APPWRITE_MAIN_ADMIN_USER_ID ||
+      ""
+    ).trim();
+
+    const mainAdminIds = envMainIdsString
+      .split(",")
+      .map((id) => id.trim().replace(/^["'](.+)["']$/, "$1"))
+      .filter(Boolean);
+
+    const isMainAdmin =
+      profile.role === "main_admin" ||
+      (mainAdminIds.length > 0 &&
+        (mainAdminIds.includes(profile.$id) ||
+          (profile.appwriteUserId &&
+            mainAdminIds.includes(profile.appwriteUserId))));
+
+    if (isMainAdmin) {
+      const pendingAdminsRaw = await databasesServer.listDocuments(
+        appwriteConfig.databaseId,
+        appwriteConfig.usersCollectionId,
+        [Query.equal("status", "deactivated"), Query.limit(50)],
+      );
+      pendingAdmins = pendingAdminsRaw.documents
+        .filter((doc) => doc.role === "admin" || doc.role === "main_admin")
+        .map((doc) => ({
+          name: doc.name,
+          email: doc.email,
+        }));
+    }
 
     // FETCH ACTIVITIES
     let activities: any[] = [];
-    if (appwriteConfig.activitiesCollectionId) {
-      try {
-        const logs = await databasesServer.listDocuments(
-          appwriteConfig.databaseId,
-          appwriteConfig.activitiesCollectionId,
-          [Query.orderDesc("$createdAt"), Query.limit(20)]
-        );
+    try {
+      const logs = await databasesServer.listDocuments(
+        appwriteConfig.databaseId,
+        appwriteConfig.activitiesCollectionId,
+        [Query.orderDesc("$createdAt"), Query.limit(20)],
+      );
 
-        const isMainAdmin = profile.role === "main_admin";
+      activities = logs.documents
+        .map((doc) => ({
+          id: doc.$id,
+          adminName: doc.adminName,
+          action: doc.action,
+          targetName: doc.targetName,
+          details: doc.details,
+          createdAt: doc.$createdAt,
+        }))
+        .filter((act) => {
+          // Main Admin sees everything
+          if (isMainAdmin) return true;
 
-        activities = logs.documents
-          .map((doc) => ({
-            id: doc.$id,
-            adminName: doc.adminName,
-            action: doc.action,
-            targetName: doc.targetName,
-            details: doc.details,
-            createdAt: doc.$createdAt,
-          }))
-          .filter((act) => {
-            // Main Admin sees everything
-            if (isMainAdmin) return true;
+          // Normal Admin sees ONLY seller related actions
+          const adminActions = [
+            "INVITE_ADMIN",
+            "DEACTIVATE_ADMIN",
+            "DELETE_ADMIN",
+            "UPDATE_PASSWORD_ADMIN",
+            "LOGIN_ADMIN",
+          ];
+          if (adminActions.includes(act.action)) return false;
 
-            // Normal Admin sees ONLY seller related actions
-            const adminActions = [
-              "INVITE_ADMIN",
-              "DEACTIVATE_ADMIN",
-              "DELETE_ADMIN",
-              "UPDATE_PASSWORD_ADMIN",
-              "LOGIN_ADMIN",
-            ];
-            if (adminActions.includes(act.action)) return false;
-
-            return true;
-          });
-      } catch (err) {
-        console.warn("Failed to fetch activities", err);
-      }
+          return true;
+        });
+    } catch (err) {
+      console.warn("Failed to fetch activities", err);
     }
 
     return NextResponse.json({
@@ -208,8 +227,7 @@ export async function GET(req: NextRequest) {
         : 500;
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Server error" },
-      { status }
+      { status },
     );
   }
 }
-

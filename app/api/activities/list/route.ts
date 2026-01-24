@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
 
     // Default queries
     const queries = [
-      Query.orderDesc("createdAt"),
+      Query.orderDesc("$createdAt"),
       Query.limit(Math.min(limit, 100)), // Cap at 100
     ];
 
@@ -36,12 +36,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ items: list.documents, total: list.total });
   } catch (error: any) {
     console.error("Fetch activities error:", error);
-    
+
     // If collection doesn't exist yet, return empty array
     if (error.code === 404 || error.message?.includes("not found")) {
       return NextResponse.json({ items: [], total: 0 });
     }
-    
+
     // For other errors, return empty array to prevent UI breaking
     return NextResponse.json({ items: [], total: 0 });
   }

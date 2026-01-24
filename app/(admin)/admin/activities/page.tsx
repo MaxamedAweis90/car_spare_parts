@@ -15,6 +15,7 @@ import {
   Button,
 } from "antd";
 import { useSession } from "@/lib/auth/useSession";
+import { checkIsMainAdmin } from "@/lib/auth/checkIsMainAdmin";
 import { SearchOutlined, ReloadOutlined } from "@ant-design/icons";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -25,6 +26,8 @@ export default function AdminActivityPage() {
   const { profile } = useSession();
   const [filterType, setFilterType] = useState<string>("all");
   const [filterRole, setFilterRole] = useState<string>("all");
+
+  const isMainAdmin = checkIsMainAdmin(profile);
 
   const {
     data: logs,
@@ -38,8 +41,8 @@ export default function AdminActivityPage() {
       if (!res.ok) throw new Error("Failed to fetch logs");
       return res.json();
     },
-    // Only fetch if "Main Admin" (client-check, API should also enforce)
-    enabled: !!profile && profile.role === "main_admin",
+    // Only fetch if Main Admin
+    enabled: isMainAdmin,
   });
 
   const columns = [
@@ -103,7 +106,7 @@ export default function AdminActivityPage() {
     },
   ];
 
-  if (profile?.role !== "main_admin") {
+  if (!isMainAdmin) {
     return (
       <div className="flex h-96 items-center justify-center">
         <Result

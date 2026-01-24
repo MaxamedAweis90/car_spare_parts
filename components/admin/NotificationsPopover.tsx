@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { List, Avatar, Typography, Badge, Empty, Button } from "antd";
 import { BellOutlined, UserOutlined, ShopOutlined } from "@ant-design/icons";
 import { useSession } from "@/lib/auth/useSession";
+import { checkIsMainAdmin } from "@/lib/auth/checkIsMainAdmin";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import Link from "next/link";
@@ -14,7 +15,7 @@ const { Text } = Typography;
 
 export default function NotificationsPopover() {
   const { profile } = useSession();
-  const isMainAdmin = profile?.role === "main_admin";
+  const isMainAdmin = checkIsMainAdmin(profile);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin_notifications"],
@@ -23,7 +24,7 @@ export default function NotificationsPopover() {
       if (!res.ok) throw new Error("Failed");
       return res.json();
     },
-    enabled: isMainAdmin, // Only fetch for Main Admin for now
+    enabled: isMainAdmin, // Only fetch for Main Admin
     refetchInterval: 30000, // Poll every 30s
   });
 

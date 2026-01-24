@@ -386,31 +386,22 @@ export default function AdminPage() {
 
       {/* Pending Admins & Density Section */}
       <Row gutter={[24, 24]}>
-        <Col xs={24} lg={12}>
-          <Card
-            title={<span className="font-bold">Pending Admin Invitations</span>}
-            variant="borderless"
-            className="shadow-md rounded-xl h-full"
-            extra={
-              <Badge
-                count={stats?.pendingAdmins.length || 0}
-                className="bg-blue-500"
-              />
-            }
-          >
-            {showSkeleton ? (
-              <Skeleton active />
-            ) : !stats?.pendingAdmins || stats.pendingAdmins.length === 0 ? (
-              <div className="py-10 text-center">
-                <Empty
-                  description="No pending invitations"
-                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+        {/* Only show pending admins if there are any (main_admin only) */}
+        {stats?.pendingAdmins && stats.pendingAdmins.length > 0 && (
+          <Col xs={24} lg={12}>
+            <Card
+              title={
+                <span className="font-bold">Pending Admin Invitations</span>
+              }
+              variant="borderless"
+              className="shadow-md rounded-xl h-full"
+              extra={
+                <Badge
+                  count={stats.pendingAdmins.length}
+                  className="bg-blue-500"
                 />
-                <Button type="primary" shape="round" className="mt-4">
-                  Invite New Admin
-                </Button>
-              </div>
-            ) : (
+              }
+            >
               <List
                 itemLayout="horizontal"
                 dataSource={stats.pendingAdmins}
@@ -438,9 +429,9 @@ export default function AdminPage() {
                   </List.Item>
                 )}
               />
-            )}
-          </Card>
-        </Col>
+            </Card>
+          </Col>
+        )}
 
         <Col xs={24} lg={12}>
           <Card
