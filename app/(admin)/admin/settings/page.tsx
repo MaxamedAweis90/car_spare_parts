@@ -10,6 +10,7 @@ import {
   LoadingOutlined,
 } from "@ant-design/icons";
 import { VerificationSuccessBanner } from "@/components/features/auth/EmailVerification";
+import SessionManager from "@/components/features/auth/SessionManager";
 
 interface Session {
   $id: string;
@@ -38,8 +39,6 @@ export default function AdminSettings() {
 function AdminSettingsContent() {
   const searchParams = useSearchParams();
   const { profile, account } = useSession();
-  const [sessions, setSessions] = useState<Session[]>([]);
-  const [loadingSessions, setLoadingSessions] = useState(true);
   const [passwordForm, setPasswordForm] = useState({
     current: "",
     new: "",
@@ -121,24 +120,6 @@ function AdminSettingsContent() {
     }
   }, [profile]);
 
-  const fetchSessions = async () => {
-    try {
-      const res = await fetch("/api/admin/sessions");
-      const data = await res.json();
-      if (res.ok) {
-        setSessions(data.sessions);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingSessions(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSessions();
-  }, []);
-
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
     setPassMessage("");
@@ -167,43 +148,6 @@ function AdminSettingsContent() {
       }
     } catch (err) {
       setPassError("Server error");
-    }
-  };
-
-  const revokeSession = async (sessionId: string) => {
-    if (!confirm("Are you sure you want to revoke this session?")) return;
-    try {
-      const res = await fetch("/api/admin/sessions", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      });
-      if (res.ok) {
-        fetchSessions();
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const revokeAllSessions = async () => {
-    if (
-      !confirm(
-        "Are you sure you want to revoke ALL sessions? You will be logged out.",
-      )
-    )
-      return;
-    try {
-      const res = await fetch("/api/admin/sessions", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ all: true }),
-      });
-      if (res.ok) {
-        window.location.href = "/auth/login";
-      }
-    } catch (err) {
-      console.error(err);
     }
   };
 
@@ -554,71 +498,7 @@ function AdminSettingsContent() {
       </div>
 
       {/* Session Management */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <i className="fa-solid fa-desktop text-slate-400"></i>
-            Active Sessions
-          </h2>
-          <button
-            onClick={revokeAllSessions}
-            className="text-red-600 hover:text-red-700 text-sm font-bold"
-          >
-            Revoke All Sessions
-          </button>
-        </div>
-        <div className="space-y-3">
-          {loadingSessions ? (
-            <p className="text-sm text-slate-500">Loading sessions...</p>
-          ) : sessions.length === 0 ? (
-            <p className="text-sm text-slate-500">No active sessions found.</p>
-          ) : (
-            sessions.map((s) => (
-              <div
-                key={s.$id}
-                className="flex items-center justify-between p-4 rounded-xl border border-slate-100 bg-slate-50"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 flex items-center justify-center bg-white rounded-full border border-slate-200 text-slate-500 text-lg">
-                    <i
-                      className={`fa-solid ${
-                        s.clientName?.toLowerCase().includes("mobile")
-                          ? "fa-mobile-screen"
-                          : "fa-laptop"
-                      }`}
-                    ></i>
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                      {s.deviceBrand && s.deviceModel
-                        ? `${s.deviceBrand} ${s.deviceModel}`
-                        : `${s.clientName} on ${s.osName}`}
-                      {s.current && (
-                        <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase">
-                          Current
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-slate-500">
-                      {s.ip} • Started:{" "}
-                      {new Date(s.$createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-                {!s.current && (
-                  <button
-                    onClick={() => revokeSession(s.$id)}
-                    className="text-slate-400 hover:text-red-600 transition p-2"
-                    title="Sign out this device"
-                  >
-                    <i className="fa-solid fa-trash-can"></i>
-                  </button>
-                )}
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+      <SessionManager />
     </div>
   );
 }

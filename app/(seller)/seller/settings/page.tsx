@@ -12,6 +12,7 @@ import {
 import { getImageUrl } from "@/lib/appwrite/storage";
 import { useSellerStore } from "@/lib/providers/SellerStoreProvider";
 import Button from "@/components/ui/Button";
+import SessionManager from "@/components/features/auth/SessionManager";
 
 import { slugify } from "@/lib/utils/slugify";
 
@@ -112,7 +113,7 @@ export default function StoreSettingsPage() {
       setSlugStatus("checking");
       try {
         const res = await fetch(
-          `/api/seller/store/exists?slug=${form.storeSlug}&excludeStoreId=${store?.id}`
+          `/api/seller/store/exists?slug=${form.storeSlug}&excludeStoreId=${store?.id}`,
         );
         const data = await res.json();
         setSlugStatus(data.exists ? "taken" : "available");
@@ -304,7 +305,7 @@ export default function StoreSettingsPage() {
 
   const initials = useMemo(
     () => (store?.storeName || "Store").slice(0, 2).toUpperCase(),
-    [store?.storeName]
+    [store?.storeName],
   );
 
   const handleToggleVisibility = () => {
@@ -385,8 +386,8 @@ export default function StoreSettingsPage() {
                   ? currentStep === 1
                     ? "Let's name your store"
                     : currentStep === 2
-                    ? "Add some personality"
-                    : "Final details"
+                      ? "Add some personality"
+                      : "Final details"
                   : "Store settings"}
               </h1>
               <p className="text-sm font-medium text-slate-600 sm:text-lg">
@@ -428,8 +429,8 @@ export default function StoreSettingsPage() {
                           slugStatus === "taken"
                             ? "border-rose-300 focus:border-rose-400 focus:ring-rose-400/5 text-rose-900"
                             : slugStatus === "available"
-                            ? "border-emerald-300 focus:border-emerald-400 focus:ring-emerald-400/5 text-emerald-900"
-                            : "border-[#e4ddcf] focus:border-[#1f2937] focus:ring-[#1f2937]/5 text-slate-900"
+                              ? "border-emerald-300 focus:border-emerald-400 focus:ring-emerald-400/5 text-emerald-900"
+                              : "border-[#e4ddcf] focus:border-[#1f2937] focus:ring-[#1f2937]/5 text-slate-900"
                         }`}
                       />
                       <div className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
@@ -672,10 +673,15 @@ export default function StoreSettingsPage() {
                 </>
               )}
             </div>
+            {/* Session Management */}
+            {!isOnboarding && (
+              <div className="mt-8 pt-8 border-t border-[#ece8de]">
+                <SessionManager />
+              </div>
+            )}
           </div>
         </form>
       </div>
     </div>
   );
 }
-

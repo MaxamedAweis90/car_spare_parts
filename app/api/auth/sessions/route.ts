@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/server/requireAdmin";
 import { createSessionClient } from "@/lib/server/appwrite-admin";
 import { messagingServer } from "@/lib/api/appwrite-server";
 import { ID } from "node-appwrite";
 
 export async function GET(req: NextRequest) {
   try {
-    await requireAdmin(req);
     const jwt = req.cookies.get("appwrite_jwt")?.value;
 
     if (!jwt) {
@@ -21,14 +19,13 @@ export async function GET(req: NextRequest) {
     console.error("List sessions error:", error);
     return NextResponse.json(
       { error: error?.message || "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(req: NextRequest) {
   try {
-    const { account: userAccount } = await requireAdmin(req);
     const { sessionId, all } = await req.json().catch(() => ({}));
     const jwt = req.cookies.get("appwrite_jwt")?.value;
 
@@ -48,33 +45,31 @@ export async function DELETE(req: NextRequest) {
       await sendSecurityEmail(
         email,
         name,
-        "All devices have been signed out from your account."
+        "All devices have been signed out from your account.",
       );
 
       const res = NextResponse.json({ message: "All sessions revoked" });
       res.cookies.delete("appwrite_jwt");
       return res;
     } else if (sessionId) {
-      // Optional: Get session details before deleting to mention device name?
-      // Might be overkill and adds latency. "A device" is sufficient.
       await account.deleteSession(sessionId);
       await sendSecurityEmail(
         email,
         name,
-        "A device has been signed out from your account."
+        "A device has been signed out from your account.",
       );
       return NextResponse.json({ message: "Session revoked" });
     } else {
       return NextResponse.json(
         { error: "sessionId or all is required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
   } catch (error: any) {
     console.error("Revoke session error:", error);
     return NextResponse.json(
       { error: error?.message || "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -119,10 +114,9 @@ async function sendSecurityEmail(email: string, name: string, message: string) {
       subject,
       content,
       [],
-      [email]
+      [email],
     );
   } catch (error) {
     console.error("Failed to send security email", error);
   }
 }
-

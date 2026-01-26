@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     if (!email || !password) {
       return NextResponse.json(
         { error: "email and password are required" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     if (!user.passwordHash) {
       return NextResponse.json(
         { error: "Password not set for this user" },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     if (!passwordOk) {
       return NextResponse.json(
         { error: "Invalid credentials" },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     const { session, cookies, jwt } = await createAppwriteEmailSession(
       email,
-      password
+      password,
     );
 
     // Check mandatory email verification
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
         appwriteConfig.databaseId,
         appwriteConfig.usersCollectionId,
         user.$id,
-        { status: "active", isActive: true }
+        { status: "active", isActive: true },
       );
       // Update local user object for the rest of the function
       user.status = "active";
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
       if (user.status === "terminated") {
         return NextResponse.json(
           { error: "Account terminated" },
-          { status: 403 }
+          { status: 403 },
         );
       }
       // For 'deactivated', we proceed to set cookies but will return mustVerify = true below.
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
           },
       {
         status: 200,
-      }
+      },
     );
 
     cookies.forEach((cookie: any) => {
@@ -155,6 +155,45 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // --- Session Limiting Logic ---
+    try {
+      const { users: serverUsers } = createAdminClient();
+      const { sessions: activeSessions } = await serverUsers.listSessions(
+        session.userId,
+      );
+
+      // Determine limit based on role
+      // Admin/Main Admin -> 1
+      // Seller/Customer -> 3
+      const limit = user.role === "admin" || user.role === "main_admin" ? 1 : 3;
+
+      if (activeSessions.length > limit) {
+        // Sort by creation time (oldest first)
+        const sortedSessions = activeSessions.sort(
+          (a: any, b: any) =>
+            new Date(a.$createdAt).getTime() - new Date(b.$createdAt).getTime(),
+        );
+
+        // Calculate how many to remove
+        const toRemoveCount = activeSessions.length - limit;
+
+        // Take the oldest 'toRemoveCount' sessions
+        const sessionsToRemove = sortedSessions.slice(0, toRemoveCount);
+
+        for (const s of sessionsToRemove) {
+          // Avoid deleting the session we just created, although it should be the newest.
+          if (s.$id === session.$id) continue;
+
+          await serverUsers.deleteSession(session.userId, s.$id);
+          console.log(`Pruned old session ${s.$id} for user ${user.email}`);
+        }
+      }
+    } catch (limitErr) {
+      console.error("Error enforcing session limits:", limitErr);
+      // Non-blocking: don't fail the login if pruning fails
+    }
+    // ------------------------------
+
     // Log admin login activity
     if (user.role && (user.role === "admin" || user.role === "main_admin")) {
       // Don't await log to avoid slowing down login response
@@ -164,7 +203,7 @@ export async function POST(req: NextRequest) {
         action: "LOGIN_ADMIN",
         details: "Admin logged in",
       }).catch((err) =>
-        console.warn("Failed to log admin login activity", err)
+        console.warn("Failed to log admin login activity", err),
       );
     }
 
@@ -173,8 +212,7 @@ export async function POST(req: NextRequest) {
     console.error("Login error:", error);
     return NextResponse.json(
       { error: error?.message || "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-
