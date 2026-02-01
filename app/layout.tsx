@@ -8,7 +8,6 @@ import SiteShell from "@/components/layout/SiteShell";
 import QueryProvider from "@/lib/providers/QueryProvider";
 import AntdRegistryProvider from "@/lib/providers/AntdRegistryProvider";
 import { CartProvider } from "@/lib/cart";
-import PwaInstallBanner from "@/components/PwaInstallBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,12 +22,6 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SomaParts",
   description: "Premium car parts marketplace",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "default",
-    title: "SomaParts",
-  },
   formatDetection: {
     telephone: false,
   },
@@ -51,7 +44,6 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-foreground`}
       >
-        <PwaInstallBanner />
         <QueryProvider>
           <AntdRegistryProvider>
             <CartProvider>

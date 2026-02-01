@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "@/lib/auth/useSession";
 import BackToHome from "@/components/ui/BackToHome";
+import { motion } from "framer-motion";
 
 export default function SellerLoginClient() {
   const router = useRouter();
@@ -30,8 +31,8 @@ export default function SellerLoginClient() {
       if (account?.emailVerification === false) {
         router.replace(
           `/auth/verify-notice?email=${encodeURIComponent(
-            profile?.email || ""
-          )}`
+            profile?.email || "",
+          )}`,
         );
         return;
       }
@@ -69,7 +70,7 @@ export default function SellerLoginClient() {
       if (!res.ok || body.mustVerify) {
         if (body.mustVerify) {
           window.location.href = `/auth/verify-notice?email=${encodeURIComponent(
-            email
+            email,
           )}`;
           return;
         }
@@ -102,130 +103,230 @@ export default function SellerLoginClient() {
   };
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.08),transparent_45%),radial-gradient(circle_at_bottom_right,rgba(59,130,246,0.08),transparent_45%)] bg-[#f2f5fb] flex items-center justify-center px-4 py-10">
-      <BackToHome />
-      <div className="w-full max-w-5xl overflow-hidden rounded-3xl bg-white shadow-[0_30px_80px_rgba(15,23,42,0.12)] md:grid md:grid-cols-2">
-        <div className="px-8 py-10 sm:px-12 flex flex-col gap-6">
-          <div className="text-left">
-            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#1d4ed8]">
-              <span className="h-2 w-2 rounded-full bg-[#1d4ed8]"></span>
-              Seller Portal
+    <div className="relative min-h-screen w-full overflow-hidden bg-[#f8fafc] text-slate-900 selection:bg-purple-100 selection:text-purple-900">
+      {/* Dynamic Background with Framer Motion */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <motion.div
+          animate={{
+            scale: [1, 1.2, 1],
+            rotate: [0, 90, 0],
+            x: [0, 100, 0],
+            y: [0, -50, 0],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            repeatType: "reverse",
+          }}
+          className="absolute -top-[20%] -left-[10%] h-[800px] w-[800px] rounded-full bg-purple-200/40 blur-[100px]"
+        />
+        <motion.div
+          animate={{
+            scale: [1, 1.1, 1],
+            rotate: [0, -60, 0],
+            x: [0, -50, 0],
+            y: [0, 100, 0],
+          }}
+          transition={{
+            duration: 15,
+            repeat: Infinity,
+            repeatType: "reverse",
+          }}
+          className="absolute top-[20%] -right-[10%] h-[600px] w-[600px] rounded-full bg-green-200/40 blur-[100px]"
+        />
+        <motion.div
+          animate={{
+            scale: [1, 1.3, 1],
+            x: [0, 100, 0],
+            y: [0, 50, 0],
+          }}
+          transition={{
+            duration: 18,
+            repeat: Infinity,
+            repeatType: "reverse",
+          }}
+          className="absolute -bottom-[20%] left-[20%] h-[700px] w-[700px] rounded-full bg-blue-200/40 blur-[100px]"
+        />
+      </div>
+
+      {/* Content Container */}
+      <div className="relative z-10 flex min-h-screen w-full flex-col justify-center px-6 py-12 lg:flex-row lg:items-center lg:gap-20 xl:gap-32">
+        <div className="absolute top-6 left-6 z-50">
+          <BackToHome />
+        </div>
+
+        {/* Left Side: Brand & Features */}
+        <div className="mb-12 flex max-w-xl flex-col lg:mb-0 lg:w-1/2">
+          <h1 className="text-5xl font-extrabold tracking-tight text-slate-900 sm:text-6xl lg:text-7xl">
+            Scale Fast. <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600">
+              Sell More.
+            </span>
+          </h1>
+
+          <div className="mt-12 space-y-10">
+            <div className="flex gap-6">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-100 text-purple-600">
+                <i className="fa-solid fa-chart-line text-xl"></i>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">
+                  Real-time Analytics
+                </h3>
+                <p className="mt-2 text-slate-600 leading-relaxed">
+                  Track your sales, views, and performance with our advanced
+                  dashboard. insights that help you grow.
+                </p>
+              </div>
             </div>
-            <h1 className="mt-4 text-3xl font-extrabold text-slate-900">
-              Sign in as Seller
-            </h1>
-            <p className="text-sm text-slate-600">
-              Access your dashboard and manage your storefront.
-            </p>
+
+            <div className="flex gap-6">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-green-100 text-green-600">
+                <i className="fa-solid fa-box-open text-xl"></i>
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-900">
+                  Easy Inventory
+                </h3>
+                <p className="mt-2 text-slate-600 leading-relaxed">
+                  Manage your products effortlessly. Bulk upload, stock
+                  tracking, and automated low-stock alerts.
+                </p>
+              </div>
+            </div>
           </div>
 
-          {message && (
-            <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
-              {message}
+          <div className="mt-16 flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-slate-900 flex items-center justify-center">
+              <span className="font-bold text-white">S</span>
             </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <label className="block text-sm font-semibold text-slate-700">
-              Email
-              <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-[#1d4ed8] focus-within:ring-2 focus-within:ring-[#1d4ed8]/20">
-                <i
-                  className="fa-regular fa-envelope text-slate-500"
-                  aria-hidden
-                ></i>
-                <input
-                  className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  placeholder="seller@shop.com"
-                />
-              </div>
-            </label>
-
-            <label className="block text-sm font-semibold text-slate-700">
-              Password
-              <div className="mt-2 flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 shadow-sm focus-within:border-[#1d4ed8] focus-within:ring-2 focus-within:ring-[#1d4ed8]/20">
-                <i
-                  className="fa-regular fa-lock text-slate-500"
-                  aria-hidden
-                ></i>
-                <input
-                  className="w-full bg-transparent py-3 text-sm text-slate-900 outline-none"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="text-slate-400 hover:text-slate-600 focus:outline-none"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                >
-                  <i
-                    className={`fa-regular ${
-                      showPassword ? "fa-eye-slash" : "fa-eye"
-                    }`}
-                    aria-hidden
-                  ></i>
-                </button>
-              </div>
-            </label>
-
-            <div className="flex items-center justify-between text-sm text-slate-600">
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 rounded border-slate-300 text-[#1d4ed8] focus:ring-[#1d4ed8]"
-                />
-                <span>Remember me</span>
-              </label>
-              <a
-                className="font-semibold text-[#1d4ed8] hover:underline"
-                href="/auth/forgot-password"
-              >
-                Forgot password?
-              </a>
-            </div>
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="mt-2 w-full rounded-xl bg-[#1d4ed8] px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-[#153ea8] disabled:opacity-60"
-            >
-              {submitting ? "Logging in..." : "Sign In"}
-            </button>
-          </form>
-
-          <div className="text-sm text-slate-600">
-            Don&apos;t have an account?{" "}
-            <a
-              className="font-semibold text-[#1d4ed8] hover:underline"
-              href="/auth/seller/register"
-            >
-              Apply as seller
-            </a>
+            <span className="text-lg font-bold text-slate-900">
+              SomaParts Seller
+            </span>
           </div>
         </div>
 
-        <div className="relative hidden md:block bg-[#1f4fe0]">
-          <div className="absolute inset-0 bg-linear-to-b from-white/10 to-transparent" />
-          <div className="relative flex h-full flex-col items-center justify-center gap-6 px-8 py-12 text-white">
-            <div className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
-              Seller tools
+        {/* Right Side: Login Form */}
+        <div className="w-full max-w-md lg:w-1/2">
+          <div className="relative rounded-3xl bg-white/80 p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-xl sm:p-10 border border-white/50">
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-slate-900">
+                Welcome back
+              </h2>
+              <p className="mt-2 text-sm text-slate-500">
+                Don&apos;t have an account?{" "}
+                <a
+                  href="/auth/seller/register"
+                  className="font-semibold text-purple-600 hover:text-purple-700 transition"
+                >
+                  Apply now
+                </a>
+              </p>
             </div>
-            <h2 className="text-2xl font-extrabold">
-              Manage your inventory and orders.
-            </h2>
-            <p className="max-w-sm text-sm text-white/85">
-              Track performance, fulfill orders, and keep customers updated from
-              one place.
-            </p>
-            <div className="h-44 w-full max-w-xs rounded-2xl bg-white/10 backdrop-blur flex items-center justify-center">
-              <div className="h-28 w-40 rounded-xl bg-white/90 shadow-lg" />
+
+            {message && (
+              <div
+                className={`mb-6 rounded-xl border px-4 py-3 text-sm ${
+                  message.includes("success") || message.includes("Logged")
+                    ? "border-green-200 bg-green-50 text-green-700"
+                    : "border-red-200 bg-red-50 text-red-700"
+                }`}
+              >
+                {message}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  Email address
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="w-full rounded-xl border border-slate-200 bg-white/50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition"
+                    placeholder="name@company.com"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="w-full rounded-xl border border-slate-200 bg-white/50 px-4 py-3 text-sm text-slate-900 outline-none focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 transition"
+                    placeholder="••••••••"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    <i
+                      className={`fa-regular ${showPassword ? "fa-eye-slash" : "fa-eye"}`}
+                    ></i>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-600"
+                  />
+                  <span className="text-sm text-slate-600">Remember me</span>
+                </label>
+                <a
+                  href="/auth/forgot-password"
+                  className="text-sm font-medium text-slate-600 hover:text-purple-600"
+                >
+                  Forgot password?
+                </a>
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting}
+                className="w-full rounded-xl bg-slate-900 px-4 py-3.5 text-sm font-bold text-white shadow-lg shadow-purple-500/20 transition hover:bg-slate-800 hover:shadow-purple-500/30 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {submitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <i className="fa-solid fa-circle-notch fa-spin"></i>
+                    Logging in...
+                  </span>
+                ) : (
+                  "Log In"
+                )}
+              </button>
+            </form>
+
+            <div className="mt-8 flex items-center gap-4">
+              <div className="h-px flex-1 bg-slate-200"></div>
+              <span className="text-xs text-slate-400 font-medium uppercase tracking-wider">
+                Protected by
+              </span>
+              <div className="h-px flex-1 bg-slate-200"></div>
+            </div>
+
+            <div className="mt-4 flex justify-center gap-6 opacity-60 grayscale transition hover:grayscale-0 hover:opacity-100">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                <i className="fa-brands fa-aws text-xl"></i>
+                <span>AWS</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-600">
+                <i className="fa-solid fa-shield-halved text-xl"></i>
+                <span>SSL Secure</span>
+              </div>
             </div>
           </div>
         </div>
@@ -233,4 +334,3 @@ export default function SellerLoginClient() {
     </div>
   );
 }
-

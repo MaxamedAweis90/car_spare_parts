@@ -25,7 +25,7 @@ function LoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState(
-    intent === "follow" ? "Please login to follow this store" : ""
+    intent === "follow" ? "Please login to follow this store" : "",
   );
   const shouldHide = loading || authenticated;
 
@@ -69,7 +69,7 @@ function LoginContent() {
       if (!res.ok) {
         if (body.mustVerify) {
           window.location.href = `/auth/verify-notice?email=${encodeURIComponent(
-            email
+            email,
           )}`;
           return;
         }
@@ -104,7 +104,7 @@ function LoginContent() {
       await account.createOAuth2Session(
         "google" as any,
         `${origin}/auth/callback`,
-        `${origin}/auth/login`
+        `${origin}/auth/login`,
       );
     } catch (error) {
       console.error("Google login error:", error);
@@ -259,25 +259,23 @@ function LoginContent() {
           </div>
         </div>
 
-        <div className="relative hidden md:block bg-gradient-to-br from-green-600 to-green-800">
-          <div className="absolute inset-0 bg-linear-to-b from-white/10 to-transparent" />
-          <div className="relative flex h-full flex-col items-center justify-center gap-6 px-8 py-12 text-white">
-            <div className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
-              Shop with us
-            </div>
-            <h2 className="text-2xl font-extrabold">
-              Find the perfect car parts.
-            </h2>
-            <p className="max-w-sm text-sm text-white/85">
-              Browse thousands of quality parts from trusted sellers.
+        <div className="relative hidden md:flex w-full h-full min-h-[600px] flex-col items-center justify-center bg-green-300 p-12">
+          <div className="relative w-full flex-1 flex items-center justify-center">
+            <img
+              src="/login.png"
+              alt="Login visual"
+              className="max-h-[85%] max-w-full object-contain drop-shadow-lg"
+            />
+          </div>
+
+          <div className="mt-8 text-center">
+            <h2 className="text-2xl font-bold text-green-900">Welcome Back</h2>
+            <p className="mt-3 text-green-700 max-w-xs mx-auto">
+              We're glad to see you again. Sign in to manage your account.
             </p>
-            <div className="h-44 w-full max-w-xs rounded-2xl bg-white/10 backdrop-blur flex items-center justify-center">
-              <div className="h-28 w-40 rounded-xl bg-white/90 shadow-lg" />
-            </div>
           </div>
         </div>
       </div>
     </div>
   );
 }
-

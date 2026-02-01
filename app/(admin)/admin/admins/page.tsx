@@ -229,6 +229,35 @@ export default function AdminAdminsPage() {
     }
   };
 
+  const resetAdminPassword = async (u: AdminUser) => {
+    if (!profile?.$id) return;
+    const ok = window.confirm(`Send password reset email to "${u.email}"?`);
+    if (!ok) return;
+
+    setBusyUserId(u.$id);
+    setMessage("");
+    try {
+      const res = await fetch("/api/admin/reset-admin-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetEmail: u.email }),
+      });
+      const body = await res.json();
+
+      if (!res.ok) {
+        setMessage(body.error || "Failed to send reset email");
+        return;
+      }
+      setMessage(`Success: ${body.message}`);
+    } catch (error: unknown) {
+      const msg =
+        error instanceof Error ? error.message : "Failed to reset password";
+      setMessage(msg);
+    } finally {
+      setBusyUserId(null);
+    }
+  };
+
   if (!isMainAdmin) {
     return (
       <section className="space-y-4">
@@ -492,6 +521,15 @@ export default function AdminAdminsPage() {
                                 className="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60"
                               >
                                 Delete
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => resetAdminPassword(u)}
+                                disabled={busyUserId === u.$id}
+                                className="rounded-xl border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-60"
+                              >
+                                Reset PW
                               </button>
                             </>
                           )}

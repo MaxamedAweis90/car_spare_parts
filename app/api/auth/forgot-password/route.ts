@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/appwrite-admin";
+import { findUserByEmail } from "@/lib/auth/auth-utils";
 
 export async function POST(req: NextRequest) {
   try {
@@ -7,6 +8,21 @@ export async function POST(req: NextRequest) {
 
     if (!email) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    }
+
+    // 1. Check if user exists in our DB and get their role
+    const user = await findUserByEmail(email);
+
+    // 2. Security: proper silent failure.
+    // If user not found, or is a standard admin, return success but DO NOT send email.
+    // This prevents email enumeration and restricts sub-admins from using this flow.
+    // Main Admin IS ALLOWED to reset their own password.
+    if (!user || user.role === "admin") {
+      // Simulate a delay to prevent timing attacks slightly? (Optional, skipping for now)
+      console.log(
+        `Blocked password reset for: ${email} (Role: ${user?.role || "Not Found"})`,
+      );
+      return NextResponse.json({ message: "Recovery email sent" });
     }
 
     const { account } = createAdminClient();
@@ -28,8 +44,7 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json(
       { error: error?.message || "Server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
-

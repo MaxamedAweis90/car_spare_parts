@@ -476,22 +476,20 @@ function RegisterContent() {
           </div>
         </div>
 
-        <div className="relative hidden md:block bg-gradient-to-br from-green-600 to-green-800">
-          <div className="absolute inset-0 bg-linear-to-b from-white/10 to-transparent" />
-          <div className="relative flex h-full flex-col items-center justify-center gap-6 px-8 py-12 text-white">
-            <div className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em]">
-              Get Started
-            </div>
-            <h2 className="text-2xl font-extrabold">
-              Your journey starts here.
-            </h2>
-            <p className="max-w-sm text-sm text-white/85">
-              Join thousands of customers finding quality car parts from trusted
-              sellers.
+        <div className="relative hidden md:flex w-full h-full min-h-[600px] flex-col items-center justify-center bg-green-300 p-12">
+          <div className="relative w-full flex-1 flex items-center justify-center">
+            <img
+              src="/register.png"
+              alt="Register visual"
+              className="max-h-[80%] max-w-full object-contain drop-shadow-lg"
+            />
+          </div>
+
+          <div className="mt-8 text-center">
+            <h2 className="text-2xl font-bold text-green-900">Join Us Today</h2>
+            <p className="mt-3 text-green-700 max-w-xs mx-auto">
+              Create an account to start shopping and tracking your orders.
             </p>
-            <div className="h-44 w-full max-w-xs rounded-2xl bg-white/10 backdrop-blur flex items-center justify-center">
-              <div className="h-28 w-40 rounded-xl bg-white/90 shadow-lg" />
-            </div>
           </div>
         </div>
       </div>
