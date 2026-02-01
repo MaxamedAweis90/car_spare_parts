@@ -405,7 +405,7 @@ export default function AdminLayoutShell({
                 trigger="click"
                 placement="bottomRight"
                 arrow={false}
-                overlayInnerStyle={{ padding: 0 }}
+                styles={{ body: { padding: 0 } }}
               >
                 <Button
                   type="text"

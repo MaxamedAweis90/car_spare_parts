@@ -22,5 +22,5 @@ export const appwriteClientConfig = {
   followsCollectionId: process.env.NEXT_PUBLIC_APPWRITE_FOLLOWS_COLLECTION_ID!,
   notificationsCollectionId:
     process.env.NEXT_PUBLIC_APPWRITE_NOTIFICATIONS_COLLECTION_ID!,
+  reviewsCollectionId: process.env.NEXT_PUBLIC_APPWRITE_REVIEWS_COLLECTION_ID!,
 };
-

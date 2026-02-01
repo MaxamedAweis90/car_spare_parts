@@ -15,6 +15,10 @@ export default function SellerLoginClient() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const [redirectData, setRedirectData] = useState<{
+    url: string;
+    label: string;
+  } | null>(null);
   const shouldHide = loading || authenticated;
 
   useEffect(() => {
@@ -63,7 +67,7 @@ export default function SellerLoginClient() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, requiredRole: "seller" }),
       });
 
       const body = await res.json();
@@ -75,6 +79,12 @@ export default function SellerLoginClient() {
           return;
         }
         setMessage(body?.error || "Login failed");
+        if (body.redirectUrl) {
+          setRedirectData({
+            url: body.redirectUrl,
+            label: body.redirectLabel || "Go to Portal",
+          });
+        }
         return;
       }
 
@@ -232,7 +242,16 @@ export default function SellerLoginClient() {
                     : "border-red-200 bg-red-50 text-red-700"
                 }`}
               >
-                {message}
+                <p>{message}</p>
+                {redirectData && (
+                  <a
+                    href={redirectData.url}
+                    className="mt-2 inline-block rounded-lg bg-red-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-red-700 transition"
+                  >
+                    {redirectData.label}{" "}
+                    <i className="fa-solid fa-arrow-right ml-1"></i>
+                  </a>
+                )}
               </div>
             )}
 

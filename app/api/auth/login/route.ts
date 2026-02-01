@@ -19,7 +19,7 @@ const projectId = process.env.APPWRITE_PROJECT_ID!;
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, password } = await req.json();
+    const { email, password, requiredRole } = await req.json();
 
     if (!email || !password) {
       return NextResponse.json(
@@ -53,6 +53,43 @@ export async function POST(req: NextRequest) {
         { status: 401 },
       );
     }
+
+    // --- Strict Portal Guard ---
+    // --- Strict Portal Guard ---
+    if (requiredRole) {
+      // Logic:
+      // 1. If required is "admin", user must be "admin" or "main_admin"
+      // 2. If required is "seller", user must be "seller"
+      // 3. If required is "customer", user must be "customer"
+
+      const role = user.role || "customer";
+      let isAuthorized = false;
+
+      if (requiredRole === "admin") {
+        isAuthorized = role === "admin" || role === "main_admin";
+      } else {
+        isAuthorized = role === requiredRole;
+      }
+
+      if (!isAuthorized) {
+        let redirectUrl = "/";
+        if (role === "admin" || role === "main_admin")
+          redirectUrl = "/auth/admin/login";
+        else if (role === "seller") redirectUrl = "/auth/seller/login";
+        else redirectUrl = "/auth/login";
+
+        return NextResponse.json(
+          {
+            error: `Access Denied: You account belongs to the ${role} portal.`,
+            redirectUrl,
+            redirectLabel: `Go to ${role === "main_admin" ? "Admin" : role.charAt(0).toUpperCase() + role.slice(1)} Portal`,
+          },
+          { status: 403 },
+        );
+      }
+    }
+    // ---------------------------
+    // ---------------------------
 
     // Ensure an Appwrite auth user exists for this email (helps legacy profiles).
     if (!user.appwriteUserId) {

@@ -96,12 +96,14 @@ export default function AdminActivityPage() {
       dataIndex: "createdAt",
       key: "createdAt",
       render: (date: string) => (
-        <span
-          className="text-sm text-slate-500"
-          title={dayjs(date).format("YYYY-MM-DD HH:mm:ss")}
-        >
-          {dayjs(date).fromNow()}
-        </span>
+        <div className="flex flex-col">
+          <span className="text-sm font-medium text-slate-700">
+            {dayjs(date).format("DD MMM YYYY, h:mm A")}
+          </span>
+          <span className="text-xs text-slate-400">
+            {dayjs(date).fromNow()}
+          </span>
+        </div>
       ),
     },
   ];

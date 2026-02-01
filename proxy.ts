@@ -3,55 +3,36 @@ import { NextRequest, NextResponse } from "next/server";
 // Redirect authenticated users away from auth pages before any HTML is rendered.
 export async function proxy(request: NextRequest) {
   const { pathname, origin } = request.nextUrl;
-
-  // Only run on /auth routes.
-  if (!pathname.startsWith("/auth")) {
-    return NextResponse.next();
-  }
-
-  // Call existing session endpoint using incoming cookies to resolve role.
   const cookieHeader = request.headers.get("cookie") || "";
-  let profile: any | null = null;
-  let authenticated = false;
+  const sessionCookie = request.cookies.get("session_id"); // Fast check for existence
+  const isAuthenticated = !!sessionCookie;
 
-  try {
-    const meRes = await fetch(`${origin}/api/auth/me`, {
-      headers: cookieHeader ? { cookie: cookieHeader } : undefined,
-      cache: "no-store",
-    });
-
-    if (meRes.ok) {
-      const body = await meRes.json();
-      authenticated = !!body?.authenticated;
-      profile = body?.profile || null;
-    }
-  } catch {
-    // Ignore errors and continue to page.
+  // 1. Friendly Redirects (Fixing broken links customer might type)
+  if (pathname === "/seller/login") {
+    return NextResponse.redirect(new URL("/auth/seller/login", request.url));
+  }
+  if (pathname === "/admin/login") {
+    return NextResponse.redirect(new URL("/auth/admin/login", request.url));
+  }
+  if (pathname === "/login") {
+    return NextResponse.redirect(new URL("/auth/login", request.url));
+  }
+  if (pathname === "/register") {
+    return NextResponse.redirect(new URL("/auth/register", request.url));
   }
 
-  if (!authenticated || !profile) {
-    return NextResponse.next();
-  }
-
-  let destination: string | null = null;
-
-  if (profile.role === "seller") {
-    destination = profile.sellerApproved === false ? "/auth/seller/pending" : "/seller";
-  } else if (profile.role === "admin" || profile.role === "main_admin") {
-    destination = "/admin";
-  } else {
-    destination = "/"; // customers and any other roles
-  }
-
-  // Avoid redirect loop if already at destination.
-  if (destination && pathname !== destination) {
-    return NextResponse.redirect(new URL(destination, request.url));
-  }
+  // NOTE: Auth protection is handled by server layouts (app/admin/layout.tsx, app/seller/layout.tsx).
+  // This proxy only handles URL normalization.
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/auth/:path*"],
+  matcher: [
+    // Friendly redirects
+    "/login",
+    "/register",
+    "/seller/login",
+    "/admin/login",
+  ],
 };
-

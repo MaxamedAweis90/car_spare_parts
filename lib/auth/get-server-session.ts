@@ -55,14 +55,18 @@ export async function getServerSession() {
     });
 
     if (!accountRes.ok) {
-      log.error("Account fetch failed", {
-        status: accountRes.status,
-        statusText: accountRes.statusText,
-      });
-      try {
-        const text = await accountRes.text();
-        log.debug("Error response body", { body: text.slice(0, 200) });
-      } catch {}
+      if (accountRes.status === 401) {
+        log.debug("User not authenticated (401)");
+      } else {
+        log.error("Account fetch failed", {
+          status: accountRes.status,
+          statusText: accountRes.statusText,
+        });
+        try {
+          const text = await accountRes.text();
+          log.debug("Error response body", { body: text.slice(0, 200) });
+        } catch {}
+      }
       return { authenticated: false, account: null, profile: null };
     }
 

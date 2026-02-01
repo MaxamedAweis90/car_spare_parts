@@ -1,7 +1,8 @@
+```typescript
 import { NextRequest, NextResponse } from "next/server";
-import { Query } from "node-appwrite";
-import { databasesServer, appwriteConfig } from "@/lib/api/appwrite-server";
-import { getServerSession } from "@/lib/session-server";
+import { appwriteConfig, databasesServer } from "@/lib/api/appwrite-server";
+import { ID, Permission, Query, Role } from "node-appwrite";
+import { getServerSession } from "@/lib/auth/get-server-session";
 import {
   isValidStatusTransition,
   type UserRole,
@@ -119,6 +120,45 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       orderId,
       updateData,
     );
+
+    // --- TRIGGER REVIEW EMAIL ---
+    if (newStatus === "delivered" && currentStatus !== "delivered") {
+      try {
+        const reviewLink = `${req.nextUrl.origin}/reviews/${orderId}`;
+        const storeName = "SomaParts"; // Or fetch from Seller Store if available
+        const message = `Your order ${orderId.slice(-8).toUpperCase()} has been delivered! Please take a moment to review your products.`;
+
+        // Send Notification (Simplified: In-app + Attempt Email via Appwrite Function or similar)
+        // For now, we reuse the existing in-app notification structure, but targeting the CUSTOMER
+        // Note: The existing notifyFollowers is for STORE followers. We need a direct user notification here.
+
+        await databasesServer.createDocument(
+          appwriteConfig.databaseId,
+          appwriteConfig.notificationsCollectionId,
+          ID.unique(),
+          {
+            userId: order.customerId,
+            storeId: "system", // System notification
+            type: "order_delivered", // New type
+            title: "Order Delivered",
+            message: message,
+            link: reviewLink,
+            isRead: false,
+          },
+          [
+            Permission.read(Role.user(order.customerId)),
+            Permission.update(Role.user(order.customerId)),
+            Permission.delete(Role.user(order.customerId)),
+          ],
+        );
+
+        // TODO: In a real production env, here we would trigger the Appwrite Cloud Function for Email:
+        // await functionsServer.createExecution('send-email', JSON.stringify({ to: customerEmail, subject: "Delivered", body: ... }));
+      } catch (notifyError) {
+        console.error("Failed to send delivery notification:", notifyError);
+      }
+    }
+    // ----------------------------
 
     return NextResponse.json({
       success: true,

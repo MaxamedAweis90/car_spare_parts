@@ -179,9 +179,19 @@ export async function GET(req: NextRequest) {
     const make = searchParams.get("make");
     const model = searchParams.get("model");
     const year = searchParams.get("year");
+    const sort = searchParams.get("sort"); // newest, price_asc, price_desc
 
     // Build Appwrite queries
     const queries = [Query.limit(limit)];
+
+    // Sorting
+    if (sort === "newest") {
+      queries.push(Query.orderDesc("$createdAt"));
+    } else if (sort === "price_asc") {
+      queries.push(Query.orderAsc("price"));
+    } else if (sort === "price_desc") {
+      queries.push(Query.orderDesc("price"));
+    }
 
     // Price range filtering
     if (minPrice) {

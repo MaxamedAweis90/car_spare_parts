@@ -36,6 +36,7 @@ import {
   BellOutlined,
   InfoCircleOutlined,
   ShoppingCartOutlined,
+  StarOutlined,
 } from "@ant-design/icons";
 
 import { useSession } from "@/lib/auth/useSession";
@@ -80,6 +81,11 @@ const NAV_ITEMS = [
     key: "/seller/orders",
     label: "Orders",
     icon: <UnorderedListOutlined />,
+  },
+  {
+    key: "/seller/reviews",
+    label: "Reviews",
+    icon: <StarOutlined />,
   },
   {
     key: "/seller/create-sale",

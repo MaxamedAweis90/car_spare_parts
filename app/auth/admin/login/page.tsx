@@ -3,11 +3,18 @@ import AdminLoginClient from "./AdminLoginClient";
 import { getServerSession } from "@/lib/auth/get-server-session";
 import { redirect } from "next/navigation";
 
-export default async function AdminLoginPage() {
+interface Props {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function AdminLoginPage(props: Props) {
+  const searchParams = await props.searchParams;
+  const reason = searchParams?.reason;
   const session = await getServerSession();
 
   // If already authenticated, redirect based on role
-  if (session.authenticated && session.profile) {
+  // BUT ONLY IF not redirected here due to error/reason
+  if (!reason && session.authenticated && session.profile) {
     const role = session.profile.role;
 
     if (role === "admin" || role === "main_admin") {

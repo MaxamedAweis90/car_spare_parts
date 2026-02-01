@@ -20,7 +20,12 @@ import ProcessPaymentModal from "@/components/payment/ProcessPaymentModal";
 
 import { useSession } from "@/lib/auth/useSession";
 import { BreadcrumbTrail } from "@/components/ui/BreadcrumbTrail";
-import { client, appwriteClientConfig } from "@/lib/api/appwrite";
+import {
+  client,
+  appwriteClientConfig,
+  databasesClient,
+} from "@/lib/api/appwrite";
+import { Query } from "appwrite";
 import { getStatusLabel } from "@/lib/utils/orderStatusTransitions";
 
 interface Order {
@@ -31,6 +36,64 @@ interface Order {
   items: string[];
   shippingAddress: string;
   paymentMethod: string;
+  customerId?: string;
+}
+
+// Simple Review Form Component
+function ReviewForm({ orderId, productId, existingReview, onSubmit }: any) {
+  const [rating, setRating] = useState(existingReview?.rating || 0);
+  const [comment, setComment] = useState(existingReview?.comment || "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Sync if existingReview updates (from server)
+  useEffect(() => {
+    if (existingReview) {
+      setRating(existingReview.rating);
+      setComment(existingReview.comment || "");
+    }
+  }, [existingReview]);
+
+  const handleSubmit = async () => {
+    if (rating === 0) return alert("Please select a star rating");
+    setIsSubmitting(true);
+    await onSubmit(orderId, productId, rating, comment);
+    setIsSubmitting(false);
+  };
+
+  return (
+    <Stack spacing={1} sx={{ mt: 1 }}>
+      <Stack direction="row" spacing={0.5}>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Box
+            key={star}
+            onClick={() => setRating(star)}
+            sx={{
+              cursor: "pointer",
+              color: star <= rating ? "#fbbf24" : "#e5e7eb",
+            }}
+          >
+            <span style={{ fontSize: "20px" }}>★</span>
+          </Box>
+        ))}
+      </Stack>
+      <textarea
+        className="w-full rounded border border-gray-300 p-2 text-sm"
+        rows={2}
+        placeholder="Write a review..."
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+      />
+      <Button
+        variant="contained"
+        size="small"
+        disabled={isSubmitting}
+        onClick={handleSubmit}
+        sx={{ alignSelf: "flex-start", textTransform: "none" }}
+      >
+        {existingReview ? "Update Review" : "Submit Review"}
+      </Button>
+    </Stack>
+  );
 }
 
 export default function CustomerOrdersPage() {
@@ -110,7 +173,66 @@ export default function CustomerOrdersPage() {
     return () => {
       unsubscribe();
     };
+    return () => {
+      unsubscribe();
+    };
   }, [profile?.$id]);
+
+  // --- REVIEWS LOGIC ---
+  const [reviews, setReviews] = useState<Record<string, any>>({}); // Key: `${orderId}-${productId}`
+
+  const fetchReviews = async () => {
+    // Fetch all reviews by this customer (in a real app, maybe filter by recent or visible orders)
+    try {
+      // Corrected: Use databasesClient and Query directly
+      const res = await databasesClient.listDocuments(
+        appwriteClientConfig.databaseId,
+        appwriteClientConfig.reviewsCollectionId,
+        [Query.equal("customerId", profile?.$id || "")], // Assuming we can filter by customer
+      );
+
+      const reviewMap: Record<string, any> = {};
+      res.documents.forEach((doc: any) => {
+        reviewMap[`${doc.orderId}-${doc.productId}`] = doc;
+      });
+      setReviews(reviewMap);
+    } catch (error) {
+      console.error("Failed to fetch reviews", error);
+    }
+  };
+
+  useEffect(() => {
+    if (authenticated && profile?.$id) {
+      fetchReviews();
+    }
+  }, [authenticated, profile?.$id]);
+
+  const handleSubmitReview = async (
+    orderId: string,
+    productId: string,
+    rating: number,
+    comment: string,
+  ) => {
+    try {
+      const res = await fetch("/api/reviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId, productId, rating, comment }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      // Update local state
+      setReviews((prev) => ({
+        ...prev,
+        [`${orderId}-${productId}`]: data.review,
+      }));
+      alert("Review submitted!");
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
+  // ---------------------
 
   const getStatusColor = (status: string) => {
     switch (status.toLowerCase()) {
@@ -382,29 +504,57 @@ export default function CustomerOrdersPage() {
                                 <ShoppingBagIcon sx={{ color: "#ddd" }} />
                               )}
                             </Box>
+
+                            {/* Item Details & Review Widget */}
                             <Box sx={{ flex: 1 }}>
-                              <Typography variant="body1" fontWeight={700}>
-                                {item.name}
+                              <Typography variant="subtitle1" fontWeight="bold">
+                                {(item as any).name || "Produt Name"}
                               </Typography>
                               <Typography
                                 variant="body2"
                                 color="text.secondary"
                               >
-                                Quantity: {item.quantity} | Price: $
-                                {item.price.toFixed(2)}
+                                Quantity: {(item as any).quantity}
                               </Typography>
-                              <Button
-                                size="small"
-                                color="warning"
-                                sx={{
-                                  mt: 1,
-                                  textTransform: "none",
-                                  fontWeight: 700,
-                                }}
-                                onClick={() => router.push("/shop")}
+                              <Typography
+                                variant="body2"
+                                fontWeight="bold"
+                                sx={{ mt: 0.5 }}
                               >
-                                Buy it again
-                              </Button>
+                                ${(item as any).price?.toFixed(2)}
+                              </Typography>
+
+                              {/* REVIEW WIDGET */}
+                              {(order.status === "delivered" ||
+                                order.status === "completed") && (
+                                <Box
+                                  sx={{
+                                    mt: 2,
+                                    p: 2,
+                                    bgcolor: "white",
+                                    borderRadius: 2,
+                                    border: "1px dashed #e5e7eb",
+                                  }}
+                                >
+                                  <Typography
+                                    variant="caption"
+                                    fontWeight={700}
+                                    color="text.secondary"
+                                  >
+                                    Rate & Review Product
+                                  </Typography>
+                                  <ReviewForm
+                                    orderId={order.$id}
+                                    productId={(item as any).productId}
+                                    existingReview={
+                                      reviews[
+                                        `${order.$id}-${(item as any).productId}`
+                                      ]
+                                    }
+                                    onSubmit={handleSubmitReview}
+                                  />
+                                </Box>
+                              )}
                             </Box>
                           </Box>
                         ))}

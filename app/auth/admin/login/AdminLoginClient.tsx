@@ -15,6 +15,10 @@ export default function AdminLoginClient() {
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const [redirectData, setRedirectData] = useState<{
+    url: string;
+    label: string;
+  } | null>(null);
   const shouldHide = loading || authenticated;
 
   useEffect(() => {
@@ -31,8 +35,8 @@ export default function AdminLoginClient() {
       if (account?.emailVerification === false) {
         router.replace(
           `/auth/verify-notice?email=${encodeURIComponent(
-            profile?.email || ""
-          )}`
+            profile?.email || "",
+          )}`,
         );
         return;
       }
@@ -59,18 +63,24 @@ export default function AdminLoginClient() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, requiredRole: "admin" }),
       });
 
       const body = await res.json();
       if (!res.ok || body.mustVerify) {
         if (body.mustVerify) {
           window.location.href = `/auth/verify-notice?email=${encodeURIComponent(
-            email
+            email,
           )}`;
           return;
         }
         setMessage(body?.error || "Login failed");
+        if (body.redirectUrl) {
+          setRedirectData({
+            url: body.redirectUrl,
+            label: body.redirectLabel || "Go to Portal",
+          });
+        }
         return;
       }
 
@@ -112,7 +122,16 @@ export default function AdminLoginClient() {
 
           {message && (
             <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
-              {message}
+              <p>{message}</p>
+              {redirectData && (
+                <a
+                  href={redirectData.url}
+                  className="mt-2 inline-block rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700 transition"
+                >
+                  {redirectData.label}{" "}
+                  <i className="fa-solid fa-arrow-right ml-1"></i>
+                </a>
+              )}
             </div>
           )}
 
@@ -197,4 +216,3 @@ export default function AdminLoginClient() {
     </div>
   );
 }
-

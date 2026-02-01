@@ -86,12 +86,14 @@ export default function RecentActivityList({
               <Text strong className="text-sm">
                 {item.adminName || item.userName}
               </Text>
-              <Text
-                type="secondary"
-                className="text-[10px] whitespace-nowrap ml-2"
-              >
-                {dayjs(item.createdAt).fromNow()}
-              </Text>
+              <div className="flex flex-col items-end">
+                <Text className="text-[10px] text-slate-500">
+                  {dayjs(item.createdAt).format("DD MMM, h:mm A")}
+                </Text>
+                <Text className="text-[9px] text-slate-400">
+                  {dayjs(item.createdAt).fromNow()}
+                </Text>
+              </div>
             </div>
             <div className="flex flex-col mt-1">
               <Text className="text-xs text-slate-600 capitalize">

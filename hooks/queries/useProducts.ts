@@ -20,6 +20,7 @@ interface UseProductsParams {
   maxPrice?: number;
   page?: number;
   limit?: number;
+  sort?: "newest" | "price_asc" | "price_desc";
 }
 
 export function useProducts({
@@ -31,11 +32,22 @@ export function useProducts({
   maxPrice,
   page = 1,
   limit = 20,
+  sort,
 }: UseProductsParams) {
   return useQuery({
     queryKey: [
       "products",
-      { sellerId, search, category, onSale, minPrice, maxPrice, page, limit },
+      {
+        sellerId,
+        search,
+        category,
+        onSale,
+        minPrice,
+        maxPrice,
+        page,
+        limit,
+        sort,
+      },
     ],
     queryFn: async () => {
       // Build URL for API endpoint
@@ -51,6 +63,7 @@ export function useProducts({
         url.searchParams.append("minPrice", minPrice.toString());
       if (maxPrice !== undefined)
         url.searchParams.append("maxPrice", maxPrice.toString());
+      if (sort) url.searchParams.append("sort", sort);
       url.searchParams.append("page", page.toString());
       url.searchParams.append("limit", limit.toString());
 

@@ -27,6 +27,10 @@ function LoginContent() {
   const [message, setMessage] = useState(
     intent === "follow" ? "Please login to follow this store" : "",
   );
+  const [redirectData, setRedirectData] = useState<{
+    url: string;
+    label: string;
+  } | null>(null);
   const shouldHide = loading || authenticated;
 
   useEffect(() => {
@@ -62,7 +66,7 @@ function LoginContent() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, requiredRole: "customer" }),
       });
 
       const body = await res.json();
@@ -74,6 +78,12 @@ function LoginContent() {
           return;
         }
         setMessage(body?.error || "Login failed");
+        if (body.redirectUrl) {
+          setRedirectData({
+            url: body.redirectUrl,
+            label: body.redirectLabel || "Go to Portal",
+          });
+        }
         return;
       }
 
@@ -132,7 +142,16 @@ function LoginContent() {
 
           {message && (
             <div className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">
-              {message}
+              <p>{message}</p>
+              {redirectData && (
+                <a
+                  href={redirectData.url}
+                  className="mt-2 inline-block rounded-lg bg-green-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-green-700 transition"
+                >
+                  {redirectData.label}{" "}
+                  <i className="fa-solid fa-arrow-right ml-1"></i>
+                </a>
+              )}
             </div>
           )}
 

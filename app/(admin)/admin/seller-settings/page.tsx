@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useSession } from "@/lib/auth/useSession";
 import { getUsers, updateUser } from "@/services/users";
 
+import { client, appwriteClientConfig } from "@/lib/api/appwrite"; // Import Appwrite Client
+
 type SellerRecord = {
   $id: string;
   name?: string;
@@ -11,6 +13,9 @@ type SellerRecord = {
   isActive?: boolean;
   sellerApproved?: boolean;
   createdAt?: string;
+  // Stats (calculated)
+  reviewCount?: number;
+  avgRating?: number;
 };
 
 export default function SellerRoleSettingsPage() {
@@ -23,11 +28,49 @@ export default function SellerRoleSettingsPage() {
     setLoading(true);
     setMessage(null);
     try {
+      // 1. Fetch Sellers
       const res = await getUsers({ role: "seller" });
-      const docs: SellerRecord[] = Array.isArray(res?.documents) ? res.documents : [];
+      const docs: SellerRecord[] = Array.isArray(res?.documents)
+        ? res.documents
+        : [];
+
+      // 2. Fetch Reviews Stats (Client-side aggregation for now)
+      // fetch all reviews? might be heavy. Ideally use Appwrite aggregation queries if available or Cloud Function.
+      // For MVP: Fetch last 500 reviews and aggregate.
+      try {
+        const reviewsRes = await client.databases.listDocuments(
+          appwriteClientConfig.databaseId,
+          appwriteClientConfig.reviewsCollectionId,
+          [client.Query.limit(1000)],
+        );
+
+        const reviews = reviewsRes.documents;
+
+        // Map to sellers
+        docs.forEach((seller) => {
+          const sellerReviews = reviews.filter(
+            (r: any) => r.sellerId === seller.$id,
+          );
+          if (sellerReviews.length > 0) {
+            const total = sellerReviews.reduce(
+              (acc: number, r: any) => acc + r.rating,
+              0,
+            );
+            seller.avgRating = total / sellerReviews.length;
+            seller.reviewCount = sellerReviews.length;
+          } else {
+            seller.avgRating = 0;
+            seller.reviewCount = 0;
+          }
+        });
+      } catch (e) {
+        console.warn("Failed to load review stats", e);
+      }
+
       setSellers(docs);
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Failed to load sellers";
+      const msg =
+        error instanceof Error ? error.message : "Failed to load sellers";
       setMessage(msg);
     } finally {
       setLoading(false);
@@ -56,15 +99,26 @@ export default function SellerRoleSettingsPage() {
     }
     setMessage(null);
     try {
-      const res = await updateUser({ userId: seller.$id, updaterId: profile.$id, isActive: nextActive });
+      const res = await updateUser({
+        userId: seller.$id,
+        updaterId: profile.$id,
+        isActive: nextActive,
+      });
       if (res?.error) {
         setMessage(res.error);
         return;
       }
-      setSellers((prev) => prev.map((s) => (s.$id === seller.$id ? { ...s, isActive: nextActive } : s)));
-      setMessage(`${seller.name || seller.email || "Seller"} ${nextActive ? "activated" : "deactivated"}.`);
+      setSellers((prev) =>
+        prev.map((s) =>
+          s.$id === seller.$id ? { ...s, isActive: nextActive } : s,
+        ),
+      );
+      setMessage(
+        `${seller.name || seller.email || "Seller"} ${nextActive ? "activated" : "deactivated"}.`,
+      );
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Failed to update seller";
+      const msg =
+        error instanceof Error ? error.message : "Failed to update seller";
       setMessage(msg);
     }
   };
@@ -76,15 +130,24 @@ export default function SellerRoleSettingsPage() {
     }
     setMessage(null);
     try {
-      const res = await updateUser({ userId: seller.$id, updaterId: profile.$id, sellerApproved: true });
+      const res = await updateUser({
+        userId: seller.$id,
+        updaterId: profile.$id,
+        sellerApproved: true,
+      });
       if (res?.error) {
         setMessage(res.error);
         return;
       }
-      setSellers((prev) => prev.map((s) => (s.$id === seller.$id ? { ...s, sellerApproved: true } : s)));
+      setSellers((prev) =>
+        prev.map((s) =>
+          s.$id === seller.$id ? { ...s, sellerApproved: true } : s,
+        ),
+      );
       setMessage(`${seller.name || seller.email || "Seller"} approved.`);
     } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : "Failed to approve seller";
+      const msg =
+        error instanceof Error ? error.message : "Failed to approve seller";
       setMessage(msg);
     }
   };
@@ -92,32 +155,47 @@ export default function SellerRoleSettingsPage() {
   return (
     <div className="space-y-8">
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold text-slate-900">Seller role settings</h1>
+        <h1 className="text-2xl font-semibold text-slate-900">
+          Seller role settings
+        </h1>
         <p className="text-sm text-slate-600">
-          Manage seller access and approvals. This page loads real seller accounts from Appwrite.
+          Manage seller access and approvals. This page loads real seller
+          accounts from Appwrite.
         </p>
       </header>
 
       <section className="grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-blue-100 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-wide text-blue-600">Total sellers</p>
+          <p className="text-xs uppercase tracking-wide text-blue-600">
+            Total sellers
+          </p>
           <p className="mt-1 text-2xl font-semibold">{sellers.length}</p>
           <p className="text-xs text-slate-500">Accounts with seller role</p>
         </div>
         <div className="rounded-2xl border border-emerald-100 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-wide text-emerald-600">Active sellers</p>
+          <p className="text-xs uppercase tracking-wide text-emerald-600">
+            Active sellers
+          </p>
           <p className="mt-1 text-2xl font-semibold">{activeCount}</p>
-          <p className="text-xs text-slate-500">Currently live in the marketplace</p>
+          <p className="text-xs text-slate-500">
+            Currently live in the marketplace
+          </p>
         </div>
         <div className="rounded-2xl border border-amber-100 bg-white p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-wide text-amber-600">Inactive sellers</p>
+          <p className="text-xs uppercase tracking-wide text-amber-600">
+            Inactive sellers
+          </p>
           <p className="mt-1 text-2xl font-semibold">{inactiveCount}</p>
           <p className="text-xs text-slate-500">Awaiting reactivation</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm md:col-span-3">
-          <p className="text-xs uppercase tracking-wide text-slate-600">Pending approvals</p>
+          <p className="text-xs uppercase tracking-wide text-slate-600">
+            Pending approvals
+          </p>
           <p className="mt-1 text-2xl font-semibold">{pendingApprovalCount}</p>
-          <p className="text-xs text-slate-500">Sellers that cannot access the seller console yet</p>
+          <p className="text-xs text-slate-500">
+            Sellers that cannot access the seller console yet
+          </p>
         </div>
       </section>
 
@@ -130,8 +208,12 @@ export default function SellerRoleSettingsPage() {
       <section className="rounded-3xl border border-slate-200 bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Seller roster</h2>
-            <p className="text-sm text-slate-600">Toggle their live access status in one place.</p>
+            <h2 className="text-lg font-semibold text-slate-900">
+              Seller roster
+            </h2>
+            <p className="text-sm text-slate-600">
+              Toggle their live access status in one place.
+            </p>
           </div>
           <button
             type="button"
@@ -145,10 +227,27 @@ export default function SellerRoleSettingsPage() {
 
         <ul className="divide-y divide-slate-200">
           {sellers.map((seller) => (
-            <li key={seller.$id} className="flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between">
+            <li
+              key={seller.$id}
+              className="flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between"
+            >
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-base font-semibold text-slate-900">{seller.name || "—"}</p>
+                  <p className="text-base font-semibold text-slate-900">
+                    {seller.name || "—"}
+                  </p>
+
+                  {/* REVIEW STATS */}
+                  {(seller.reviewCount || 0) > 0 && (
+                    <div
+                      className="flex items-center gap-1 bg-yellow-50 px-2 py-0.5 rounded text-xs text-yellow-700 border border-yellow-200"
+                      title={`${seller.reviewCount} reviews`}
+                    >
+                      <span>★ {seller.avgRating?.toFixed(1)}</span>
+                      <span className="opacity-70">({seller.reviewCount})</span>
+                    </div>
+                  )}
+
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
                       seller.isActive !== false
@@ -160,7 +259,9 @@ export default function SellerRoleSettingsPage() {
                   </span>
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      seller.sellerApproved === false ? "bg-amber-100 text-amber-700" : "bg-blue-50 text-blue-700"
+                      seller.sellerApproved === false
+                        ? "bg-amber-100 text-amber-700"
+                        : "bg-blue-50 text-blue-700"
                     }`}
                   >
                     {seller.sellerApproved === false ? "Pending" : "Approved"}
@@ -181,7 +282,9 @@ export default function SellerRoleSettingsPage() {
                 )}
                 <button
                   type="button"
-                  onClick={() => setSellerActive(seller, seller.isActive === false)}
+                  onClick={() =>
+                    setSellerActive(seller, seller.isActive === false)
+                  }
                   className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
                     seller.isActive !== false
                       ? "bg-slate-900 text-white hover:bg-slate-700"
@@ -198,4 +301,3 @@ export default function SellerRoleSettingsPage() {
     </div>
   );
 }
-

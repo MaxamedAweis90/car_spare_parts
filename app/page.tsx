@@ -71,8 +71,15 @@ function useSwiper(ref: RefObject<HTMLDivElement | null>) {
 }
 
 export default function Home() {
-  // Use TanStack Query for automatic caching - fetch all products
-  const { data, isLoading, error: queryError } = useProducts({ limit: 100 });
+  // Use TanStack Query for automatic caching - fetch products sorted by newest
+  const {
+    data,
+    isLoading,
+    error: queryError,
+  } = useProducts({
+    limit: 18,
+    sort: "newest",
+  });
   const products = data?.products || [];
   const error = queryError ? String(queryError) : null;
 
@@ -207,6 +214,18 @@ export default function Home() {
                       href={`/products/${product.$id}`}
                     />
                   ))}
+            </div>
+            {/* Load More Link */}
+            <div className="mt-8 flex justify-center">
+              <a
+                href="/shop?sort=newest"
+                className="group flex items-center gap-2 text-sm font-bold text-slate-500 transition hover:text-(--color-primary-strong)"
+              >
+                <span>Load More</span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-white shadow-sm transition group-hover:bg-(--color-primary-strong) group-hover:text-white group-hover:border-transparent">
+                  <i className="fa-solid fa-arrow-down"></i>
+                </div>
+              </a>
             </div>
           </div>
         </div>

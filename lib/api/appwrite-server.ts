@@ -36,4 +36,8 @@ export const appwriteConfig = {
     process.env.APPWRITE_PAYMENT_METHODS_COLLECTION_ID || "payment_methods",
   paymentsCollectionId:
     process.env.APPWRITE_PAYMENTS_COLLECTION_ID || "payments",
+  newsletterSubscribersCollectionId:
+    process.env.APPWRITE_NEWSLETTER_SUBSCRIBERS_COLLECTION_ID ||
+    "newsletter_subscribers",
+  reviewsCollectionId: process.env.APPWRITE_REVIEWS_COLLECTION_ID!,
 };
