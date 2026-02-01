@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/server/appwrite-admin";
-import { getSessionUser } from "@/lib/server/appwrite-auth-actions"; // Assuming this exists or similar
+import { getServerSession } from "@/lib/auth/get-server-session";
 import { findUserByEmail } from "@/lib/auth/auth-utils";
 
 export async function POST(req: NextRequest) {
@@ -15,8 +15,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Verify Caller Verification (Must be logged in as Main Admin)
-    const { user: caller } = await getSessionUser();
-    if (!caller) {
+    const session = await getServerSession();
+    const caller = session?.profile;
+    if (!session?.authenticated || !caller) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

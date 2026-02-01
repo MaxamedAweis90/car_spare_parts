@@ -1,4 +1,3 @@
-```typescript
 import { NextRequest, NextResponse } from "next/server";
 import { appwriteConfig, databasesServer } from "@/lib/api/appwrite-server";
 import { ID, Permission, Query, Role } from "node-appwrite";
@@ -23,7 +22,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     const { status, sellerId, verificationNotes } = await req.json();
 
     // Authenticate user
-    const session = await getServerSession(req);
+    const session = await getServerSession();
     if (!session?.authenticated || !session?.profile) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

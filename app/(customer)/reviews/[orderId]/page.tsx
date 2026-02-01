@@ -230,7 +230,7 @@ export default function ReviewPage({
           {items.map((item, idx) => (
             <Paper key={idx} sx={{ p: 3, borderRadius: 3 }}>
               <Stack
-                direction={{ xs: "col", sm: "row" }}
+                direction={{ xs: "column", sm: "row" }}
                 spacing={3}
                 alignItems="flex-start"
               >

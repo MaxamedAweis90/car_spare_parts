@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ID, Query } from "node-appwrite";
 import { databasesServer, appwriteConfig } from "@/lib/api/appwrite-server";
-import { validateEmail } from "@/lib/utils/email-validator"; // Assuming this exists or I'll implement inline if simple
 
 export async function POST(req: NextRequest) {
   try {

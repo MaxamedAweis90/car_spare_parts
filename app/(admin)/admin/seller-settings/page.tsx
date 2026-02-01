@@ -4,7 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useSession } from "@/lib/auth/useSession";
 import { getUsers, updateUser } from "@/services/users";
 
-import { client, appwriteClientConfig } from "@/lib/api/appwrite"; // Import Appwrite Client
+import {
+  client,
+  appwriteClientConfig,
+  databasesClient,
+} from "@/lib/api/appwrite";
+import { Query } from "appwrite";
 
 type SellerRecord = {
   $id: string;
@@ -38,10 +43,10 @@ export default function SellerRoleSettingsPage() {
       // fetch all reviews? might be heavy. Ideally use Appwrite aggregation queries if available or Cloud Function.
       // For MVP: Fetch last 500 reviews and aggregate.
       try {
-        const reviewsRes = await client.databases.listDocuments(
+        const reviewsRes = await databasesClient.listDocuments(
           appwriteClientConfig.databaseId,
           appwriteClientConfig.reviewsCollectionId,
-          [client.Query.limit(1000)],
+          [Query.limit(1000)],
         );
 
         const reviews = reviewsRes.documents;
