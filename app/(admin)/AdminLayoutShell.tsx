@@ -40,6 +40,7 @@ import AdminOnboarding from "@/components/admin/AdminOnboarding";
 import NotificationsPopover from "@/components/admin/NotificationsPopover";
 import { useAdminActivityTracker } from "@/hooks/useAdminActivityTracker";
 import SessionTimeoutWarning from "@/components/admin/SessionTimeoutWarning";
+import SplashScreen from "@/components/ui/SplashScreen";
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -144,6 +145,10 @@ export default function AdminLayoutShell({
   // Session timeout tracking for admins
   const { showWarning, remainingSeconds, extendSession, isLoggedOut } =
     useAdminActivityTracker();
+
+  if (loading || !profile) {
+    return <SplashScreen />;
+  }
 
   // Client-side redirects removed - handled by Server Layout
   // We only keep basic user data via useSession for UI purposes (Avatar, etc)

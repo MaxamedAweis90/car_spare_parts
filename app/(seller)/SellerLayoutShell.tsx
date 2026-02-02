@@ -46,6 +46,7 @@ import {
   SellerStoreProvider,
   useSellerStore,
 } from "@/lib/providers/SellerStoreProvider";
+import SplashScreen from "@/components/ui/SplashScreen";
 import {
   SellerProfileProvider,
   useSellerProfile,
@@ -244,11 +245,7 @@ function SellerLayoutShell({
   // Loading/Blocking states removed - Server Layout handles protection
   // Basic validation that user data is present, otherwise showing generic loading
   if (loading || !profile) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-[#f4f1e9]">
-        <Spin size="large" tip="Loading seller portal..." fullscreen />
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   const userMenu: MenuProps = {
