@@ -1,23 +1,34 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import SplashScreen from "./SplashScreen";
 
 export default function GlobalSplash() {
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
   const pathname = usePathname();
+  const prevPathRef = useRef<string | null>(null);
 
   useEffect(() => {
-    // Show splash only for specific paths (Auth, Admin, Seller)
-    // These are typically the pages without the main customer navbar/footer
     const targetPaths = ["/auth", "/admin", "/seller"];
     const isTargetPage = targetPaths.some((path) => pathname?.startsWith(path));
 
-    if (isTargetPage) {
+    // Check if we are entering a target zone from a non-target zone
+    const wasTargetPage = prevPathRef.current
+      ? targetPaths.some((path) => prevPathRef.current?.startsWith(path))
+      : false;
+
+    // Trigger on:
+    // 1. Initial Load (Refresh): ALWAYS show, regardless of page.
+    // 2. Navigation: Show ONLY when entering a target zone (Auth/Admin/Seller) from a non-target zone.
+    if (!prevPathRef.current) {
+      setIsVisible(true);
+    } else if (isTargetPage && !wasTargetPage) {
       setIsVisible(true);
     }
-  }, []); // Run once on mount (refresh)
+
+    prevPathRef.current = pathname;
+  }, [pathname]);
 
   if (!isVisible) return null;
 

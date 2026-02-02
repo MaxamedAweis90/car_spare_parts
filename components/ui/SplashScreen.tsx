@@ -53,7 +53,7 @@ export default function SplashScreen({
   }, [stage, onComplete]);
 
   return (
-    <div className="fixed inset-0 z-[9999] pointer-events-none flex flex-col items-center justify-center">
+    <div className="fixed inset-0 z-[9999] pointer-events-auto flex flex-col items-center justify-center">
       {/* Background Split */}
       <AnimatePresence>
         {stage !== "exit" && (

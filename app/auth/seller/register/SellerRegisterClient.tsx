@@ -192,7 +192,7 @@ function SellerRegisterContent() {
         </div>
 
         {/* Left Side: Brand & Features */}
-        <div className="mb-12 flex max-w-xl flex-col lg:mb-0 lg:w-1/2">
+        <div className="hidden lg:flex mb-12 max-w-xl flex-col lg:mb-0 lg:w-1/2">
           <h1 className="text-5xl font-extrabold tracking-tight text-slate-900 sm:text-6xl lg:text-7xl">
             Start Selling <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600">
