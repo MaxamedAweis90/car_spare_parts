@@ -16,6 +16,7 @@ export type CartItem = {
   quantity: number;
   imageId?: string | null;
   imageUrl?: string | null;
+  slug?: string;
 };
 
 type AddToCartInput = {
@@ -25,6 +26,7 @@ type AddToCartInput = {
   imageId?: string | null;
   imageUrl?: string | null;
   quantity?: number;
+  slug?: string;
 };
 
 type CartContextValue = {
@@ -65,7 +67,7 @@ function safeParseCart(raw: string | null): CartItem[] {
           x.id &&
           x.name &&
           Number.isFinite(x.price) &&
-          Number.isFinite(x.quantity)
+          Number.isFinite(x.quantity),
       );
   } catch {
     return [];
@@ -94,11 +96,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const count = useMemo(
     () => items.reduce((sum, item) => sum + item.quantity, 0),
-    [items]
+    [items],
   );
   const total = useMemo(
     () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
-    [items]
+    [items],
   );
 
   const openCart = useCallback(() => setIsOpen(true), []);
@@ -127,6 +129,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           quantity: qty,
           imageId: input.imageId ?? null,
           imageUrl: input.imageUrl ?? null,
+          slug: input.slug,
         },
       ];
     });
@@ -134,7 +137,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const increment = useCallback((id: string) => {
     setItems((prev) =>
-      prev.map((x) => (x.id === id ? { ...x, quantity: x.quantity + 1 } : x))
+      prev.map((x) => (x.id === id ? { ...x, quantity: x.quantity + 1 } : x)),
     );
   }, []);
 
@@ -179,7 +182,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       decrement,
       remove,
       clear,
-    ]
+    ],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
@@ -190,4 +193,3 @@ export function useCart() {
   if (!ctx) throw new Error("useCart must be used within CartProvider");
   return ctx;
 }
-

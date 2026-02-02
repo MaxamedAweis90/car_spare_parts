@@ -102,8 +102,18 @@ export async function getServerSession() {
 
     const safeProfile = profile ? sanitizeUser(profile) : null;
 
+    const mainAdminIds = (
+      process.env.APPWRITE_MAIN_ADMIN_USER_ID ||
+      process.env.NEXT_PUBLIC_APPWRITE_MAIN_ADMIN_USER_ID ||
+      ""
+    )
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+
     const isMainAdminAccount =
-      Boolean(mainAdminId) && account?.$id === mainAdminId;
+      account?.$id && mainAdminIds.includes(account.$id);
+
     if (safeProfile && isMainAdminAccount) {
       safeProfile.role = "main_admin";
     }

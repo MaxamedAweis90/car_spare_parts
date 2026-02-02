@@ -130,7 +130,7 @@ export function ProductDetailSidebar() {
             : newProductsData?.products.map((h: any) => (
                 <Link
                   key={h.$id}
-                  href={`/products/${h.$id}`}
+                  href={`/products/${h.slug || h.$id}`}
                   className="flex gap-4 group"
                 >
                   <div className="w-16 h-16 bg-(--color-bg) rounded-lg overflow-hidden flex-shrink-0 border border-(--color-border)">

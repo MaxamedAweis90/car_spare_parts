@@ -16,6 +16,7 @@ export interface ProductCardProps {
   imageUrl?: string | null;
   href?: string;
   stock?: number | null;
+  slug?: string;
 }
 
 import { getProductImageUrl } from "@/lib/utils/product-image";
@@ -31,6 +32,7 @@ export default function ProductCard({
   imageUrl: imageUrlProp,
   href,
   stock,
+  slug,
 }: ProductCardProps) {
   const isCurrentlyOnSale = (() => {
     if (!onSale) return false;
@@ -46,7 +48,7 @@ export default function ProductCard({
 
   const cart = useCart();
   const priceDisplay = typeof price === "number" ? `$${price.toFixed(2)}` : "";
-  const linkHref = href && href.length > 0 ? href : `/products/${id}`;
+  const linkHref = href && href.length > 0 ? href : `/products/${slug || id}`;
   const imageUrl = imageUrlProp ?? getProductImageUrl(imageId ?? null);
 
   if (!id) {
@@ -65,6 +67,7 @@ export default function ProductCard({
       price: price as number,
       imageId: imageId ?? null,
       imageUrl: imageUrl ?? null,
+      slug: slug,
     });
     cart.openCart();
   };

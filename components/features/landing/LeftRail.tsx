@@ -8,6 +8,7 @@ type HotOfferProduct = {
   price: number;
   stock?: number | null;
   imageId?: string | null;
+  slug?: string;
 };
 
 interface LeftRailProps {
@@ -83,6 +84,7 @@ export function LeftRail({ categories, hotOffer }: LeftRailProps) {
               price={hotOffer.price}
               stock={hotOffer.stock ?? null}
               imageId={hotOffer.imageId ?? null}
+              slug={hotOffer.slug}
             />
           </div>
         ) : (
@@ -94,4 +96,3 @@ export function LeftRail({ categories, hotOffer }: LeftRailProps) {
     </aside>
   );
 }
-

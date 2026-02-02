@@ -143,6 +143,7 @@ export default function Home() {
           stock: p.stock,
           imageId: p.imageId,
           imageUrl: p.imageUrl,
+          slug: p.slug,
           moq: (index % 3) + 1,
         })),
     [products],
@@ -211,7 +212,8 @@ export default function Home() {
                       stock={product.stock ?? null}
                       imageId={product.imageId ?? null}
                       imageUrl={product.imageUrl ?? null}
-                      href={`/products/${product.$id}`}
+                      href={`/products/${product.slug || product.$id}`}
+                      slug={product.slug}
                     />
                   ))}
             </div>

@@ -293,6 +293,7 @@ export default function StorePageClient({
                           imageId={imageId}
                           imageUrl={product.imageUrl} // If API provides full URL
                           stock={product.stock}
+                          slug={product.slug}
                         />
                       </div>
                     );

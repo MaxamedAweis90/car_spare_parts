@@ -89,13 +89,10 @@ export function useProduct(productId: string) {
     queryFn: async () => {
       const res = await fetch(`/api/products/${productId}`);
       if (!res.ok) {
-        // If 404, throw specific error so we can handle it
         if (res.status === 404) throw new Error("Product not found");
         throw new Error("Failed to load product");
       }
       const data = await res.json();
-
-      // Ensure image URL is handled if API doesn't return it (though it should)
       if (
         !data.imageUrl &&
         (data.imageId || (data.imageIds && data.imageIds.length > 0))
@@ -107,6 +104,30 @@ export function useProduct(productId: string) {
       return data as ProductDocument & { imageUrl: string | null };
     },
     enabled: !!productId,
+  });
+}
+
+export function useProductBySlug(slug: string) {
+  return useQuery({
+    queryKey: ["product", "slug", slug],
+    queryFn: async () => {
+      const res = await fetch(`/api/products/slug/${slug}`);
+      if (!res.ok) {
+        if (res.status === 404) throw new Error("Product not found");
+        throw new Error("Failed to load product");
+      }
+      const data = await res.json();
+      if (
+        !data.imageUrl &&
+        (data.imageId || (data.imageIds && data.imageIds.length > 0))
+      ) {
+        data.imageUrl = getProductImageUrl(
+          data.imageId || (data.imageIds && data.imageIds[0]) || null,
+        );
+      }
+      return data as ProductDocument & { imageUrl: string | null };
+    },
+    enabled: !!slug,
   });
 }
 

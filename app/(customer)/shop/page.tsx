@@ -282,6 +282,7 @@ function ShopPageContent() {
                       stock={p.stock ?? null}
                       imageId={p.imageId ?? null}
                       imageUrl={p.imageUrl ?? null}
+                      slug={p.slug}
                     />
                   ))}
             </div>

@@ -2,6 +2,7 @@ import type { Models } from "appwrite";
 
 export type ProductDocument = Models.Document & {
   name: string;
+  slug: string;
   description?: string | null;
   price?: number | null;
   stock?: number | null;
@@ -21,4 +22,3 @@ export type ProductDocument = Models.Document & {
   // Computed fields
   imageUrl?: string | null;
 };
-

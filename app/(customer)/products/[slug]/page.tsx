@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useProduct } from "@/hooks/queries/useProducts";
+import { useProductBySlug } from "@/hooks/queries/useProducts";
 import { ProductDetailSidebar } from "@/components/features/products/ProductDetailSidebar";
 import { ProductGallery } from "@/components/features/products/ProductGallery";
 import { ProductMainInfo } from "@/components/features/products/ProductMainInfo";
@@ -11,13 +11,16 @@ import Link from "next/link";
 
 export default function ProductDetailPage() {
   const params = useParams();
-  const id = params?.id as string;
-  const { data: product, isLoading, error } = useProduct(id);
+  const slug = params?.slug as string;
+  const { data: product, isLoading, error } = useProductBySlug(slug);
 
   if (error) {
-    console.error("ProductDetailPage: Error loading product", id, error);
+    console.error("ProductDetailPage: Error loading product", slug, error);
   } else if (!isLoading && !product) {
-    console.warn("ProductDetailPage: Product not found (no data returned)", id);
+    console.warn(
+      "ProductDetailPage: Product not found (no data returned)",
+      slug,
+    );
   }
 
   if (isLoading) {

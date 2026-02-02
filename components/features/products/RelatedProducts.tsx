@@ -61,6 +61,7 @@ export function RelatedProducts({
                 stock={product.stock ?? null}
                 imageId={product.imageId ?? null}
                 imageUrl={product.imageUrl ?? null}
+                slug={product.slug}
               />
             ))}
       </div>
