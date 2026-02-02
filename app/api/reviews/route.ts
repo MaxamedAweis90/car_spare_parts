@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
         },
         [
           Permission.read(Role.any()), // Publicly visible
-          Permission.update(Role.user(customerId)), // Owner can edit
+          Permission.update(Role.user(session.account.$id)), // Owner can edit
           Permission.delete(Role.label("admin")), // Admin can delete
         ],
       );

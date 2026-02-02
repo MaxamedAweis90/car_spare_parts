@@ -53,7 +53,7 @@ function ensureCompatibilityOptionsCollectionId() {
 
   if (!id) {
     throw new Error(
-      "Missing Appwrite compatibility options collection id (APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID)"
+      "Missing Appwrite compatibility options collection id (APPWRITE_COMPATIBILITY_OPTIONS_COLLECTION_ID)",
     );
   }
 
@@ -61,7 +61,7 @@ function ensureCompatibilityOptionsCollectionId() {
 }
 
 function toCompatibilityInput(
-  doc: CompatibilityOptionDocument
+  doc: CompatibilityOptionDocument,
 ): CompatibilityInput {
   return {
     vehicleType: String((doc as any).vehicleType ?? "").trim(),
@@ -78,7 +78,7 @@ async function loadCompatibilityOptionDocsByIds(ids: string[]) {
   const list = await databasesServer.listDocuments<CompatibilityOptionDocument>(
     appwriteConfig.databaseId,
     collectionId,
-    [Query.equal("$id", ids), Query.limit(Math.min(ids.length, 200))]
+    [Query.equal("$id", ids), Query.limit(Math.min(ids.length, 200))],
   );
   return list.documents as CompatibilityOptionDocument[];
 }
@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
         Query.equal("sellerId", profile.$id),
         Query.orderDesc("$createdAt"),
         Query.limit(limit),
-      ]
+      ],
     );
 
     const items: SellerProductResponse[] = list.documents.map((doc) => {
@@ -125,7 +125,7 @@ export async function GET(req: NextRequest) {
     console.error("Seller products GET error", error);
     return jsonError(
       error?.message || "Server error",
-      error?.code || error?.status || 500
+      error?.code || error?.status || 500,
     );
   }
 }
@@ -186,12 +186,12 @@ export async function POST(req: NextRequest) {
     // Seller selects admin-managed compatibility options. We store the selected *details* in the compatibilities collection
     // because the products collection may not contain a `compatibilityOptionIds` attribute.
     const compatibilityOptionIds = parseStringArrayJson(
-      formData.get("compatibilityOptionIds")
+      formData.get("compatibilityOptionIds"),
     );
     const compatibilityEntries: CompatibilityInput[] =
       compatibilityOptionIds.length
         ? (await loadCompatibilityOptionDocsByIds(compatibilityOptionIds)).map(
-            toCompatibilityInput
+            toCompatibilityInput,
           )
         : [];
 
@@ -219,10 +219,10 @@ export async function POST(req: NextRequest) {
       } as any,
       [
         Permission.read(Role.any()),
-        Permission.read(Role.user(profile.$id)),
-        Permission.update(Role.user(profile.$id)),
-        Permission.delete(Role.user(profile.$id)),
-      ]
+        Permission.read(Role.user(account.$id)),
+        Permission.update(Role.user(account.$id)),
+        Permission.delete(Role.user(account.$id)),
+      ],
     );
 
     // Persist compatibility selections separately.
@@ -248,8 +248,7 @@ export async function POST(req: NextRequest) {
     console.error("Seller products POST error", error);
     return jsonError(
       error?.message || "Server error",
-      error?.code || error?.status || 500
+      error?.code || error?.status || 500,
     );
   }
 }
-

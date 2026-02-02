@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
         isFakePayment: true,
       },
       [
-        Permission.read(Role.user(customerId)),
+        Permission.read(Role.user(session.account.$id)),
         Permission.read(Role.label("admin")),
         Permission.read(Role.user(appwriteConfig.mainAdminId)),
       ],

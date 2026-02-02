@@ -169,9 +169,9 @@ export async function POST(req: NextRequest) {
       ID.unique(),
       paymentMethodData,
       [
-        Permission.read(Role.user(userId)),
-        Permission.update(Role.user(userId)),
-        Permission.delete(Role.user(userId)),
+        Permission.read(Role.user(session.account.$id)),
+        Permission.update(Role.user(session.account.$id)),
+        Permission.delete(Role.user(session.account.$id)),
       ],
     );
 

@@ -65,13 +65,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 4. Verify customer exists
+    // 4. Verify customer exists and get Auth ID
+    let customerAuthId = customerId;
     try {
-      await databasesServer.getDocument(
+      const customerDoc = await databasesServer.getDocument(
         appwriteConfig.databaseId,
         appwriteConfig.usersCollectionId,
         customerId,
       );
+      if ((customerDoc as any).appwriteUserId) {
+        customerAuthId = (customerDoc as any).appwriteUserId;
+      }
     } catch (error) {
       return NextResponse.json(
         { error: "Customer not found" },
@@ -203,8 +207,8 @@ export async function POST(req: NextRequest) {
         verificationNotes: null,
       },
       [
-        Permission.read(Role.user(customerId)),
-        Permission.read(Role.user(sellerId)),
+        Permission.read(Role.user(customerAuthId)),
+        Permission.read(Role.user(session.account.$id)),
         Permission.read(Role.label("admin")),
         Permission.read(Role.user(appwriteConfig.mainAdminId)),
       ],

@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
         verificationNotes: null,
       },
       [
-        Permission.read(Role.user(customerId)),
+        Permission.read(Role.user(session.account.$id)),
         Permission.read(Role.label("admin")), // Assuming admins have 'admin' label or similar, or just user specific
         Permission.read(Role.user(appwriteConfig.mainAdminId)),
       ],
