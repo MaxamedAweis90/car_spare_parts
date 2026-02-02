@@ -195,12 +195,30 @@ export async function POST(req: NextRequest) {
           )
         : [];
 
+    const slugify = (text: string) => {
+      return text
+        .toString()
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, "-") // Replace spaces with -
+        .replace(/[^\w\-]+/g, "") // Remove all non-word chars
+        .replace(/\-\-+/g, "-"); // Replace multiple - with single -
+    };
+
+    // ... inside POST ...
+
+    // Generate unique slug
+    const baseSlug = slugify(name);
+    const randomSuffix = Math.random().toString(36).substring(2, 7);
+    const slug = `${baseSlug}-${randomSuffix}`;
+
     const created = await databasesServer.createDocument<ProductDocument>(
       appwriteConfig.databaseId,
       appwriteConfig.productsCollectionId,
       ID.unique(),
       {
         name,
+        slug, // Added slug
         description,
         price,
         stock,
