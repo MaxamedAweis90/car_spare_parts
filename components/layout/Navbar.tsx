@@ -113,6 +113,8 @@ export default function Navbar() {
     year: "",
     category: "",
   });
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -138,6 +140,24 @@ export default function Navbar() {
       // ignore
     }
   }, [language]);
+
+  // Close menus on route change
+  useEffect(() => {
+    setMobileSearchOpen(false);
+    setShowSuggestions(false);
+    setShowFilters(false);
+    setProfileMenuOpen(false);
+    setMobileMenuOpen(false);
+    setProfileMenuOpen(false);
+    setMobileMenuOpen(false);
+    // Note: Antd Dropdowns that are uncontrolled (profile/menu) usually close on click.
+    // If they persist, we might need to control them or use the key={pathname} trick on the Dropdown trigger if feasible,
+    // but typically Link clicks inside should be enough.
+    // If specifically the "profile" dropdown stays open, it might be due to the custom `popupRender`.
+    // We can force re-render of dropdowns by using a key if needed, or making them controlled.
+    // For now, let's assume the user meant the drawers and search/filters mostly.
+    // If profile persists, we will add controlled state for it too.
+  }, [pathname]);
 
   // Debounced autocomplete - triggers 3 seconds after user stops typing
   useEffect(() => {
@@ -412,6 +432,8 @@ export default function Navbar() {
                 trigger={["click"]}
                 placement="bottomRight"
                 classNames={{ root: "z-[1001]" }}
+                open={mobileMenuOpen}
+                onOpenChange={setMobileMenuOpen}
               >
                 <button
                   type="button"
@@ -651,6 +673,8 @@ export default function Navbar() {
                 trigger={["click"]}
                 placement="bottomRight"
                 classNames={{ root: "z-[1001]" }}
+                open={profileMenuOpen}
+                onOpenChange={setProfileMenuOpen}
               >
                 <button
                   type="button"

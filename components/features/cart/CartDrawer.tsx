@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Drawer from "@mui/material/Drawer";
 import Box from "@mui/material/Box";
 import Stack from "@mui/material/Stack";
@@ -57,6 +58,13 @@ export function CartDrawer({
   const data: (CartItem | StoreCartItem)[] = items ?? cart.items;
   const drawerOpen = open ?? cart.isOpen;
   const handleClose = onClose ?? cart.closeCart;
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (drawerOpen) {
+      handleClose();
+    }
+  }, [pathname]);
 
   const total = useMemo(
     () => data.reduce((sum, item) => sum + item.price * item.quantity, 0),
