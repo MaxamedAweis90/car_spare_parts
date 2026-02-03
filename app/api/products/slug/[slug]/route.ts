@@ -37,9 +37,35 @@ export async function GET(
       : [];
     const mainImageId = doc.imageId || imageIds[0] || null;
 
+    // Fetch seller store information if sellerId exists
+    let sellerStore = null;
+    if (doc.sellerId) {
+      try {
+        const storeRes = await databasesServer.listDocuments(
+          appwriteConfig.databaseId,
+          appwriteConfig.storeCollectionId,
+          [Query.equal("sellerId", doc.sellerId), Query.limit(1)],
+        );
+
+        if (storeRes.total > 0) {
+          const store = storeRes.documents[0];
+          sellerStore = {
+            $id: store.$id,
+            name: store.name,
+            slug: store.slug,
+            avatarId: store.avatarId || null,
+          };
+        }
+      } catch (storeError) {
+        console.error("Error fetching seller store:", storeError);
+        // Continue without store info if fetch fails
+      }
+    }
+
     const product = {
       ...doc,
       imageUrl: buildProductImageUrl(mainImageId),
+      sellerStore,
     };
 
     return NextResponse.json(product);

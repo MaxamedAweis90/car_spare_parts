@@ -54,22 +54,43 @@ export default function SellerOrdersPage() {
   const updateOrder = useUpdateOrder();
   const queryClient = useQueryClient();
 
-  // Real-time subscription
+  // Real-time subscription - Integrated with React Query cache
   useEffect(() => {
     if (!sellerId) return;
 
     const channel = `databases.${appwriteClientConfig.databaseId}.collections.${appwriteClientConfig.ordersCollectionId}.documents`;
 
     const unsubscribe = client.subscribe(channel, (response) => {
-      // Ideally we check if the event relates to us, but simple invalidation is safer
       const event = response.events[0];
-      if (
-        event.endsWith(".update") ||
-        event.endsWith(".create") ||
-        event.endsWith(".delete")
-      ) {
-        queryClient.invalidateQueries({ queryKey: ["orders"] });
-      }
+      const payload = response.payload as any; // Type assertion for Appwrite payload
+
+      // Update React Query cache directly instead of invalidating
+      queryClient.setQueriesData({ queryKey: ["orders"] }, (old: any) => {
+        if (!old || !Array.isArray(old)) return old;
+
+        // CREATE: Add new order to cache
+        if (event.endsWith(".create")) {
+          // Only add if it belongs to this seller
+          if (payload.sellerId === sellerId) {
+            return [...old, payload];
+          }
+          return old;
+        }
+
+        // UPDATE: Update existing order in cache
+        if (event.endsWith(".update")) {
+          return old.map((o: any) =>
+            o.$id === payload.$id ? { ...o, ...payload } : o,
+          );
+        }
+
+        // DELETE: Remove order from cache
+        if (event.endsWith(".delete")) {
+          return old.filter((o: any) => o.$id !== payload.$id);
+        }
+
+        return old;
+      });
     });
 
     return () => {

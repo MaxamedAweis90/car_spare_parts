@@ -31,6 +31,8 @@ export function useOrders(params: UseOrdersParams) {
         parsedShippingAddress: tryParse(order.shippingAddress),
       }));
     },
+    staleTime: 1 * 60 * 1000, // 1 minute (orders change frequently)
+    placeholderData: (previousData) => previousData, // Show old data while refetching
   });
 }
 
@@ -75,7 +77,7 @@ export function useUpdateOrder() {
         // The cache might be an array or a paginated object depending on params
         if (Array.isArray(old)) {
           return old.map((o: any) =>
-            o.$id === orderId ? { ...o, status } : o
+            o.$id === orderId ? { ...o, status } : o,
           );
         }
         return old;
@@ -93,4 +95,3 @@ export function useUpdateOrder() {
     },
   });
 }
-

@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 export interface AdminStats {
   users: { total: number; active: number; inactive: number };
@@ -23,38 +22,20 @@ export interface AdminStats {
   generatedAt: string;
 }
 
-const STATS_KEY = "spareparts-admin-stats";
-
 async function fetchAdminStats() {
   const res = await fetch("/api/admin/dashboard");
   if (!res.ok) throw new Error("Failed to fetch admin dashboard stats");
   const data = await res.json();
-  // PERSIST
-  if (typeof window !== "undefined") {
-    localStorage.setItem(STATS_KEY, JSON.stringify(data));
-  }
   return data as AdminStats;
 }
 
 export function useAdminStats() {
-  const queryClient = useQueryClient();
-
-  // 1. REHYDRATE FROM LOCALSTORAGE ON MOUNT
-  useEffect(() => {
-    const cached = localStorage.getItem(STATS_KEY);
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        queryClient.setQueryData(["adminStats"], parsed);
-      } catch {
-        // ignore
-      }
-    }
-  }, [queryClient]);
-
   return useQuery({
     queryKey: ["adminStats"],
     queryFn: fetchAdminStats,
-    refetchInterval: 30000, // Refresh every 30 seconds for real-time feel
+    staleTime: 2 * 60 * 1000, // 2 minutes (override global 5 min for fresher stats)
+    refetchInterval: 60000, // Auto-refresh every 60 seconds (reduced from 30s)
+    refetchOnWindowFocus: true, // Refresh when admin returns to tab
+    placeholderData: (previousData) => previousData, // Show old data while refetching
   });
 }

@@ -111,6 +111,8 @@ export default function ProductDetailPage() {
                 description={product.description}
                 imageId={product.imageId}
                 imageUrl={product.imageUrl}
+                sellerId={product.sellerId}
+                sellerStore={product.sellerStore}
               />
             </div>
 

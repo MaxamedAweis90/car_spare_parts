@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useCart } from "@/lib/cart";
 import { Rate } from "antd";
 import { getProductImageUrl } from "@/lib/utils/product-image";
+import Link from "next/link";
 
 interface ProductMainInfoProps {
   id: string;
@@ -14,6 +15,13 @@ interface ProductMainInfoProps {
   description?: string | null;
   imageId?: string | null;
   imageUrl?: string | null;
+  sellerId?: string;
+  sellerStore?: {
+    $id: string;
+    name: string;
+    slug: string;
+    avatarId?: string | null;
+  } | null;
 }
 
 export function ProductMainInfo({
@@ -25,6 +33,8 @@ export function ProductMainInfo({
   description,
   imageId,
   imageUrl,
+  sellerId,
+  sellerStore,
 }: ProductMainInfoProps) {
   const [quantity, setQuantity] = useState(1);
   const cart = useCart();
@@ -83,6 +93,37 @@ export function ProductMainInfo({
           </span>
         )}
       </div>
+
+      {/* Seller Store Info */}
+      {sellerStore && (
+        <Link
+          href={`/stores/${sellerStore.slug}`}
+          className="flex items-center gap-3 p-4 bg-(--color-bg) rounded-xl border border-(--color-border) hover:border-(--color-primary) transition-all group"
+        >
+          <div className="w-12 h-12 rounded-full bg-white border-2 border-(--color-border) overflow-hidden flex-shrink-0">
+            {sellerStore.avatarId ? (
+              <img
+                src={`${process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT}/storage/buckets/${process.env.NEXT_PUBLIC_APPWRITE_STORE_AVATAR_BUCKET_ID}/files/${sellerStore.avatarId}/view?project=${process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID}`}
+                alt={sellerStore.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-(--color-primary)/10 to-(--color-primary)/20">
+                <i className="fa-solid fa-store text-(--color-primary)"></i>
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-black text-(--color-text-muted) uppercase tracking-widest">
+              Sold By
+            </p>
+            <p className="text-sm font-black text-(--color-text) group-hover:text-(--color-primary) transition-colors truncate">
+              {sellerStore.name}
+            </p>
+          </div>
+          <i className="fa-solid fa-chevron-right text-xs text-(--color-text-muted) group-hover:text-(--color-primary) transition-colors"></i>
+        </Link>
+      )}
 
       {/* Stock Bar */}
       <div className="flex flex-col gap-2">

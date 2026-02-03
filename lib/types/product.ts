@@ -21,4 +21,10 @@ export type ProductDocument = Models.Document & {
   discountExpiry?: string | null; // ISO string
   // Computed fields
   imageUrl?: string | null;
+  sellerStore?: {
+    $id: string;
+    name: string;
+    slug: string;
+    avatarId?: string | null;
+  } | null;
 };

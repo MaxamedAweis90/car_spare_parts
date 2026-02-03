@@ -29,6 +29,9 @@ export function useSellerStats(sellerId?: string) {
     queryKey: ["sellerStats", sellerId],
     queryFn: () => fetchSellerStats(sellerId!),
     enabled: !!sellerId,
+    staleTime: 2 * 60 * 1000, // 2 minutes (fresher than global 5 min)
+    refetchInterval: 60000, // Auto-refresh every 60 seconds for real-time revenue
+    refetchOnWindowFocus: true, // Refresh when seller returns to tab
+    placeholderData: (previousData) => previousData, // Show old data while loading
   });
 }
-
