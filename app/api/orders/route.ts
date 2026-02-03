@@ -4,6 +4,16 @@ import { databasesServer, appwriteConfig } from "@/lib/api/appwrite-server";
 import { Models } from "appwrite";
 import { buildProductImageUrl } from "@/lib/server/productService";
 
+function getSellerIdFromItems(itemsStrings: string[]): string | null {
+  try {
+    if (!itemsStrings || itemsStrings.length === 0) return null;
+    const firstItem = JSON.parse(itemsStrings[0]);
+    return firstItem.sellerId || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 interface OrderItemInput {
   productId: string;
   quantity: number;
@@ -31,11 +41,10 @@ export async function POST(req: NextRequest) {
     }
 
     const {
-      // customerId, // Ignored from body, taken from session
       items,
       shippingAddress,
       paymentMethod,
-      paymentDetails,
+      paymentDetails, // Now contains { pi: "...", ps: "paid" } for Stripe
     } = await req.json();
 
     const customerId = session.profile.$id;
@@ -118,8 +127,23 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Extract seller ID from items for permissions
+    const sellerId =
+      items.length > 0 ? getSellerIdFromItems(orderItemsForDb) : null;
+
     // 3. Create Order
     // We create the order first. If this fails, no stocks are touched.
+    const permissions = [
+      Permission.read(Role.user(session.account.$id)),
+      Permission.read(Role.label("admin")),
+      Permission.read(Role.user(appwriteConfig.mainAdminId)),
+    ];
+
+    if (sellerId) {
+      permissions.push(Permission.read(Role.user(sellerId)));
+      permissions.push(Permission.update(Role.user(sellerId)));
+    }
+
     const order = await databasesServer.createDocument(
       appwriteConfig.databaseId,
       appwriteConfig.ordersCollectionId,
@@ -128,7 +152,11 @@ export async function POST(req: NextRequest) {
         customerId,
         items: orderItemsForDb, // Appwrite array of strings
         totalPrice: calculatedTotal,
-        status: "pending_verification", // Updated: new default status for customer orders
+        status:
+          paymentDetails &&
+          JSON.parse(JSON.stringify(paymentDetails)).ps === "paid"
+            ? "paid"
+            : "pending_verification",
         shippingAddress:
           typeof shippingAddress === "string"
             ? shippingAddress
@@ -136,14 +164,10 @@ export async function POST(req: NextRequest) {
         paymentMethod: paymentMethod || "card",
         paymentDetails: paymentDetails ? JSON.stringify(paymentDetails) : null,
         createdAt: new Date().toISOString(),
-        sellerId: null, // Customer orders don't have a seller initially
+        sellerId: sellerId,
         verificationNotes: null,
       },
-      [
-        Permission.read(Role.user(session.account.$id)),
-        Permission.read(Role.label("admin")), // Assuming admins have 'admin' label or similar, or just user specific
-        Permission.read(Role.user(appwriteConfig.mainAdminId)),
-      ],
+      permissions,
     );
 
     // 4. Update Stock
@@ -164,6 +188,19 @@ export async function POST(req: NextRequest) {
         ),
       ),
     );
+
+    // 5. Send Email Confirmation (Async - don't block response)
+    const { sendOrderConfirmationEmail } =
+      await import("@/lib/emails/notifications");
+    // We need user email. Session profile has it.
+    if (session.profile.email) {
+      sendOrderConfirmationEmail(
+        session.profile.email,
+        session.profile.$id,
+        session.profile.name,
+        order, // This order object needs to have items and total
+      ).catch((err) => console.error("Email send failed", err));
+    }
 
     return NextResponse.json({
       success: true,

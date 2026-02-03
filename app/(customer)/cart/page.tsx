@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -12,14 +12,13 @@ import Divider from "@mui/material/Divider";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import TextField from "@mui/material/TextField";
-import Chip from "@mui/material/Chip";
 import Radio from "@mui/material/Radio";
 import RadioGroup from "@mui/material/RadioGroup";
 import FormControlLabel from "@mui/material/FormControlLabel";
-import InputAdornment from "@mui/material/InputAdornment";
 import Stepper from "@mui/material/Stepper";
 import Step from "@mui/material/Step";
 import StepLabel from "@mui/material/StepLabel";
+import Alert from "@mui/material/Alert";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
@@ -27,6 +26,19 @@ import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import StoreMallDirectoryIcon from "@mui/icons-material/StoreMallDirectory";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import CreditCardIcon from "@mui/icons-material/CreditCard";
+import SmartphoneIcon from "@mui/icons-material/Smartphone";
+import CurrencyExchangeIcon from "@mui/icons-material/CurrencyExchange";
+import PaymentIcon from "@mui/icons-material/Payment";
+import LockIcon from "@mui/icons-material/Lock";
+
+import { loadStripe } from "@stripe/stripe-js";
+import {
+  Elements,
+  PaymentElement,
+  useStripe,
+  useElements,
+} from "@stripe/react-stripe-js";
 
 import { BreadcrumbTrail } from "@/components/ui/BreadcrumbTrail";
 import { useCart } from "@/lib/cart";
@@ -34,7 +46,7 @@ import { useSession } from "@/lib/auth/useSession";
 
 // --- Types ---
 type DeliveryMethod = "delivery" | "pickup";
-type PaymentMethod = "evc_plus" | "edahab" | "card" | "test_payment";
+type PaymentMethodId = "stripe" | "paypal" | "evc_plus" | "edahab";
 
 interface ShippingDetails {
   fullName: string;
@@ -54,15 +66,21 @@ const FEES = {
   delivery: 7.99,
 };
 
+// Initialize Stripe outside of render to avoid recreating it
+// Make sure to populate NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY in .env
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "",
+);
+
 // --- Helper Functions ---
 function buildPublicProductImageUrl(fileId?: string | null) {
-  if (!fileId) return "/placeholder.png"; // Fallback
+  if (!fileId) return "/placeholder.png";
   const endpoint = process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT;
   const project = process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID;
   const bucket = process.env.NEXT_PUBLIC_APPWRITE_PRODUCT_BUCKET_ID;
   if (!endpoint || !project || !bucket) return "/placeholder.png";
   const url = new URL(
-    `${endpoint}/storage/buckets/${bucket}/files/${fileId}/view`
+    `${endpoint}/storage/buckets/${bucket}/files/${fileId}/view`,
   );
   url.searchParams.set("project", project);
   return url.toString();
@@ -80,6 +98,13 @@ export default function CartPage() {
   } = useCart();
   const { authenticated, profile, loading: authLoading } = useSession();
 
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !authenticated) {
+      router.push("/auth/login?redirect=/cart");
+    }
+  }, [authLoading, authenticated, router]);
+
   const [activeStep, setActiveStep] = useState(0);
   const [deliveryMethod, setDeliveryMethod] =
     useState<DeliveryMethod>("delivery");
@@ -92,24 +117,14 @@ export default function CartPage() {
     country: "",
     phoneNumber: profile?.phone ? String(profile.phone) : "",
   });
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("evc_plus");
-  const [paymentPhoneNumber, setPaymentPhoneNumber] = useState(
-    profile?.phone ? String(profile.phone) : ""
-  );
-  const [cardDetails, setCardDetails] = useState({
-    number: "",
-    expiry: "",
-    cvc: "",
-  });
-  const [couponCode, setCouponCode] = useState("");
-  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
-  const [orderSuccess, setOrderSuccess] = useState(false);
+
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [orderSuccess, setOrderSuccess] = useState(false);
 
   // --- Derived State ---
   const deliveryCost = deliveryMethod === "delivery" ? FEES.delivery : 0;
   const taxCost = cartSubtotal * FEES.taxRate;
-  const total = cartSubtotal + deliveryCost + FEES.service + taxCost; // Add tips/others if needed
+  const total = cartSubtotal + deliveryCost + FEES.service + taxCost;
 
   // --- Handlers ---
   const handleNext = () => {
@@ -143,55 +158,9 @@ export default function CartPage() {
       setShippingDetails({ ...shippingDetails, [field]: e.target.value });
     };
 
-  const handlePlaceOrder = async () => {
-    if (!authenticated) {
-      // Prompt login or redirect
-      // For now, let's require login
-      router.push(`/auth/login?redirect=/cart`);
-      return;
-    }
-
-    setIsPlacingOrder(true);
-    setErrorMsg(null);
-
-    try {
-      // Construct Shipping Address string
-      const addressString = `${shippingDetails.fullName}, ${shippingDetails.streetAddress}, ${shippingDetails.city}, ${shippingDetails.state} ${shippingDetails.zipCode}, ${shippingDetails.country}. Phone: ${shippingDetails.phoneNumber}`;
-
-      const payload = {
-        customerId: profile?.$id || "guest",
-        items: items.map((item) => ({
-          productId: item.id,
-          quantity: item.quantity,
-        })),
-        shippingAddress: addressString,
-        paymentMethod: paymentMethod,
-        paymentDetails:
-          paymentMethod === "card"
-            ? cardDetails
-            : { phoneNumber: paymentPhoneNumber },
-      };
-
-      const res = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to place order");
-      }
-
-      // Success
-      setOrderSuccess(true);
-      clear(); // Clear cart
-    } catch (err: any) {
-      setErrorMsg(err.message || "An error occurred placing the order.");
-    } finally {
-      setIsPlacingOrder(false);
-    }
+  const handleOrderComplete = () => {
+    setOrderSuccess(true);
+    clear();
   };
 
   if (orderSuccess) {
@@ -476,6 +445,7 @@ export default function CartPage() {
                       onChange={handleShippingChange("city")}
                       required
                     />
+                    {/* Other fields */}
                     <TextField
                       label="State / Province"
                       variant="outlined"
@@ -501,211 +471,41 @@ export default function CartPage() {
                 </Box>
               )}
 
-              {/* --- STEP 3: PAYMENT / REVIEW --- */}
+              {/* --- STEP 3: PAYMENT --- */}
               {activeStep === 2 && (
-                <Box sx={{ p: 4 }}>
-                  <Typography variant="h6" fontWeight={700} gutterBottom>
-                    Review & Pay
-                  </Typography>
-
-                  <Stack spacing={3}>
-                    <Box sx={{ p: 2, bgcolor: "#f8fafc", borderRadius: 2 }}>
-                      <Typography
-                        variant="subtitle2"
-                        fontWeight={700}
-                        color="text.secondary"
-                      >
-                        Shipping To:
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        fontWeight={600}
-                        sx={{ mt: 0.5 }}
-                      >
-                        {shippingDetails.fullName}
-                      </Typography>
-                      <Typography variant="body2">
-                        {shippingDetails.streetAddress}
-                      </Typography>
-                      <Typography variant="body2">
-                        {shippingDetails.city}, {shippingDetails.country}
-                      </Typography>
-                      <Typography variant="body2">
-                        {shippingDetails.phoneNumber}
-                      </Typography>
-                      <Button
-                        size="small"
-                        onClick={() => setActiveStep(1)}
-                        sx={{ mt: 1, textTransform: "none" }}
-                      >
-                        Edit
-                      </Button>
-                    </Box>
-
-                    <Box>
-                      <Typography
-                        variant="subtitle2"
-                        fontWeight={700}
-                        gutterBottom
-                      >
-                        Payment Method
-                      </Typography>
-                      <RadioGroup
-                        value={paymentMethod}
-                        onChange={(e) =>
-                          setPaymentMethod(e.target.value as PaymentMethod)
-                        }
-                      >
-                        <FormControlLabel
-                          value="evc_plus"
-                          control={<Radio size="small" />}
-                          label="EVC Plus (Somali Mobile Money)"
-                        />
-                        <FormControlLabel
-                          value="edahab"
-                          control={<Radio size="small" />}
-                          label="eDahab (Somali Mobile Money)"
-                        />
-                        <FormControlLabel
-                          value="card"
-                          control={<Radio size="small" />}
-                          label="Credit / Debit Card"
-                        />
-                        <FormControlLabel
-                          value="test_payment"
-                          control={<Radio size="small" />}
-                          label="Test Payment (Fake - No validation)"
-                        />
-                        <FormControlLabel
-                          value="cod"
-                          control={<Radio size="small" disabled />}
-                          label="Cash on Delivery (Coming Soon)"
-                        />
-                      </RadioGroup>
-
-                      {/* Mobile Payment Form */}
-                      {(paymentMethod === "evc_plus" ||
-                        paymentMethod === "edahab") && (
-                        <Box
-                          sx={{
-                            mt: 2,
-                            p: 2,
-                            border: "1px solid #e5e7eb",
-                            borderRadius: 2,
-                            bgcolor: "#f9fafb",
-                          }}
-                        >
-                          <Typography
-                            variant="caption"
-                            fontWeight={700}
-                            color="text.secondary"
-                            display="block"
-                            gutterBottom
-                          >
-                            Enter your mobile money phone number:
-                          </Typography>
-                          <TextField
-                            label="Phone Number"
-                            placeholder="252..."
-                            size="small"
-                            fullWidth
-                            value={paymentPhoneNumber}
-                            onChange={(e) =>
-                              setPaymentPhoneNumber(e.target.value)
-                            }
-                            required
-                            InputProps={{
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  +
-                                </InputAdornment>
-                              ),
-                            }}
-                          />
-                        </Box>
-                      )}
-
-                      {/* Card Payment Form */}
-                      {paymentMethod === "card" && (
-                        <Box
-                          sx={{
-                            mt: 2,
-                            p: 2,
-                            border: "1px solid #e5e7eb",
-                            borderRadius: 2,
-                            bgcolor: "#f9fafb",
-                          }}
-                        >
-                          <Stack spacing={2}>
-                            <TextField
-                              label="Card Number"
-                              placeholder="0000 0000 0000 0000"
-                              size="small"
-                              fullWidth
-                              value={cardDetails.number}
-                              onChange={(e) =>
-                                setCardDetails({
-                                  ...cardDetails,
-                                  number: e.target.value,
-                                })
-                              }
-                            />
-                            <Stack direction="row" spacing={2}>
-                              <TextField
-                                label="Expiry"
-                                placeholder="MM/YY"
-                                size="small"
-                                value={cardDetails.expiry}
-                                onChange={(e) =>
-                                  setCardDetails({
-                                    ...cardDetails,
-                                    expiry: e.target.value,
-                                  })
-                                }
-                              />
-                              <TextField
-                                label="CVC"
-                                placeholder="123"
-                                size="small"
-                                value={cardDetails.cvc}
-                                onChange={(e) =>
-                                  setCardDetails({
-                                    ...cardDetails,
-                                    cvc: e.target.value,
-                                  })
-                                }
-                              />
-                            </Stack>
-                          </Stack>
-                        </Box>
-                      )}
-                    </Box>
-                  </Stack>
-                </Box>
+                <StripePaymentWrapper
+                  total={total}
+                  items={items}
+                  shippingDetails={shippingDetails}
+                  onSuccess={handleOrderComplete}
+                  onBack={handleBack}
+                  profile={profile}
+                  authenticated={authenticated}
+                />
               )}
 
-              {/* Footer Actions */}
-              <Box
-                sx={{
-                  p: 3,
-                  borderTop: "1px solid #eadcd0",
-                  display: "flex",
-                  justifyContent: "space-between",
-                }}
-              >
-                {activeStep > 0 ? (
-                  <Button
-                    startIcon={<ArrowBackIcon />}
-                    onClick={handleBack}
-                    color="inherit"
-                  >
-                    Back
-                  </Button>
-                ) : (
-                  <div />
-                )}
+              {/* Footer Actions (Only for Step 0 and 1) */}
+              {activeStep < 2 && (
+                <Box
+                  sx={{
+                    p: 3,
+                    borderTop: "1px solid #eadcd0",
+                    display: "flex",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  {activeStep > 0 ? (
+                    <Button
+                      startIcon={<ArrowBackIcon />}
+                      onClick={handleBack}
+                      color="inherit"
+                    >
+                      Back
+                    </Button>
+                  ) : (
+                    <div />
+                  )}
 
-                {activeStep < 2 ? (
                   <Button
                     variant="contained"
                     color="warning"
@@ -713,29 +513,14 @@ export default function CartPage() {
                     disabled={items.length === 0}
                     sx={{ fontWeight: 800, px: 4 }}
                   >
-                    {activeStep === 0
-                      ? "Continue to Shipping"
-                      : "Continue to Payment"}
+                    Continue
                   </Button>
-                ) : (
-                  <Button
-                    variant="contained"
-                    color="warning"
-                    onClick={handlePlaceOrder}
-                    disabled={isPlacingOrder}
-                    size="large"
-                    sx={{ fontWeight: 800, px: 4 }}
-                  >
-                    {isPlacingOrder
-                      ? "Processing..."
-                      : `Pay $${total.toFixed(2)}`}
-                  </Button>
-                )}
-              </Box>
+                </Box>
+              )}
             </Paper>
           </Box>
 
-          {/* RIGHT COLUMN: Order Summary */}
+          {/* RIGHT COLUMN: Order Summary (Same as before) */}
           <Box>
             <Stack spacing={2} sx={{ position: { md: "sticky" }, top: 24 }}>
               <Paper
@@ -758,7 +543,6 @@ export default function CartPage() {
                       value={`$${cartSubtotal.toFixed(2)}`}
                     />
 
-                    {/* Delivery Toggle (only meaningful in step 0 or 1 really, but visible always) */}
                     {activeStep < 2 && (
                       <Box sx={{ py: 1 }}>
                         <Typography
@@ -825,38 +609,8 @@ export default function CartPage() {
                       valueStrong
                     />
                   </Stack>
-
-                  <Box sx={{ mt: 2 }}>
-                    <Typography
-                      variant="subtitle2"
-                      gutterBottom
-                      fontWeight={700}
-                    >
-                      Have a coupon?
-                    </Typography>
-                    <Stack direction="row" spacing={1}>
-                      <TextField
-                        size="small"
-                        placeholder="Coupon Code"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value)}
-                        fullWidth
-                        InputProps={{ sx: { bgcolor: "white" } }}
-                      />
-                      <Button variant="outlined" color="inherit">
-                        Apply
-                      </Button>
-                    </Stack>
-                  </Box>
                 </Stack>
               </Paper>
-
-              <Box sx={{ textAlign: "center" }}>
-                <Typography variant="caption" color="text.secondary">
-                  By placing this order, you agree to our Terms of Service and
-                  Privacy Policy.
-                </Typography>
-              </Box>
             </Stack>
           </Box>
         </Box>
@@ -865,7 +619,384 @@ export default function CartPage() {
   );
 }
 
-// --- Subcomponents ---
+// --- Payment Sub-component ---
+function StripePaymentWrapper({
+  total,
+  items,
+  shippingDetails,
+  onSuccess,
+  onBack,
+  profile,
+  authenticated,
+}: {
+  total: number;
+  items: any[];
+  shippingDetails: ShippingDetails;
+  onSuccess: () => void;
+  onBack: () => void;
+  profile: any;
+  authenticated: boolean;
+}) {
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+
+  // Initialize Payment Intent on mount
+  useEffect(() => {
+    fetch("/api/stripe/create-payment-intent", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: total, currency: "usd" }),
+    })
+      .then((res) => res.json())
+      .then((data) => setClientSecret(data.clientSecret))
+      .catch((err) => console.error(err));
+  }, [total]);
+
+  // Options for Stripe Elements
+  const options = {
+    clientSecret: clientSecret || undefined,
+    appearance: {
+      theme: "stripe",
+    } as const,
+  };
+
+  return (
+    <Box sx={{ p: 4 }}>
+      <Typography variant="h6" fontWeight={700} gutterBottom>
+        Payment Method
+      </Typography>
+
+      {clientSecret ? (
+        <Elements options={options} stripe={stripePromise}>
+          <PaymentForm
+            clientSecret={clientSecret}
+            onSuccess={onSuccess}
+            onBack={onBack}
+            items={items}
+            shippingDetails={shippingDetails}
+            profile={profile}
+            authenticated={authenticated}
+            total={total}
+          />
+        </Elements>
+      ) : (
+        <Box sx={{ py: 5, textAlign: "center" }}>
+          <Typography>Loading secure payment...</Typography>
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+function PaymentForm({
+  clientSecret,
+  onSuccess,
+  onBack,
+  items,
+  shippingDetails,
+  profile,
+  authenticated,
+  total,
+}: any) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const router = useRouter();
+
+  const [selectedMethod, setSelectedMethod] = useState<PaymentMethodId | null>(
+    null,
+  );
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  const handleMethodSelect = (method: PaymentMethodId) => {
+    setSelectedMethod(method);
+    setErrorMessage("");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!stripe || !elements || !selectedMethod) {
+      return;
+    }
+
+    // Only Stripe is functional
+    if (selectedMethod !== "stripe") {
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        setErrorMessage(submitError.message || "An error occurred");
+        setIsLoading(false);
+        return;
+      }
+
+      const { error, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: `${window.location.origin}/order-success`,
+        },
+        redirect: "if_required",
+      });
+
+      if (error) {
+        setErrorMessage(error.message || "Payment failed");
+      } else if (paymentIntent && paymentIntent.status === "succeeded") {
+        // Payment success! Now create order in backend
+        await createOrder(paymentIntent.id);
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "An error occurred");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const createOrder = async (paymentIntentId: string) => {
+    try {
+      // Construct Shipping Address string
+      const addressString = `${shippingDetails.fullName}, ${shippingDetails.streetAddress}, ${shippingDetails.city}, ${shippingDetails.state} ${shippingDetails.zipCode}, ${shippingDetails.country}. Phone: ${shippingDetails.phoneNumber}`;
+
+      const payload = {
+        customerId: profile?.$id || "guest", // or session
+        items: items.map((item: any) => ({
+          productId: item.id,
+          quantity: item.quantity,
+        })),
+        shippingAddress: addressString,
+        paymentMethod: "stripe",
+        paymentDetails: {
+          pi: paymentIntentId,
+          ps: "paid",
+        },
+      };
+
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) throw new Error("Failed to create order");
+
+      onSuccess();
+    } catch (error: any) {
+      setErrorMessage(
+        "Payment succeeded but order creation failed. Please contact support. Ref: " +
+          paymentIntentId,
+      );
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <Stack spacing={4}>
+        {/* Payment Method Grid */}
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", sm: "1fr 1fr" },
+            gap: 2,
+          }}
+        >
+          {/* Stripe */}
+          <PaymentCard
+            selected={selectedMethod === "stripe"}
+            onClick={() => handleMethodSelect("stripe")}
+            icon={
+              <Box
+                sx={{
+                  bgcolor: "#333",
+                  color: "white",
+                  px: 1,
+                  borderRadius: 1,
+                  fontWeight: 900,
+                  fontFamily: "sans-serif",
+                  fontSize: "1.2rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.5,
+                }}
+              >
+                stripe{" "}
+                <span style={{ fontWeight: 400, fontSize: "0.8rem" }}>
+                  Test
+                </span>
+              </Box>
+            }
+            label="Stripe"
+            dark
+          />
+
+          {/* PayPal */}
+          <PaymentCard
+            selected={selectedMethod === "paypal"}
+            onClick={() => handleMethodSelect("paypal")}
+            icon={
+              <Box
+                sx={{
+                  fontWeight: 900,
+                  fontSize: "1.2rem",
+                  color: "#003087",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                <span style={{ color: "#003087" }}>Pay</span>
+                <span style={{ color: "#009cde" }}>Pal</span>
+              </Box>
+            }
+            label="PayPal"
+          />
+
+          {/* EVC Plus */}
+          <PaymentCard
+            selected={selectedMethod === "evc_plus"}
+            onClick={() => handleMethodSelect("evc_plus")}
+            icon={<SmartphoneIcon sx={{ color: "#555" }} />}
+            label="EVC Plus"
+          />
+
+          {/* eDahab */}
+          <PaymentCard
+            selected={selectedMethod === "edahab"}
+            onClick={() => handleMethodSelect("edahab")}
+            icon={<CurrencyExchangeIcon sx={{ color: "#555" }} />}
+            label="eDahab"
+          />
+        </Box>
+
+        {/* Content based on selection */}
+        <Box sx={{ minHeight: 120 }}>
+          {!selectedMethod && (
+            <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
+              Please select a payment method to proceed.
+            </Typography>
+          )}
+
+          {selectedMethod !== "stripe" && selectedMethod !== null && (
+            <Alert severity="info" sx={{ borderRadius: 2 }}>
+              This payment method (
+              {selectedMethod === "evc_plus"
+                ? "EVC Plus"
+                : selectedMethod === "edahab"
+                  ? "eDahab"
+                  : "PayPal"}
+              ) is coming soon. Please use Stripe Test for now.
+            </Alert>
+          )}
+
+          {selectedMethod === "stripe" && (
+            <Stack spacing={2} sx={{ animation: "fadeIn 0.3s ease-in" }}>
+              <Alert severity="success" icon={<CreditCardIcon />}>
+                Test Mode Active: Use card <strong>4242 4242 4242 4242</strong>{" "}
+                with any future date and CVC.
+              </Alert>
+              <Box
+                sx={{
+                  p: 2,
+                  border: "1px solid #e5e7eb",
+                  borderRadius: 2,
+                  bgcolor: "white",
+                }}
+              >
+                <PaymentElement />
+              </Box>
+            </Stack>
+          )}
+        </Box>
+
+        {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
+
+        {/* Actions */}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            pt: 2,
+            borderTop: "1px solid #eee",
+          }}
+        >
+          <Button
+            startIcon={<ArrowBackIcon />}
+            onClick={onBack}
+            color="inherit"
+          >
+            Back
+          </Button>
+
+          <Button
+            type="submit"
+            variant="contained"
+            color="warning"
+            size="large"
+            disabled={
+              selectedMethod !== "stripe" || isLoading || !stripe || !elements
+            }
+            sx={{ fontWeight: 800, px: 4 }}
+          >
+            {isLoading ? "Processing..." : `Pay $${total.toFixed(2)}`}
+          </Button>
+        </Box>
+      </Stack>
+    </form>
+  );
+}
+
+function PaymentCard({
+  selected,
+  onClick,
+  icon,
+  label,
+  dark,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  label: string;
+  dark?: boolean;
+}) {
+  return (
+    <Paper
+      elevation={0}
+      onClick={onClick}
+      sx={{
+        p: 2,
+        cursor: "pointer",
+        border: selected ? "2px solid #c56a1b" : "1px solid #e5e7eb",
+        bgcolor: dark
+          ? selected
+            ? "#1f2937"
+            : "#000"
+          : selected
+            ? "#fffaf7"
+            : "white",
+        color: dark ? "white" : "inherit",
+        borderRadius: 2,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 1.5,
+        transition: "all 0.2s",
+        "&:hover": {
+          borderColor: "#c56a1b",
+          bgcolor: dark ? "#374151" : "#fdf6f3",
+        },
+        height: 60,
+      }}
+    >
+      {icon}
+      {!dark && label !== "PayPal" && (
+        <Typography fontWeight={700} variant="body2">
+          {label}
+        </Typography>
+      )}
+    </Paper>
+  );
+}
 
 function Row({
   label,
@@ -928,4 +1059,3 @@ function DeliveryLabel({
     </Stack>
   );
 }
-

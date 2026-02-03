@@ -191,3 +191,130 @@ export function getAdminInvitationTemplate(
 </html>
   `;
 }
+export function getOrderConfirmationTemplate(
+  userName: string,
+  orderId: string,
+  totalPrice: number,
+  items: any[],
+  shippingAddress: any,
+  viewOrderLink: string,
+): string {
+  const itemsHtml = items
+    .map(
+      (item) => `
+    <div style="display: flex; align-items: center; border-bottom: 1px solid #e2e8f0; padding: 15px 0;">
+      <div style="flex: 1;">
+         <div style="font-weight: 600; font-size: 15px;">${item.name}</div>
+         <div style="color: #64748b; font-size: 13px;">Qty: ${item.quantity}</div>
+      </div>
+      <div style="font-weight: 600;">$${item.price}</div>
+    </div>
+  `,
+    )
+    .join("");
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #1e293b; margin: 0; padding: 0; background-color: #f8fafc; }
+    .wrapper { background-color: #f8fafc; padding: 40px 20px; }
+    .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+    .header { background: linear-gradient(135deg, #000000 0%, #1e1e1e 100%); padding: 40px; text-align: center; color: white; }
+    .header-icon { font-size: 40px; margin-bottom: 10px; }
+    .content { padding: 40px; }
+    .footer { background: #f1f5f9; padding: 30px; text-align: center; font-size: 13px; color: #64748b; }
+    .button { display: inline-block; padding: 14px 28px; background-color: #000000; color: #ffffff !important; text-decoration: none; border-radius: 10px; font-weight: bold; margin-top: 25px; }
+    h1 { margin: 0; font-size: 24px; font-weight: 700; }
+    .order-info { background: #f8fafc; border-radius: 12px; padding: 20px; margin: 20px 0; border: 1px solid #e2e8f0; }
+    .total-row { display: flex; justify-content: space-between; font-weight: 800; font-size: 18px; margin-top: 20px; border-top: 2px solid #e2e8f0; padding-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <div class="header-icon">🛍️</div>
+        <h1>Order Confirmed!</h1>
+        <p style="opacity: 0.8; margin-top: 5px;">Order #${orderId.slice(-6).toUpperCase()}</p>
+      </div>
+      <div class="content">
+        <p>Hi <strong>${userName}</strong>,</p>
+        <p>Thank you for your purchase! We've received your order and are getting it ready.</p>
+        
+        <div class="order-info">
+          <div style="font-weight: 700; margin-bottom: 15px; text-transform: uppercase; font-size: 12px; color: #64748b; letter-spacing: 1px;">Items Ordered</div>
+          ${itemsHtml}
+          <div class="total-row">
+            <div>Total</div>
+            <div>$${totalPrice.toFixed(2)}</div>
+          </div>
+        </div>
+
+        <p style="text-align: center;">
+          <a href="${viewOrderLink}" class="button">View Order Status</a>
+        </p>
+      </div>
+      <div class="footer">
+        <p>© 2026 SomaParts. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+}
+
+export function getOrderDeliveredTemplate(
+  userName: string,
+  orderId: string,
+  viewOrderLink: string,
+): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #1e293b; margin: 0; padding: 0; background-color: #f8fafc; }
+    .wrapper { background-color: #f8fafc; padding: 40px 20px; }
+    .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+    .header { background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); padding: 40px; text-align: center; color: white; }
+    .header-icon { font-size: 48px; margin-bottom: 10px; }
+    .content { padding: 40px; }
+    .footer { background: #f1f5f9; padding: 30px; text-align: center; font-size: 13px; color: #64748b; }
+    .button { display: inline-block; padding: 14px 28px; background-color: #16a34a; color: #ffffff !important; text-decoration: none; border-radius: 10px; font-weight: bold; margin-top: 25px; }
+    h1 { margin: 0; font-size: 24px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="container">
+      <div class="header">
+        <div class="header-icon">📦</div>
+        <h1>Your Order Arrived!</h1>
+        <p style="opacity: 0.9; margin-top: 5px;">Delivered Successfully</p>
+      </div>
+      <div class="content">
+        <p>Hi <strong>${userName}</strong>,</p>
+        <p>Great news! Your order <strong>#${orderId.slice(-6).toUpperCase()}</strong> has been delivered.</p>
+        
+        <p>We hope you enjoy your purchase. If you have a moment, we'd love to hear your feedback.</p>
+
+        <p style="text-align: center;">
+          <a href="${viewOrderLink}" class="button">View Order & Leave Review</a>
+        </p>
+      </div>
+      <div class="footer">
+        <p>© 2026 SomaParts. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+  `;
+}

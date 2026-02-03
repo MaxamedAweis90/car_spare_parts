@@ -123,8 +123,25 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     // --- TRIGGER REVIEW EMAIL ---
     if (newStatus === "delivered" && currentStatus !== "delivered") {
       try {
+        const { sendOrderDeliveredEmail } =
+          await import("@/lib/emails/notifications");
+
+        // We need the customer's name. Fetch from users collection if not in order doc
+        // Actually, let's fetch the customer profile to get name and email
+        const customerProfile = await databasesServer.getDocument(
+          appwriteConfig.databaseId,
+          appwriteConfig.usersCollectionId,
+          order.customerId,
+        );
+
+        // Send email
+        await sendOrderDeliveredEmail(
+          order.customerId,
+          customerProfile.name,
+          orderId,
+        );
+
         const reviewLink = `${req.nextUrl.origin}/reviews/${orderId}`;
-        const storeName = "SomaParts"; // Or fetch from Seller Store if available
         const message = `Your order ${orderId.slice(-8).toUpperCase()} has been delivered! Please take a moment to review your products.`;
 
         // Send Notification (Simplified: In-app + Attempt Email via Appwrite Function or similar)
