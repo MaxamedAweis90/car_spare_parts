@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from "next";
+import type { Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "../theme/ecommerce.css";
 import "./globals.css";
@@ -9,6 +9,12 @@ import QueryProvider from "@/lib/providers/QueryProvider";
 import AntdRegistryProvider from "@/lib/providers/AntdRegistryProvider";
 import { CartProvider } from "@/lib/cart";
 import GlobalSplash from "@/components/ui/GlobalSplash";
+import StructuredData from "@/components/layout/StructuredData";
+import {
+  defaultMetadata,
+  organizationSchema,
+  websiteSchema,
+} from "@/lib/metadata";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,16 +26,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "SomaParts",
-  description: "Premium car parts marketplace",
-  formatDetection: {
-    telephone: false,
-  },
-};
+// Export comprehensive metadata
+export const metadata = defaultMetadata;
 
 export const viewport: Viewport = {
-  themeColor: "#ffffff",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
 };
 
 export default function RootLayout({
@@ -45,6 +53,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-foreground`}
       >
+        <StructuredData data={[organizationSchema, websiteSchema]} />
         <QueryProvider>
           <AntdRegistryProvider>
             <CartProvider>

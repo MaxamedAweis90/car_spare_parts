@@ -1,0 +1,27 @@
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Disallow admin and seller portals
+Disallow: /admin-portal/
+Disallow: /seller-portal/
+Disallow: /api/
+
+# Disallow authentication pages
+Disallow: /login
+Disallow: /register
+Disallow: /auth/
+
+# Disallow user-specific pages
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /profile
+
+# Allow product and category pages
+Allow: /products/
+Allow: /categories/
+Allow: /stores/
+
+# Sitemap location
+Sitemap: https://somaparts.com/sitemap.xml
